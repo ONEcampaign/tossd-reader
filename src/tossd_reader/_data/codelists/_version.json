@@ -1,0 +1,16 @@
+{
+  "codelist_ids": {
+    "channel": "3",
+    "finance_instrument": "15",
+    "financing_arrangement": "17",
+    "framework_of_collaboration": "18",
+    "modality": "14",
+    "pillar": "19",
+    "provider": "5",
+    "purpose": "10",
+    "recipient": "13",
+    "sector": "10"
+  },
+  "fetched_at": "2026-08-28T18:01:59.314014+00:00",
+  "source_url": "https://development-finance-codelists.oecd.org/CodesList.aspx"
+}

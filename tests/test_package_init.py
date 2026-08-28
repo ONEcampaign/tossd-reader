@@ -16,6 +16,8 @@ from tossd_reader import exceptions
     [
         ("get_tossd_raw", "tossd_reader.fetch"),
         ("set_cache_dir", "tossd_reader.config"),
+        ("get_available_filters", "tossd_reader.codelists"),
+        ("get_codelists_version", "tossd_reader.codelists"),
         ("TossdReaderError", exceptions.TossdReaderError),
         ("TossdNetworkError", exceptions.TossdNetworkError),
         ("VintageValidationError", exceptions.VintageValidationError),
@@ -62,7 +64,35 @@ def test_import_opens_no_socket_and_stays_light() -> None:
         "assert 'tossd_reader.fetch' not in sys.modules\n"
         "assert 'tossd_reader.discovery' not in sys.modules\n"
         "assert 'tossd_reader.config' not in sys.modules\n"
+        "assert 'tossd_reader.codelists' not in sys.modules\n"
         "assert 'resolvekit' not in sys.modules\n"
+        "assert 'oda_reader' not in sys.modules\n"
+        "print('OK')\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "OK"
+
+
+def test_codelists_loader_never_imports_oda_reader() -> None:
+    """Using the whole codelists loader surface still never imports `oda_reader`.
+
+    `tossd_reader.codelists` reads only the packaged CSV snapshot; `oda_reader`
+    is a maintainer-only dependency (the `codelists` group) that must never be
+    reachable from a normal runtime import of this package.
+    """
+    script = (
+        "import sys\n"
+        "import tossd_reader\n"
+        "tossd_reader.get_available_filters()\n"
+        "tossd_reader.get_codelists_version()\n"
+        "assert 'oda_reader' not in sys.modules\n"
         "print('OK')\n"
     )
     result = subprocess.run(

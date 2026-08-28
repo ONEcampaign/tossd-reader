@@ -1,0 +1,50 @@
+code,name,tossd_only
+110,I.1. Education,False
+111,"I.1.a. Education, level nnspecified",False
+112,I.1.b. Basic education,False
+113,I.1.c. Upper secondary education,False
+114,I.1.d. Post-secondary education,False
+120,I.2. Health,False
+121,"I.2.a. Health, general",False
+122,I.2.b. Basic health,False
+123,I.2.c. Non-communicable diseases (NCDs),False
+130,I.3. Population policies/programmes and reproductive health,False
+140,I.4. Water supply and sanitation,False
+150,I.5. Government and civil society,False
+151,"I.5.a. Government and civil society, general",False
+152,"Conflict, Peace & Security",True
+160,I.6. Other social infrastructure and services,False
+210,II.1. Transport and storage,False
+220,II.2. Communications,False
+230,II.3. Energy,False
+231,II.3.a. Energy policy,False
+232,"II.3.b. Energy generation, renewable sources",False
+233,"II.3.c. Energy generation, non-renewable sources",False
+234,II.3.d. Hybrid energy plants,False
+235,II.3.e. Nuclear energy plants,False
+236,II.3.f. Energy distribution,False
+240,II.4. Banking and financial services,False
+250,II.5. Business and other services,False
+310,"III.1. Agriculture, forestry, fishing",False
+311,III.1.a. Agriculture,False
+312,III.1.b. Forestry,False
+313,III.1.c. Fishing,False
+320,"III.2. Industry, mining, construction",False
+321,III.2.a. Industry,False
+322,III.2.b. Mineral resources and mining,False
+323,III.2.c. Construction,False
+330,III.3.a. Trade Policies and Regulations,False
+331,III.3.a. Trade Policies and Regulations,False
+332,III.3.b. Tourism,False
+410,IV.1. General Environment Protection,False
+430,IV.2. Other Multisector,False
+510,VI.1. General Budget Support,False
+520,VI.2. Development Food Assistance,False
+530,VI.3. Other Commodity Assistance,False
+600,VII. Action Relating to Debt,False
+720,VIII.1. Emergency Response,False
+730,VIII.2. Reconstruction and Rehabilitation,False
+740,VIII.3. Disaster Preparedness,False
+910,Administrative Costs,True
+930,Refugee and Asylum Seeker Expenditures (Domestic/Provider Countries),True
+998,XII. Unallocated / Unspecified,False

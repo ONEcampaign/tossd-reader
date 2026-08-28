@@ -11,6 +11,8 @@ except PackageNotFoundError:
     __version__ = "0.0.0"
 
 if TYPE_CHECKING:
+    from tossd_reader.codelists import get_available_filters as get_available_filters
+    from tossd_reader.codelists import get_codelists_version as get_codelists_version
     from tossd_reader.config import set_cache_dir as set_cache_dir
     from tossd_reader.exceptions import InvalidPillarError as InvalidPillarError
     from tossd_reader.exceptions import SchemaDriftError as SchemaDriftError
@@ -28,6 +30,8 @@ __all__ = [
     "UnknownCodeError",
     "VintageValidationError",
     "__version__",
+    "get_available_filters",
+    "get_codelists_version",
     "get_tossd_raw",
     "set_cache_dir",
 ]
@@ -35,6 +39,8 @@ __all__ = [
 _LAZY_ATTRS: dict[str, tuple[str, str]] = {
     "get_tossd_raw": ("tossd_reader.fetch", "get_tossd_raw"),
     "set_cache_dir": ("tossd_reader.config", "set_cache_dir"),
+    "get_available_filters": ("tossd_reader.codelists", "get_available_filters"),
+    "get_codelists_version": ("tossd_reader.codelists", "get_codelists_version"),
     "TossdReaderError": ("tossd_reader.exceptions", "TossdReaderError"),
     "TossdNetworkError": ("tossd_reader.exceptions", "TossdNetworkError"),
     "VintageValidationError": ("tossd_reader.exceptions", "VintageValidationError"),
