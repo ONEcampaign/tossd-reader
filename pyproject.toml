@@ -134,6 +134,7 @@ python_files = ["test_*.py"]
 addopts = "-v --cov=src/tossd_reader --cov-report=term --cov-report=xml -m \"not network\""
 markers = [
     "network: hits tossd.online; needs TOSSD_READER_NETWORK_TESTS=1",
+    "slow: long-running even within the network suite (full-file reconciliation)",
 ]
 filterwarnings = ["error"]
 xfail_strict = true

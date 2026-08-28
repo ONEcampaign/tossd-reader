@@ -1,0 +1,298 @@
+"""Read-time schema layer for published TOSSD parquet vintages (D5).
+
+Drift contract: a published file missing a column the packaged schema expects
+is a hard `SchemaDriftError` — never silently dropped or nulled. A published
+file carrying a column the packaged schema doesn't know about is not an
+error: it warns once per session and passes through raw, visible only in
+`columns="all"`.
+"""
+
+from __future__ import annotations
+
+import csv
+import importlib.resources
+import warnings
+from dataclasses import dataclass
+from functools import lru_cache
+from typing import Literal
+
+import pyarrow as pa
+import pyarrow.compute as pc
+
+from tossd_reader.exceptions import SchemaDriftError
+
+_SEPARATOR_TABLE = str.maketrans("", "", "_- ")
+
+_INT_TARGET_TYPES: dict[str, pa.DataType] = {
+    "Int8": pa.int8(),
+    "Int16": pa.int16(),
+    "Int32": pa.int32(),
+}
+
+_CODE_CASE_FIXES: dict[str, dict[str, str]] = {
+    # {snake_name: {published variant: canonical form}}. One documented case
+    # today (modality `c01` -> `C01`); a future one is a single extra line.
+    "modality_code": {"c01": "C01"},
+}
+
+
+@dataclass(frozen=True)
+class SchemaField:
+    """One row of the packaged schema table (`_data/schema.csv`).
+
+    Attributes:
+        published_name: The column name as it appears in the publisher's file.
+        snake_name: The renamed, snake_case column name this package exposes.
+        arrow_type: The raw arrow type the column arrives as (`"string"` or
+            `"double"`), before any typed cast.
+        target_dtype: The dtype `apply_schema` casts the column to:
+            `"Int8"`/`"Int16"`/`"Int32"` (nullable arrow ints), `"category"`
+            (dictionary-encoded), `"float64"`, or `"string"` (left as-is).
+        nullable: Whether the publisher has ever shipped a real null/empty
+            value for this column. Informational only in this slice.
+        preset_minimal: Whether the column is included in the `"minimal"`
+            preset.
+        preset_analysis: Whether the column is included in the `"analysis"`
+            preset.
+        is_usd_thousand_amount: Whether the column is one of the 8 USD amount
+            fields (reported in USD thousands). Consumed by the query layer
+            (slice 2.2), not by anything in this module.
+    """
+
+    published_name: str
+    snake_name: str
+    arrow_type: str
+    target_dtype: str
+    nullable: bool
+    preset_minimal: bool
+    preset_analysis: bool
+    is_usd_thousand_amount: bool
+
+
+class _SchemaState:
+    """Mutable singleton state backing this module's warn-once accessor."""
+
+    def __init__(self) -> None:
+        self.warned_unknown_columns: set[str] = set()
+
+
+_state = _SchemaState()
+
+
+@lru_cache
+def load_schema() -> tuple[SchemaField, ...]:
+    """Parse the packaged schema table (`_data/schema.csv`) once, in file order.
+
+    Cached for the life of the process — the packaged schema table never
+    changes at runtime.
+    """
+    resource = importlib.resources.files("tossd_reader") / "_data" / "schema.csv"
+    with importlib.resources.as_file(resource) as path, path.open(newline="") as handle:
+        return tuple(_parse_row(row) for row in csv.DictReader(handle))
+
+
+def _parse_row(row: dict[str, str]) -> SchemaField:
+    """Build one `SchemaField` from a `csv.DictReader` row."""
+    return SchemaField(
+        published_name=row["published_name"],
+        snake_name=row["snake_name"],
+        arrow_type=row["arrow_type"],
+        target_dtype=row["target_dtype"],
+        nullable=row["nullable"] == "true",
+        preset_minimal=row["preset_minimal"] == "true",
+        preset_analysis=row["preset_analysis"] == "true",
+        is_usd_thousand_amount=row["is_usd_thousand_amount"] == "true",
+    )
+
+
+def preset_columns(preset: Literal["minimal", "analysis", "all"]) -> list[str]:
+    """Return the snake_case column names for `preset`, in schema.csv order.
+
+    Args:
+        preset: `"minimal"`, `"analysis"`, or `"all"`.
+
+    Returns:
+        Snake_case column names. Validation of arbitrary user-supplied column
+        lists happens in the query layer (slice 2.2), not here.
+
+    Raises:
+        ValueError: `preset` is not one of the three recognised names.
+    """
+    fields = load_schema()
+    if preset == "all":
+        return [field.snake_name for field in fields]
+    if preset == "minimal":
+        return [field.snake_name for field in fields if field.preset_minimal]
+    if preset == "analysis":
+        return [field.snake_name for field in fields if field.preset_analysis]
+    raise ValueError(
+        f"Unknown preset {preset!r}; expected 'minimal', 'analysis', or 'all'."
+    )
+
+
+def apply_schema(table: pa.Table) -> pa.Table:
+    """Rename, clean, and typecast one published TOSSD vintage table (D5).
+
+    Arrow-level throughout: no pandas conversion happens here. In order:
+    1. Match `schema.csv`'s `published_name`s to `table`'s actual column names
+       by normalised key (casefold, `_`/`-`/space-insensitive).
+    2. A schema-expected column absent from `table` raises `SchemaDriftError`.
+    3. A `table` column not in the schema warns once per session and passes
+       through under its original name, unchanged.
+    4. Matched columns are renamed to `snake_name`.
+    5. Empty strings become null, for every string-typed column.
+    6. Known code-case drift is normalised (e.g. modality `c01` -> `C01`).
+    7. Matched columns are cast to `target_dtype`. A cast failure raises
+       `SchemaDriftError` naming the column and the offending value — never a
+       silent null.
+
+    Args:
+        table: One vintage's raw, publisher-bytes-verbatim table (as returned
+            by reading `fetch_year`'s cached parquet with pyarrow, unmodified).
+
+    Returns:
+        A new `pa.Table`: schema columns renamed and typed, schema.csv order
+        first, followed by any unknown extra columns passed through raw.
+
+    Raises:
+        SchemaDriftError: A schema-expected column is missing, or a matched
+            column's values cannot be cast to its `target_dtype`.
+    """
+    fields = load_schema()
+    actual_by_key = {_normalise_key(name): name for name in table.column_names}
+
+    missing = [
+        field.published_name
+        for field in fields
+        if _normalise_key(field.published_name) not in actual_by_key
+    ]
+    if missing:
+        raise SchemaDriftError(
+            "The published file is missing expected column(s): "
+            f"{', '.join(missing)}. This usually means the publisher changed "
+            "its schema; tossd_reader's packaged schema.csv may need updating."
+        )
+
+    matched_keys = {_normalise_key(field.published_name) for field in fields}
+    extra_names = [
+        name for key, name in actual_by_key.items() if key not in matched_keys
+    ]
+    _warn_unknown_columns(extra_names)
+
+    names: list[str] = []
+    arrays: list[pa.ChunkedArray | pa.Array] = []
+    for field in fields:
+        actual_name = actual_by_key[_normalise_key(field.published_name)]
+        column = table.column(actual_name)
+        if pa.types.is_string(column.type):
+            column = _empty_string_to_null(column)
+        column = _apply_code_case_fix(column, field.snake_name)
+        column = _cast_column(column, field)
+        names.append(field.snake_name)
+        arrays.append(column)
+
+    for name in extra_names:
+        names.append(name)
+        arrays.append(table.column(name))
+
+    return pa.table(arrays, names=names)
+
+
+def _normalise_key(name: str) -> str:
+    """Casefold `name` and drop `_`, `-`, and spaces for drift-tolerant matching."""
+    return name.casefold().translate(_SEPARATOR_TABLE)
+
+
+def _empty_string_to_null(
+    column: pa.ChunkedArray | pa.Array,
+) -> pa.ChunkedArray | pa.Array:
+    """Turn every empty-string value in a string column into a real null."""
+    is_empty = pc.equal(column, "")  # ty: ignore[unresolved-attribute]
+    return pc.if_else(  # ty: ignore[unresolved-attribute]
+        is_empty, pa.scalar(None, type=column.type), column
+    )
+
+
+def _apply_code_case_fix(
+    column: pa.ChunkedArray | pa.Array, snake_name: str
+) -> pa.ChunkedArray | pa.Array:
+    """Normalise known code-case drift (declarative `_CODE_CASE_FIXES`) for one column."""
+    fixes = _CODE_CASE_FIXES.get(snake_name)
+    if not fixes:
+        return column
+    for variant, canonical in fixes.items():
+        is_variant = pc.equal(column, variant)  # ty: ignore[unresolved-attribute]
+        column = pc.if_else(  # ty: ignore[unresolved-attribute]
+            is_variant, pa.scalar(canonical, type=column.type), column
+        )
+    return column
+
+
+def _cast_column(
+    column: pa.ChunkedArray | pa.Array, field: SchemaField
+) -> pa.ChunkedArray | pa.Array:
+    """Cast one matched column to its `target_dtype`, per `SchemaField`."""
+    target = field.target_dtype
+    if target == "string":
+        return column
+    if target == "category":
+        return pc.dictionary_encode(column)  # ty: ignore[unresolved-attribute]
+    if target == "float64":
+        return _safe_cast(column, pa.float64(), column_name=field.snake_name)
+    if target in _INT_TARGET_TYPES:
+        return _safe_cast(
+            column, _INT_TARGET_TYPES[target], column_name=field.snake_name
+        )
+    raise AssertionError(f"schema.csv has an unrecognised target_dtype {target!r}")
+
+
+def _safe_cast(
+    column: pa.ChunkedArray | pa.Array, target_type: pa.DataType, *, column_name: str
+) -> pa.ChunkedArray | pa.Array:
+    """Cast `column` to `target_type`, or raise `SchemaDriftError` naming the offender.
+
+    Never falls back to silently coercing an uncastable value to null.
+    """
+    try:
+        return pc.cast(column, target_type)
+    except pa.lib.ArrowInvalid as exc:
+        sample = _first_uncastable_value(column, target_type)
+        raise SchemaDriftError(
+            f"Column {column_name!r} contains a value that cannot be cast to "
+            f"{target_type}: {sample!r}."
+        ) from exc
+
+
+def _first_uncastable_value(
+    column: pa.ChunkedArray | pa.Array, target_type: pa.DataType
+) -> str | None:
+    """Find the first distinct value in `column` that fails to cast to `target_type`."""
+    for value in column.drop_null().unique().to_pylist():
+        try:
+            pc.cast(pa.array([value], type=pa.string()), target_type)
+        except pa.lib.ArrowInvalid:
+            return value
+    return None
+
+
+def _warn_unknown_columns(names: list[str]) -> None:
+    """Warn once per never-before-seen unknown column name in `names`."""
+    new_names = [name for name in names if name not in _state.warned_unknown_columns]
+    if not new_names:
+        return
+    _state.warned_unknown_columns.update(new_names)
+    warnings.warn(
+        "The published file has column(s) not in tossd_reader's packaged "
+        f"schema: {', '.join(new_names)}. Passed through unchanged; only "
+        'visible with columns="all".',
+        stacklevel=3,
+    )
+
+
+def _reset_for_tests() -> None:
+    """Clear the warn-once state for unknown columns.
+
+    Test-only. `conftest.py` does not reset per-module state between tests,
+    so this slice's own tests reset the module directly instead.
+    """
+    _state.warned_unknown_columns.clear()

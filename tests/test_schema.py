@@ -1,0 +1,117 @@
+"""Unit tests for the schema layer (D5): apply_schema, preset_columns, drift."""
+
+from __future__ import annotations
+
+import pyarrow as pa
+import pytest
+
+from tests.fixtures import build_tossd_table
+from tossd_reader import schema
+from tossd_reader.exceptions import SchemaDriftError
+
+
+@pytest.fixture(autouse=True)
+def _reset_schema_state() -> None:
+    """Clear schema.py's warn-once state before each test.
+
+    `tests/conftest.py` does not reset per-module state between tests, so
+    this slice's own tests reset the module directly instead.
+    """
+    schema._reset_for_tests()
+
+
+def test_apply_schema_round_trip() -> None:
+    """A full apply_schema pass renames, types, and cleans a fixture correctly.
+
+    n_rows=21 with year=2024 guarantees the fixture's deterministic
+    modality-case-drift row lands on the literal `c01` variant (index 20,
+    `20 % 4 == 0` selects modality code `C01` from the fixture's rotation).
+    """
+    table = build_tossd_table(2024, n_rows=21, seed=0)
+
+    result = schema.apply_schema(table)
+
+    expected_names = [field.snake_name for field in schema.load_schema()]
+    assert list(result.column_names) == expected_names
+
+    # dtypes: nullable ints, dictionary-encoded categories, float64 amounts.
+    assert result.schema.field("year").type == pa.int16()
+    assert result.schema.field("provider_code").type == pa.int16()
+    assert result.schema.field("purpose_code").type == pa.int32()
+    assert result.schema.field("tossd_pillar").type == pa.int8()
+    assert pa.types.is_dictionary(result.schema.field("provider_name").type)
+    assert pa.types.is_dictionary(result.schema.field("modality_code").type)
+    assert result.schema.field("usd_commitment").type == pa.float64()
+    assert result.schema.field("tossd_id").type == pa.string()
+
+    # empty-string -> null, including the degenerate all-empty columns.
+    assert result.column("parent_channel_name").null_count == table.num_rows
+    assert result.column("mobilisation_origin").null_count == table.num_rows
+    assert result.column("provider_agency_name").null_count > 0
+
+    # c01 -> C01 code-case normalisation.
+    assert table.column("modality")[-1].as_py() == "c01"
+    assert result.column("modality_code")[-1].as_py() == "C01"
+
+
+def test_missing_column_raises_schema_drift_error() -> None:
+    """A schema-expected column absent from the file raises SchemaDriftError."""
+    table = build_tossd_table(2019, n_rows=5, seed=0)
+    dropped = table.drop_columns(["ProviderNameE"])
+
+    with pytest.raises(SchemaDriftError, match="ProviderNameE"):
+        schema.apply_schema(dropped)
+
+
+def test_extra_column_warns_once_and_passes_through() -> None:
+    """An unrecognised extra column warns once, then passes through raw thereafter."""
+    table = build_tossd_table(2019, n_rows=5, seed=0)
+    with_extra = table.append_column("SomeNewColumn", pa.array(["x"] * table.num_rows))
+
+    with pytest.warns(UserWarning, match="SomeNewColumn"):
+        result = schema.apply_schema(with_extra)
+    assert "SomeNewColumn" in result.column_names
+    assert result.column("SomeNewColumn").to_pylist() == ["x"] * table.num_rows
+
+    # Same extra column again, same process: no repeat warning. With
+    # `filterwarnings = ["error"]` set globally, an unexpected warning here
+    # would itself raise and fail the test.
+    schema.apply_schema(with_extra)
+
+
+def test_cast_failure_raises_schema_drift_error() -> None:
+    """A value that cannot be cast to its target dtype raises, naming column and value."""
+    table = build_tossd_table(2020, n_rows=10, seed=0)
+    poisoned_values = table.column("purposecode").to_pylist()
+    poisoned_values[0] = "abc"
+    poisoned = table.set_column(
+        table.column_names.index("purposecode"),
+        "purposecode",
+        pa.array(poisoned_values, type=pa.string()),
+    )
+
+    with pytest.raises(SchemaDriftError, match="purpose_code") as excinfo:
+        schema.apply_schema(poisoned)
+    assert "abc" in str(excinfo.value)
+
+
+def test_preset_columns_counts() -> None:
+    """Regression pins for preset sizes: update these if schema.csv's preset flags change."""
+    assert len(schema.preset_columns("minimal")) == 17
+    assert len(schema.preset_columns("analysis")) == 39
+    assert len(schema.preset_columns("all")) == len(schema.load_schema())
+
+
+def test_normalised_key_matching_tolerates_case_variant() -> None:
+    """A case/separator-variant published header still matches its schema field."""
+    table = build_tossd_table(2019, n_rows=5, seed=1)
+    renamed = ["Sector_3" if name == "sector3" else name for name in table.column_names]
+    variant_table = table.rename_columns(renamed)
+
+    result = schema.apply_schema(variant_table)
+
+    assert "sector_code" in result.column_names
+    assert (
+        result.column("sector_code").to_pylist()
+        == table.column("sector3").cast(pa.int16()).to_pylist()
+    )

@@ -1,0 +1,114 @@
+"""Standing regression suite against the live TOSSD publisher (D5 conformance / A1).
+
+Not part of the default test run: gated on `TOSSD_READER_NETWORK_TESTS=1` in
+addition to pytest's own `network` marker (already deselected by default via
+`-m "not network"` in `pyproject.toml`). Run manually or from a canary job:
+
+    TOSSD_READER_NETWORK_TESTS=1 uv run pytest -m network
+
+Tests download real publisher data (~30-90MB per test, via the normal
+fetch/cache path) — that is expected, and each test is independent of the
+others' execution order.
+"""
+
+from __future__ import annotations
+
+import os
+
+import pyarrow.compute as pc
+import pyarrow.parquet as pq
+import pytest
+
+from tossd_reader import discovery, fetch, schema
+
+pytestmark = [
+    pytest.mark.network,
+    pytest.mark.skipif(
+        os.environ.get("TOSSD_READER_NETWORK_TESTS") != "1",
+        reason="set TOSSD_READER_NETWORK_TESTS=1 to run the live publisher network suite",
+    ),
+]
+
+_SMALLEST_YEAR = 2019
+_EXPECTED_2019_ROW_COUNT = 290_914
+"""Recorded in notes/build/audits/a1-reconciliation.md §2 and §6."""
+
+_EXPECTED_2024_TOTALS_USD_K = {
+    "p1_disb": 364_114_132.08,
+    "p2_disb": 133_561_849.36,
+    "mob": 79_646_259.46,
+}
+"""Recorded in notes/build/audits/a1-reconciliation.md §6 — gross disbursements
+by TossdPillar plus total USD_amountmobilised, reproducing the publisher's own
+2024 homepage prose (364.1bn / 133.6bn / 79.6bn) to 1dp."""
+_TOLERANCE_USD_K = 1.0
+
+
+def test_head_sweep_finds_known_years() -> None:
+    """The HEAD sweep finds exactly the packaged known-years set, with ETags/sizes."""
+    discovery._reset_for_tests()
+    vintages = discovery.discover()
+
+    assert set(vintages) == set(discovery.known_years())
+    for year, info in vintages.items():
+        assert info.etag, f"{year}: missing ETag"
+        assert info.size_bytes is not None and info.size_bytes > 0, (
+            f"{year}: missing size_bytes"
+        )
+
+
+def test_smallest_year_conforms_to_packaged_schema() -> None:
+    """apply_schema on a real downloaded vintage raises no drift and warns no extras.
+
+    Any `SchemaDriftError`, or any unknown-extra-column warning (turned into a
+    hard failure by the suite's global `filterwarnings = ["error"]`), fails
+    this test.
+    """
+    path = fetch.fetch_year(_SMALLEST_YEAR)
+    table = pq.read_table(path)
+
+    result = schema.apply_schema(table)
+
+    assert result.num_rows == table.num_rows
+
+
+def test_smallest_year_row_count_matches_recorded_value() -> None:
+    """2019's row count matches the value recorded in a1-reconciliation.md §2/§6."""
+    path = fetch.fetch_year(_SMALLEST_YEAR)
+    actual = pq.read_metadata(path).num_rows
+
+    assert actual == _EXPECTED_2019_ROW_COUNT, (
+        f"2019 row count changed: {actual} != {_EXPECTED_2019_ROW_COUNT} "
+        "(vintage changed upstream? re-run the A1 audit)"
+    )
+
+
+@pytest.mark.slow
+def test_2024_headline_reconciliation() -> None:
+    """Gross disbursements by TossdPillar (+ total mobilised) reproduce A1's 2024 figures."""
+    path = fetch.fetch_year(2024)
+    table = pq.read_table(
+        path, columns=["TossdPillar", "USD_disbursements", "USD_amountmobilised"]
+    )
+
+    pillar_1 = table.filter(pc.equal(table["TossdPillar"], "1"))
+    pillar_2 = table.filter(pc.equal(table["TossdPillar"], "2"))
+    actual = {
+        "p1_disb": pc.sum(pillar_1["USD_disbursements"]).as_py(),
+        "p2_disb": pc.sum(pillar_2["USD_disbursements"]).as_py(),
+        "mob": pc.sum(table["USD_amountmobilised"]).as_py(),
+    }
+
+    for key, expected in _EXPECTED_2024_TOTALS_USD_K.items():
+        assert actual[key] == pytest.approx(expected, abs=_TOLERANCE_USD_K), (
+            f"2024 {key}: {actual[key]} vs expected {expected} "
+            f"(tol {_TOLERANCE_USD_K} USD thousand)"
+        )
+
+
+def test_e2e_get_tossd_raw_2019() -> None:
+    """`get_tossd_raw(years=2019)` returns a non-empty frame with all 53 published columns."""
+    df = fetch.get_tossd_raw(years=2019)
+
+    assert not df.empty
+    assert len(df.columns) == 53
