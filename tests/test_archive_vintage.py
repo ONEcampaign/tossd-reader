@@ -12,12 +12,18 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+import sys
 import threading
 from collections.abc import Callable, Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
+
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="archive_vintage.sh is a unix operator script (bash + curl + shasum)",
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "archive_vintage.sh"
