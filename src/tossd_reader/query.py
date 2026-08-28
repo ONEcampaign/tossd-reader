@@ -20,6 +20,7 @@ from __future__ import annotations
 import difflib
 import warnings
 from collections.abc import Iterable
+from pathlib import Path
 from typing import Literal
 
 import pandas as pd
@@ -138,6 +139,48 @@ def get_tossd(
         SchemaDriftError: A requested year's published file no longer
             matches the packaged schema.
     """
+    combined, _paths = _build_table(
+        years=years,
+        providers=providers,
+        recipients=recipients,
+        pillars=pillars,
+        columns=columns,
+        units=units,
+        refresh=refresh,
+        op_name="tossd_reader:get_tossd",
+    )
+    return combined.to_pandas()
+
+
+def _build_table(
+    *,
+    years: int | Iterable[int] | None,
+    providers: int | str | Iterable[int | str] | None,
+    recipients: int | str | Iterable[int | str] | None,
+    pillars: int | str | None,
+    columns: Literal["all", "minimal", "analysis"] | list[str],
+    units: Literal["usd_thousand", "usd_million"],
+    refresh: bool,
+    op_name: str,
+) -> tuple[pa.Table, dict[int, Path]]:
+    """Run `get_tossd`'s pipeline through unit conversion, stopping short of `to_pandas`.
+
+    The seam `export()` reuses: everything `get_tossd` does (per-year fetch,
+    schema, row filters; cross-year concat/unify; derived columns; column
+    projection; units conversion) except the final `to_pandas()` call, so
+    `export()` can write the arrow table straight to parquet without a
+    pandas round-trip.
+
+    Args:
+        op_name: A cache-surface-qualified key for `effective_refresh`,
+            distinct per caller (`get_tossd` vs `export`) so the two never
+            share a `readerkit.refresh_scope()` claim.
+
+    Returns:
+        The combined, filtered, typed arrow table, alongside each resolved
+        year's cache path (so `export()` can read per-year provenance
+        sidecars without re-running discovery/fetch).
+    """
     if units not in _VALID_UNITS:
         raise ValueError(f"Unknown units {units!r}; expected one of {_VALID_UNITS}.")
 
@@ -162,12 +205,14 @@ def get_tossd(
 
     # Resolved once for the whole call, not once per requested year: see
     # fetch.get_tossd_raw's own docstring for why (M2).
-    effective = effective_refresh("tossd_reader:get_tossd", explicit=refresh)
+    effective = effective_refresh(op_name, explicit=refresh)
     vintages = fetch._sweep_or_none(effective)
 
     tables = []
+    paths: dict[int, Path] = {}
     for year in resolved_years:
         path = fetch._resolve_year(year, vintages=vintages, refresh=effective)
+        paths[year] = path
         raw = pq.read_table(path)
         typed = schema.apply_schema(raw)
         filtered = _apply_row_filters(
@@ -188,10 +233,10 @@ def get_tossd(
         warnings.warn(
             "get_tossd's filters matched no rows; returning an empty (but "
             "correctly typed) frame.",
-            stacklevel=2,
+            stacklevel=3,
         )
 
-    return combined.to_pandas()
+    return combined, paths
 
 
 # --- years / pillars ---------------------------------------------------------
@@ -261,10 +306,12 @@ def _warn_subpillar_narrowed(
         f"the default years {list(original)} to {list(narrowed)}. Pass "
         "years= explicitly to request years before 2023 (raises "
         "InvalidPillarError for a sub-pillar filter).",
-        # 4 frames up from here: _warn_subpillar_narrowed ->
-        # _resolve_subpillar_years -> get_tossd -> the caller. Verified in
-        # test_query.py against the real call chain, not just counted by eye.
-        stacklevel=4,
+        # 5 frames up from here: _warn_subpillar_narrowed ->
+        # _resolve_subpillar_years -> _build_table -> get_tossd -> the
+        # caller (only get_tossd reaches this path; export() forces
+        # pillars=None). Verified in test_query.py against the real call
+        # chain, not just counted by eye.
+        stacklevel=5,
     )
 
 
@@ -278,8 +325,8 @@ def _warn_subpillar_2023_coverage() -> None:
         "pillar-2 rows carry no sub-pillar tag (the rollout wasn't yet "
         "complete that year). Treat 2023 sub-pillar splits as indicative, "
         "not reliable; 2024 onward is complete.",
-        # Same 4-frame chain as _warn_subpillar_narrowed.
-        stacklevel=4,
+        # Same 5-frame chain as _warn_subpillar_narrowed.
+        stacklevel=5,
     )
 
 
@@ -487,10 +534,12 @@ def _warn_unknown_decode_codes(column_name: str, missing_values: list[object]) -
         f"{len(new_missing)} code(s) across 1 column(s) not in the packaged "
         "codelists (vintage newer than snapshot?): "
         f"{column_name} has {', '.join(new_missing)}.",
-        # 3 frames up from here: _warn_unknown_decode_codes ->
-        # _decode_parent_channel -> _add_derived_columns -> get_tossd -> the
-        # caller. Verified in test_query.py against the real call chain.
-        stacklevel=5,
+        # 4 frames up from here: _warn_unknown_decode_codes ->
+        # _decode_parent_channel -> _add_derived_columns -> _build_table ->
+        # get_tossd (or export()) -> the caller. Both wrap `_build_table` at
+        # the same depth, so this stacklevel is correct either way. Verified
+        # in test_query.py against the real call chain.
+        stacklevel=6,
     )
 
 

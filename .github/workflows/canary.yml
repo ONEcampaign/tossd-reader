@@ -1,0 +1,220 @@
+name: Canary
+
+on:
+  schedule:
+    # Weekly, Monday 06:00 UTC: HEAD-sweep vintage drift check.
+    - cron: "0 6 * * 1"
+    # Monthly, 1st 07:00 UTC: full-download reconciliation + packed-delimiter check.
+    - cron: "0 7 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  # Job 1 (weekly): HEAD every known-year URL and compare etag/size against the
+  # recorded reference (src/tossd_reader/_data/known_vintages.json). Entirely
+  # self-contained -- no dependency on job 2.
+  vintage-drift:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 6 * * 1'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.0.0
+
+      - name: Cache uv
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Set up Python 3.12
+        run: uv python install '3.12'
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run the live HEAD-sweep vintage check
+        id: check
+        run: |
+          exit_code=0
+          uv run python scripts/check_vintage_drift.py > drift-report.txt || exit_code=$?
+          cat drift-report.txt
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure the data-drift label exists
+        if: steps.check.outputs.exit_code != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create data-drift \
+            --color b60205 \
+            --description "A published TOSSD vintage or reconciliation total has drifted" \
+            --force
+
+      - name: Open a vintage-drift issue (skipping if one is already open)
+        if: steps.check.outputs.exit_code != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          existing=$(gh issue list --state open --label data-drift --json number,title \
+            --jq '[.[] | select(.title | startswith("Vintage drift detected"))][0].number // empty')
+          if [ -n "$existing" ]; then
+            echo "An open vintage-drift issue already exists (#$existing); not creating a duplicate."
+            exit 0
+          fi
+          {
+            echo "A weekly HEAD sweep found a published TOSSD vintage that no longer"
+            echo "matches the recorded reference in \`src/tossd_reader/_data/known_vintages.json\`."
+            echo
+            echo "**Operator response, in order:**"
+            echo "1. Run \`scripts/archive_vintage.sh\` FIRST, to preserve the OUTGOING vintage"
+            echo "   before the publisher's cache rolls over."
+            echo "2. Refresh \`src/tossd_reader/_data/known_vintages.json\` (etag/size_bytes for"
+            echo "   every currently published year)."
+            echo "3. Update \`src/tossd_reader/_data/known_years.json\` if a year was added or"
+            echo "   removed."
+            echo "4. Bump the packaged parquet snapshot / row-count and headline-total constants"
+            echo "   in \`tests/test_network.py\` if the underlying data changed."
+            echo
+            echo "Detected differences:"
+            echo
+            cat drift-report.txt
+          } > issue-body.txt
+          gh issue create \
+            --title "Vintage drift detected $(date -u +%F)" \
+            --label data-drift \
+            --body-file issue-body.txt
+
+  # Job 2 (monthly): full download of the latest audited year, re-running the
+  # A1 headline-total reconciliation directly (not through the env-gated
+  # pytest network suite) plus the packed-delimiter assertion. Entirely
+  # self-contained -- no dependency on job 1.
+  reconciliation:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 7 1 * *'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.0.0
+
+      - name: Cache uv
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Set up Python 3.12
+        run: uv python install '3.12'
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Full download, A1 reconciliation, and packed-delimiter check
+        id: reconcile
+        run: |
+          exit_code=0
+          uv run python - > reconcile-report.txt <<'PY' || exit_code=$?
+          import sys
+
+          import pyarrow.compute as pc
+          import pyarrow.parquet as pq
+
+          from tossd_reader import fetch
+
+          # Latest year notes/build/audits/a1-reconciliation.md has recorded
+          # headline totals for; bump alongside a fresh A1 audit re-run.
+          YEAR = 2024
+          EXPECTED_TOTALS_USD_K = {
+              "p1_disb": 364_114_132.08,
+              "p2_disb": 133_561_849.36,
+              "mob": 79_646_259.46,
+          }
+          TOLERANCE_USD_K = 1.0
+          # Guards the documented single-valued claim for these columns.
+          PACKED_COLUMNS = ["sector", "sector3", "purposecode"]
+
+          path = fetch.fetch_year(YEAR)
+          table = pq.read_table(path)
+
+          pillar = table["TossdPillar"]
+          pillar_1 = table.filter(pc.equal(pillar, "1"))
+          pillar_2 = table.filter(pc.equal(pillar, "2"))
+          actual = {
+              "p1_disb": pc.sum(pillar_1["USD_disbursements"]).as_py(),
+              "p2_disb": pc.sum(pillar_2["USD_disbursements"]).as_py(),
+              "mob": pc.sum(table["USD_amountmobilised"]).as_py(),
+          }
+
+          failures = []
+          for key, expected in EXPECTED_TOTALS_USD_K.items():
+              value = actual[key]
+              if value is None or abs(value - expected) > TOLERANCE_USD_K:
+                  failures.append(
+                      f"{YEAR} {key}: {value} vs expected {expected} (tol {TOLERANCE_USD_K})"
+                  )
+
+          for column_name in PACKED_COLUMNS:
+              values = table.column(column_name)
+              has_delimiter = pc.or_(
+                  pc.match_substring(values, ";"), pc.match_substring(values, "|")
+              )
+              if pc.any(pc.fill_null(has_delimiter, False)).as_py():
+                  failures.append(
+                      f"{column_name}: contains a packed ';' or '|' delimiter value"
+                  )
+
+          if failures:
+              print(f"{YEAR} reconciliation / packed-delimiter check FAILED:")
+              for failure in failures:
+                  print(f"- {failure}")
+              sys.exit(1)
+
+          print(f"{YEAR} reconciliation and packed-delimiter checks passed: {actual}")
+          PY
+          cat reconcile-report.txt
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure the data-drift label exists
+        if: steps.reconcile.outputs.exit_code != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create data-drift \
+            --color b60205 \
+            --description "A published TOSSD vintage or reconciliation total has drifted" \
+            --force
+
+      - name: Open a reconciliation-failure issue (skipping if one is already open)
+        if: steps.reconcile.outputs.exit_code != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          existing=$(gh issue list --state open --label data-drift --json number,title \
+            --jq '[.[] | select(.title | startswith("TOSSD reconciliation failure"))][0].number // empty')
+          if [ -n "$existing" ]; then
+            echo "An open reconciliation-failure issue already exists (#$existing); not creating a duplicate."
+            exit 0
+          fi
+          {
+            echo "The monthly full-download reconciliation against the latest audited"
+            echo "TOSSD vintage failed: either the headline USD totals no longer"
+            echo "reproduce notes/build/audits/a1-reconciliation.md's recorded values, or"
+            echo "one of sector/sector3/purposecode now carries a packed \`;\`/\`|\` value."
+            echo
+            echo "Failing numbers:"
+            echo
+            cat reconcile-report.txt
+          } > issue-body.txt
+          gh issue create \
+            --title "TOSSD reconciliation failure $(date -u +%F)" \
+            --label data-drift \
+            --body-file issue-body.txt

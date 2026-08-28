@@ -15,6 +15,7 @@ from tossd_reader import exceptions
     ("name", "expected"),
     [
         ("get_tossd_raw", "tossd_reader.fetch"),
+        ("export", "tossd_reader._export"),
         ("set_cache_dir", "tossd_reader.config"),
         ("get_available_filters", "tossd_reader.codelists"),
         ("get_codelists_version", "tossd_reader.codelists"),
@@ -65,6 +66,8 @@ def test_import_opens_no_socket_and_stays_light() -> None:
         "assert 'tossd_reader.discovery' not in sys.modules\n"
         "assert 'tossd_reader.config' not in sys.modules\n"
         "assert 'tossd_reader.codelists' not in sys.modules\n"
+        "assert 'tossd_reader.query' not in sys.modules\n"
+        "assert 'tossd_reader._export' not in sys.modules\n"
         "assert 'resolvekit' not in sys.modules\n"
         "assert 'oda_reader' not in sys.modules\n"
         "print('OK')\n"

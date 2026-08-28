@@ -14,12 +14,13 @@ others' execution order.
 from __future__ import annotations
 
 import os
+import warnings
 
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 import pytest
 
-from tossd_reader import discovery, fetch, schema
+from tossd_reader import discovery, fetch, query, schema
 
 pytestmark = [
     pytest.mark.network,
@@ -97,6 +98,41 @@ def test_2024_headline_reconciliation() -> None:
         "p1_disb": pc.sum(pillar_1["USD_disbursements"]).as_py(),
         "p2_disb": pc.sum(pillar_2["USD_disbursements"]).as_py(),
         "mob": pc.sum(table["USD_amountmobilised"]).as_py(),
+    }
+
+    for key, expected in _EXPECTED_2024_TOTALS_USD_K.items():
+        assert actual[key] == pytest.approx(expected, abs=_TOLERANCE_USD_K), (
+            f"2024 {key}: {actual[key]} vs expected {expected} "
+            f"(tol {_TOLERANCE_USD_K} USD thousand)"
+        )
+
+
+@pytest.mark.slow
+def test_2024_headline_reconciliation_full_pipeline() -> None:
+    """`get_tossd(years=2024)` grouped sums reproduce A1's 2024 figures, end to end.
+
+    Unlike `test_2024_headline_reconciliation` above (raw published columns,
+    proving the source file itself), this drives the full schema/query
+    pipeline: `is_aggregate` rows are not filtered out (no `providers=`/
+    `pillars=` filter is applied), so a regression in the schema layer's
+    typing or the query layer's derived columns/concat would show up here
+    even if the raw-column check above still passed.
+    """
+    # The live vintage may carry a channel/decode code not yet in the packaged
+    # codelist snapshot (that is a codelist-snapshot staleness signal for the
+    # codelist-drift canary, not a reconciliation failure); this test only
+    # cares about the numeric totals below, so any such warning is ignored
+    # here rather than turned into a failure by the suite's global
+    # filterwarnings=["error"].
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        df = query.get_tossd(years=2024)
+
+    grouped = df.groupby("tossd_pillar")["usd_disbursement"].sum()
+    actual = {
+        "p1_disb": float(grouped.get(1, 0.0)),
+        "p2_disb": float(grouped.get(2, 0.0)),
+        "mob": float(df["usd_amount_mobilised"].sum()),
     }
 
     for key, expected in _EXPECTED_2024_TOTALS_USD_K.items():
