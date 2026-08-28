@@ -19,6 +19,11 @@ from tossd_reader import exceptions
         ("set_cache_dir", "tossd_reader.config"),
         ("get_available_filters", "tossd_reader.codelists"),
         ("get_codelists_version", "tossd_reader.codelists"),
+        ("explode_sdg", "tossd_reader.helpers"),
+        ("add_iso3", "tossd_reader.helpers"),
+        ("extract_keywords", "tossd_reader.helpers"),
+        ("get_structural_breaks", "tossd_reader.helpers"),
+        ("pillar2_own_country_costs", "tossd_reader.helpers"),
         ("TossdReaderError", exceptions.TossdReaderError),
         ("TossdNetworkError", exceptions.TossdNetworkError),
         ("VintageValidationError", exceptions.VintageValidationError),
@@ -68,6 +73,7 @@ def test_import_opens_no_socket_and_stays_light() -> None:
         "assert 'tossd_reader.codelists' not in sys.modules\n"
         "assert 'tossd_reader.query' not in sys.modules\n"
         "assert 'tossd_reader._export' not in sys.modules\n"
+        "assert 'tossd_reader.helpers' not in sys.modules\n"
         "assert 'resolvekit' not in sys.modules\n"
         "assert 'oda_reader' not in sys.modules\n"
         "print('OK')\n"

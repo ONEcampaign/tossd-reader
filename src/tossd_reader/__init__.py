@@ -22,6 +22,13 @@ if TYPE_CHECKING:
     from tossd_reader.exceptions import UnknownCodeError as UnknownCodeError
     from tossd_reader.exceptions import VintageValidationError as VintageValidationError
     from tossd_reader.fetch import get_tossd_raw as get_tossd_raw
+    from tossd_reader.helpers import add_iso3 as add_iso3
+    from tossd_reader.helpers import explode_sdg as explode_sdg
+    from tossd_reader.helpers import extract_keywords as extract_keywords
+    from tossd_reader.helpers import get_structural_breaks as get_structural_breaks
+    from tossd_reader.helpers import (
+        pillar2_own_country_costs as pillar2_own_country_costs,
+    )
     from tossd_reader.query import get_tossd as get_tossd
 
 __all__ = [
@@ -32,11 +39,16 @@ __all__ = [
     "UnknownCodeError",
     "VintageValidationError",
     "__version__",
+    "add_iso3",
+    "explode_sdg",
     "export",
+    "extract_keywords",
     "get_available_filters",
     "get_codelists_version",
+    "get_structural_breaks",
     "get_tossd",
     "get_tossd_raw",
+    "pillar2_own_country_costs",
     "set_cache_dir",
 ]
 
@@ -53,6 +65,11 @@ _LAZY_ATTRS: dict[str, tuple[str, str]] = {
     "SchemaDriftError": ("tossd_reader.exceptions", "SchemaDriftError"),
     "UnknownCodeError": ("tossd_reader.exceptions", "UnknownCodeError"),
     "InvalidPillarError": ("tossd_reader.exceptions", "InvalidPillarError"),
+    "explode_sdg": ("tossd_reader.helpers", "explode_sdg"),
+    "add_iso3": ("tossd_reader.helpers", "add_iso3"),
+    "extract_keywords": ("tossd_reader.helpers", "extract_keywords"),
+    "get_structural_breaks": ("tossd_reader.helpers", "get_structural_breaks"),
+    "pillar2_own_country_costs": ("tossd_reader.helpers", "pillar2_own_country_costs"),
 }
 
 

@@ -1,0 +1,324 @@
+"""Post-query analytical helpers for `get_tossd()` output (D8).
+
+Every helper here operates on a `pandas.DataFrame` already shaped like
+`get_tossd()`'s output (snake_case columns) and raises a `ValueError` naming
+any column it needs but doesn't find, rather than a bare `KeyError`. None of
+these mutate the caller's frame -- each returns a new one.
+
+`add_iso3` is the one helper here that touches `resolvekit`: `import
+resolvekit` happens lazily, inside `_iso3_resolver`'s own body, never at
+module scope -- a package-level import stays banned project-wide (see
+`query.py`'s `_suggest_with_resolvekit`), so a bare `import tossd_reader`,
+or calling any of this module's other four helpers, never pulls resolvekit
+into `sys.modules`.
+"""
+
+from __future__ import annotations
+
+import importlib.resources
+from functools import lru_cache
+from typing import TYPE_CHECKING
+
+import pandas as pd
+
+if TYPE_CHECKING:
+    import resolvekit
+
+_SDG_DELIMITER = ";"
+_KEYWORD_DELIMITER = "|"
+
+_ISO3_GEO_MODULE = "geo.countries"
+"""resolvekit's bundled (offline, no-download) country module. Carries the
+OECD DAC provider/recipient numeric codelists as `oecd:provider`/
+`oecd:recipient` code systems, linked to `iso3` -- verified byte-for-byte
+against every packaged provider (159) and recipient (177) code: 0
+mismatches against the packaged codelist's own `iso3` column."""
+
+_ISO3_LINKS: dict[str, tuple[str, str]] = {
+    "provider_code": ("provider_iso3", "oecd:provider"),
+    "recipient_code": ("recipient_iso3", "oecd:recipient"),
+}
+"""`code column -> (new iso3 column, resolvekit code system)`."""
+
+_OWN_COUNTRY_SECTOR_CODES = (910, 930)
+"""Verified against the 2026-04 archive's 2024 vintage (`sector_code`/
+`sector`): 910 = "Administrative Costs of Donors", 930 = "Domestic
+expenditures for refugees/asylum seekers" -- the two DAC/CRS sectors that
+record spending inside the provider's own country. Restricted to pillar-2
+rows, together they measured 27,275 of 155,908 pillar-2 rows (17.5%), 35.6%
+of pillar-2 `USD_disbursements`, and 31.0% of pillar-2 `USD_Commitment` --
+consistent with the ~30% of Pillar II net disbursements the
+AidWatch/Oxfam/ActionAid critique attributes to non-recipient-country
+costs. A `sector_code == 720` ("Humanitarian Assistance") candidate
+considered during verification was rejected: those rows (UNHCR/UNICEF/US-run
+programmes, e.g. "USAID Travel and Transportation") are ordinary in-country
+humanitarian aid, not own-country costs."""
+
+
+def _require_columns(df: pd.DataFrame, *names: str, func_name: str) -> None:
+    """Raise `ValueError` naming any of `names` missing from `df`."""
+    missing = [name for name in names if name not in df.columns]
+    if missing:
+        raise ValueError(
+            f"{func_name}() needs column(s) {', '.join(missing)}, not present in df."
+        )
+
+
+# --- explode_sdg ---------------------------------------------------------------
+
+
+def _split_sdg_tokens(raw: object) -> list[str]:
+    """Split one row's `sdg_codes_raw` value into its `;`-delimited tokens."""
+    if pd.isna(raw) or raw == "":
+        return []
+    return [token for token in str(raw).split(_SDG_DELIMITER) if token]
+
+
+def _parse_sdg_token(token: str) -> tuple[int, bool]:
+    """Parse one already-published SDG token into `(goal, is_target)`.
+
+    Bare integers (`"5"`) are goal-level. `goal.target` tokens (`"5.2"`,
+    `"6.b"` -- the target suffix can be a digit or a letter) are
+    target-level, except the rare `goal.0` variant (12 occurrences in the
+    a4-audited 2024 file, vastly outnumbered by the bare-integer goal
+    convention) -- no SDG target is numbered `.0`, so this is a goal-level
+    tag spelled with a trailing `.0`, not a real target.
+    """
+    goal_part, sep, target_part = token.partition(".")
+    if not sep or target_part == "0":
+        return int(goal_part), False
+    return int(goal_part), True
+
+
+def explode_sdg(df: pd.DataFrame) -> pd.DataFrame:
+    """Explode `sdg_codes_raw` into one row per SDG code token.
+
+    Args:
+        df: A `get_tossd()`-shaped frame carrying `sdg_codes_raw`.
+
+    Returns:
+        A new frame: every input column, plus one row per `;`-delimited SDG
+        token found in `sdg_codes_raw` -- `sdg_code` (the token exactly as
+        published), `sdg_goal` (`Int8`, the token's integer goal part),
+        `sdg_is_target` (`bool`, whether the token names a specific target
+        rather than the goal as a whole), and `sdg_weight` (`float64`,
+        `1 / n` for the `n` tokens that source row carried, so a grouped sum
+        of `amount * sdg_weight` renormalises to that row's original
+        amount). Rows with no SDG tag at all (an empty or null
+        `sdg_codes_raw`) contribute nothing to the result: the exploded
+        frame's weighted total equals only the SDG-tagged subset of `df`'s
+        totals, never `df`'s grand total. Row order is otherwise preserved.
+
+    Raises:
+        ValueError: `df` has no `sdg_codes_raw` column.
+    """
+    _require_columns(df, "sdg_codes_raw", func_name="explode_sdg")
+
+    tokens = df["sdg_codes_raw"].map(_split_sdg_tokens)
+    weights = tokens.map(lambda toks: 1.0 / len(toks) if toks else float("nan"))
+
+    exploded = df.copy()
+    exploded["sdg_code"] = tokens
+    exploded["sdg_weight"] = weights
+    exploded = exploded.explode("sdg_code", ignore_index=False)
+    exploded = exploded.loc[exploded["sdg_code"].notna()].reset_index(drop=True)
+
+    parsed = [_parse_sdg_token(token) for token in exploded["sdg_code"]]
+    exploded["sdg_goal"] = pd.Series(
+        [goal for goal, _ in parsed], index=exploded.index, dtype="Int8"
+    )
+    exploded["sdg_is_target"] = pd.Series(
+        [is_target for _, is_target in parsed], index=exploded.index, dtype="bool"
+    )
+
+    return exploded[
+        [*df.columns, "sdg_code", "sdg_goal", "sdg_is_target", "sdg_weight"]
+    ]
+
+
+# --- add_iso3 --------------------------------------------------------------------
+
+
+@lru_cache
+def _iso3_resolver() -> resolvekit.Resolver:
+    """Build (once per process) the bundled-`geo.countries` resolver `add_iso3` uses.
+
+    `resolvekit` is imported lazily inside this function body, never at
+    module scope -- see this module's own docstring for why.
+    """
+    import resolvekit  # noqa: PLC0415 - deliberately lazy: see module docstring
+
+    return resolvekit.Resolver.from_modules(module_ids=[_ISO3_GEO_MODULE], warm=False)
+
+
+def add_iso3(df: pd.DataFrame) -> pd.DataFrame:
+    """Add `provider_iso3`/`recipient_iso3` via resolvekit's OECD numeric-code link.
+
+    ISO3 is looked up by CODE, never by name: `provider_code` `913` and
+    `914` both display as "African Development Bank" in the packaged
+    codelist (as do `909` and `1019` for "Inter-American Development Bank"),
+    so a name-keyed join would silently collapse distinct providers. Codes
+    carry no such collision.
+
+    Uses `resolvekit`'s bundled `geo.countries` module (no download, no
+    network): see `_ISO3_GEO_MODULE`'s own comment for the verification
+    evidence behind that link.
+
+    Args:
+        df: A `get_tossd()`-shaped frame carrying `provider_code` and/or
+            `recipient_code`.
+
+    Returns:
+        `df` plus `provider_iso3` and/or `recipient_iso3` (`category`
+        dtype), for whichever of `provider_code`/`recipient_code` is
+        present. Aggregates (code `0`), multilaterals, and TOSSD-only
+        entities all map to `NA`.
+
+    Raises:
+        ValueError: Neither `provider_code` nor `recipient_code` is present
+            in `df`.
+    """
+    present = [name for name in _ISO3_LINKS if name in df.columns]
+    if not present:
+        raise ValueError(
+            "add_iso3() needs at least one of 'provider_code'/'recipient_code'; "
+            "neither column is present in df."
+        )
+
+    resolver = _iso3_resolver()
+    result = df.copy()
+    for code_column in present:
+        iso3_column, code_system = _ISO3_LINKS[code_column]
+        resolved = resolver.bulk(
+            values=df[code_column], from_system=code_system, to="iso3"
+        )
+        result[iso3_column] = resolved.astype("category")
+    return result
+
+
+# --- extract_keywords --------------------------------------------------------------
+
+
+@lru_cache
+def _keyword_markers() -> pd.DataFrame:
+    """Load the packaged 12-marker keyword table (`_data/keyword_markers.csv`)."""
+    resource = (
+        importlib.resources.files("tossd_reader") / "_data" / "keyword_markers.csv"
+    )
+    with importlib.resources.as_file(resource) as path:
+        return pd.read_csv(path)
+
+
+def _canonical_keyword(token: str) -> str:
+    """Casefold `token` and strip a leading `#`, for marker matching."""
+    return token.casefold().lstrip("#")
+
+
+def _canonical_keyword_set(raw: object) -> frozenset[str]:
+    """Canonicalise one row's `|`-delimited `keywords_raw` tokens for marker matching."""
+    if pd.isna(raw):
+        return frozenset()
+    text = str(raw)
+    return frozenset(
+        _canonical_keyword(token) for token in text.split(_KEYWORD_DELIMITER) if token
+    )
+
+
+def extract_keywords(df: pd.DataFrame) -> pd.DataFrame:
+    """Add one boolean `kw_<marker>` column per packaged keyword marker.
+
+    Matching casefolds each `keywords_raw` token and strips a leading `#`,
+    so `"COVID-19"` and `"#COVID-19"` both count as the `covid_19` marker.
+    Only the fixed 12-marker vocabulary shipped as `_data/keyword_markers.csv`
+    is recognised; every other token in `keywords_raw` (a4 measured 315
+    distinct tokens across the full vocabulary) is ignored.
+
+    Args:
+        df: A `get_tossd()`-shaped frame carrying `keywords_raw`.
+
+    Returns:
+        `df` plus one `kw_<marker>` boolean column per packaged marker
+        (`kw_gender`, `kw_adaptation`, `kw_mitigation`, `kw_biodiversity`,
+        `kw_ppr_preparedness`, `kw_ppr_response`, `kw_covid_19`,
+        `kw_refugees_hostcommunities`, `kw_idps_hostcommunities`,
+        `kw_voluntaryrefugeereturn_reintegration`,
+        `kw_transnational_benefits_global`, `kw_non_17_3_1`).
+        `keywords_raw` itself is left untouched.
+
+    Raises:
+        ValueError: `df` has no `keywords_raw` column.
+    """
+    _require_columns(df, "keywords_raw", func_name="extract_keywords")
+
+    markers = _keyword_markers()
+    token_sets = df["keywords_raw"].map(_canonical_keyword_set)
+
+    result = df.copy()
+    for marker, column_name in zip(
+        markers["marker"], markers["column_name"], strict=True
+    ):
+        canonical_marker = _canonical_keyword(marker)
+        result[f"kw_{column_name}"] = [
+            canonical_marker in tokens for tokens in token_sets
+        ]
+    return result
+
+
+# --- get_structural_breaks ----------------------------------------------------------
+
+
+@lru_cache
+def get_structural_breaks() -> pd.DataFrame:
+    """Return the packaged structural-breaks reference table.
+
+    Documents five verified TOSSD-vintage discontinuities relevant to
+    cross-year analysis: sub-pillar tagging's 2022 trace appearance and
+    2023 partial rollout, R&D modality (`K02`)'s 2021 introduction, reporter
+    base growth 2019-2024, and the 2026 RDRM methodology change. This is
+    reference data for a caller to consult -- it does not validate or warn
+    against any particular query.
+
+    Returns:
+        A `pandas.DataFrame` with exactly 5 rows and columns `dimension`,
+        `break_year`, `description`, `source`.
+    """
+    resource = (
+        importlib.resources.files("tossd_reader") / "_data" / "structural_breaks.csv"
+    )
+    with importlib.resources.as_file(resource) as path:
+        return pd.read_csv(path)
+
+
+# --- pillar2_own_country_costs -------------------------------------------------------
+
+
+def pillar2_own_country_costs(df: pd.DataFrame) -> pd.DataFrame:
+    """Filter pillar-2 rows to the provider-country own-country-costs carve-out.
+
+    Isolates the in-donor-country costs (administrative overhead, and
+    refugee/asylum-seeker support provided inside the provider's own
+    territory) that AidWatch/Oxfam/ActionAid's critique of TOSSD Pillar II
+    flags as inflating headline totals relative to genuine cross-border
+    development finance. See `_OWN_COUNTRY_SECTOR_CODES`'s own comment for
+    the verification evidence and measured 2024 shares behind this rule.
+
+    Args:
+        df: A `get_tossd()`-shaped frame carrying `tossd_pillar` and
+            `sector_code` (`sector_code` is present under
+            `columns="analysis"`/`"all"`, or any explicit `columns=` list
+            naming it; `tossd_pillar` is always present in `get_tossd()`
+            output).
+
+    Returns:
+        `df` filtered to `tossd_pillar == 2` rows whose `sector_code` is
+        `910` ("Administrative Costs of Donors") or `930` ("Domestic
+        expenditures for refugees/asylum seekers").
+
+    Raises:
+        ValueError: `df` is missing `tossd_pillar` or `sector_code`.
+    """
+    _require_columns(
+        df, "tossd_pillar", "sector_code", func_name="pillar2_own_country_costs"
+    )
+    mask = (df["tossd_pillar"] == 2) & df["sector_code"].isin(_OWN_COUNTRY_SECTOR_CODES)
+    return df.loc[mask].copy()

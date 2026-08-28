@@ -1,0 +1,6 @@
+dimension,break_year,description,source
+sub_pillar,2022,"Sub-pillar tagging (Tossdpillar2 21/22) first appears as trace data: 24 rows in 2022",a4 audit of published files
+sub_pillar,2023,"Sub-pillar coverage ~51% of pillar-2 rows in 2023; ~99% in 2024 -- cross-year sub-pillar analysis is only clean from 2024",a4 audit of published files
+modality,2021,Modality code K02 first appears in 2021,a4 audit
+reporters,2019,"Reporter base grows from 90 (2019) to 128 (2024); apparent growth in totals partly reflects reporting coverage",a1/a4 audits
+methodology,2026,"RDRM (revised debt-relief reporting methodology) takes effect May 2026 -- affects future vintages, not 2019-2024 files",TOSSD Secretariat announcement

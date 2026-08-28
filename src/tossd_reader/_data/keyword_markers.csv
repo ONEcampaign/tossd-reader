@@ -1,0 +1,13 @@
+marker,column_name
+GENDER,gender
+ADAPTATION,adaptation
+MITIGATION,mitigation
+BIODIVERSITY,biodiversity
+PPR_PREPAREDNESS,ppr_preparedness
+PPR_RESPONSE,ppr_response
+COVID-19,covid_19
+Refugees_HostCommunities,refugees_hostcommunities
+IDPs_HostCommunities,idps_hostcommunities
+VoluntaryRefugeeReturn_Reintegration,voluntaryrefugeereturn_reintegration
+Transnational_benefits_[Global],transnational_benefits_global
+NON-17.3.1,non_17_3_1
