@@ -1,5 +1,10 @@
-"""Python package to access TOSSD activity-level data"""
+"""Python package to access TOSSD activity-level data."""
 
-__version__ = "0.1.0"
+from importlib.metadata import PackageNotFoundError, version
+
+try:
+    __version__ = version("tossd-reader")
+except PackageNotFoundError:
+    __version__ = "0.0.0"
 
 __all__ = ["__version__"]
