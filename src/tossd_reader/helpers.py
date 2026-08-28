@@ -43,8 +43,11 @@ _ISO3_LINKS: dict[str, tuple[str, str]] = {
 _OWN_COUNTRY_SECTOR_CODES = (910, 930)
 """Verified against the 2026-04 archive's 2024 vintage (`sector_code`/
 `sector`): 910 = "Administrative Costs of Donors", 930 = "Domestic
-expenditures for refugees/asylum seekers" -- the two DAC/CRS sectors that
-record spending inside the provider's own country. Restricted to pillar-2
+expenditures for refugees/asylum seekers". 930 records spending inside the
+provider's own territory by definition; 910 is a proxy for donor
+administrative overhead, which predominantly but not exclusively stays in
+the provider country (some administrative costs are incurred in-country at
+the recipient end). Restricted to pillar-2
 rows, together they measured 27,275 of 155,908 pillar-2 rows (17.5%), 35.6%
 of pillar-2 `USD_disbursements`, and 31.0% of pillar-2 `USD_Commitment` --
 consistent with the ~30% of Pillar II net disbursements the
@@ -67,11 +70,17 @@ def _require_columns(df: pd.DataFrame, *names: str, func_name: str) -> None:
 # --- explode_sdg ---------------------------------------------------------------
 
 
+_SDG_DERIVED_COLUMNS = ("sdg_code", "sdg_goal", "sdg_is_target", "sdg_weight")
+"""Columns `explode_sdg` adds -- re-running it on its own output would
+silently duplicate these, so their presence is checked for up front."""
+
+
 def _split_sdg_tokens(raw: object) -> list[str]:
     """Split one row's `sdg_codes_raw` value into its `;`-delimited tokens."""
     if pd.isna(raw) or raw == "":
         return []
-    return [token for token in str(raw).split(_SDG_DELIMITER) if token]
+    tokens = (token.strip() for token in str(raw).split(_SDG_DELIMITER))
+    return [token for token in tokens if token]
 
 
 def _parse_sdg_token(token: str) -> tuple[int, bool]:
@@ -110,12 +119,23 @@ def explode_sdg(df: pd.DataFrame) -> pd.DataFrame:
         totals, never `df`'s grand total. Row order is otherwise preserved.
 
     Raises:
-        ValueError: `df` has no `sdg_codes_raw` column.
+        ValueError: `df` has no `sdg_codes_raw` column, or already carries one
+            of this function's own output columns (`sdg_code`, `sdg_goal`,
+            `sdg_is_target`, `sdg_weight`) -- re-running `explode_sdg` on its
+            own output would otherwise silently duplicate them.
     """
     _require_columns(df, "sdg_codes_raw", func_name="explode_sdg")
+    already_exploded = [name for name in _SDG_DERIVED_COLUMNS if name in df.columns]
+    if already_exploded:
+        raise ValueError(
+            f"explode_sdg() found column(s) {', '.join(already_exploded)} already "
+            "present in df -- df looks already exploded."
+        )
 
     tokens = df["sdg_codes_raw"].map(_split_sdg_tokens)
-    weights = tokens.map(lambda toks: 1.0 / len(toks) if toks else float("nan"))
+    weights = tokens.map(lambda toks: 1.0 / len(toks) if toks else float("nan")).astype(
+        "float64"
+    )
 
     exploded = df.copy()
     exploded["sdg_code"] = tokens
@@ -258,9 +278,11 @@ def extract_keywords(df: pd.DataFrame) -> pd.DataFrame:
         markers["marker"], markers["column_name"], strict=True
     ):
         canonical_marker = _canonical_keyword(marker)
-        result[f"kw_{column_name}"] = [
-            canonical_marker in tokens for tokens in token_sets
-        ]
+        result[f"kw_{column_name}"] = pd.Series(
+            [canonical_marker in tokens for tokens in token_sets],
+            index=result.index,
+            dtype="bool",
+        )
     return result
 
 
@@ -268,25 +290,35 @@ def extract_keywords(df: pd.DataFrame) -> pd.DataFrame:
 
 
 @lru_cache
+def _load_structural_breaks() -> pd.DataFrame:
+    """Load (once per process) the packaged structural-breaks reference table."""
+    resource = (
+        importlib.resources.files("tossd_reader") / "_data" / "structural_breaks.csv"
+    )
+    with importlib.resources.as_file(resource) as path:
+        return pd.read_csv(path)
+
+
 def get_structural_breaks() -> pd.DataFrame:
     """Return the packaged structural-breaks reference table.
 
     Documents five verified TOSSD-vintage discontinuities relevant to
     cross-year analysis: sub-pillar tagging's 2022 trace appearance and
     2023 partial rollout, R&D modality (`K02`)'s 2021 introduction, reporter
-    base growth 2019-2024, and the 2026 RDRM methodology change. This is
-    reference data for a caller to consult -- it does not validate or warn
-    against any particular query.
+    base growth spanning 2019-2024, and the 2026 RDRM methodology change.
+    This is reference data for a caller to consult -- it does not validate
+    or warn against any particular query.
 
     Returns:
-        A `pandas.DataFrame` with exactly 5 rows and columns `dimension`,
-        `break_year`, `description`, `source`.
+        A new `pandas.DataFrame` (a copy of the cached table, so editing it
+        never affects later calls) with exactly 5 rows and columns
+        `dimension`, `break_year`, `end_year`, `description`, `source`. For
+        the four discrete breaks `end_year` equals `break_year`; the
+        `reporters` row's `end_year` (2024) instead marks the end of that
+        row's continuous 2019-2024 drift, so it isn't misread as "safe after
+        `break_year`".
     """
-    resource = (
-        importlib.resources.files("tossd_reader") / "_data" / "structural_breaks.csv"
-    )
-    with importlib.resources.as_file(resource) as path:
-        return pd.read_csv(path)
+    return _load_structural_breaks().copy()
 
 
 # --- pillar2_own_country_costs -------------------------------------------------------
@@ -295,12 +327,15 @@ def get_structural_breaks() -> pd.DataFrame:
 def pillar2_own_country_costs(df: pd.DataFrame) -> pd.DataFrame:
     """Filter pillar-2 rows to the provider-country own-country-costs carve-out.
 
-    Isolates the in-donor-country costs (administrative overhead, and
+    Isolates donor administrative overhead (a proxy that predominantly,
+    though not exclusively, stays inside the provider's own territory) and
     refugee/asylum-seeker support provided inside the provider's own
-    territory) that AidWatch/Oxfam/ActionAid's critique of TOSSD Pillar II
-    flags as inflating headline totals relative to genuine cross-border
-    development finance. See `_OWN_COUNTRY_SECTOR_CODES`'s own comment for
-    the verification evidence and measured 2024 shares behind this rule.
+    territory -- the costs that AidWatch/Oxfam/ActionAid's critique of TOSSD
+    Pillar II flags as inflating headline totals relative to genuine
+    cross-border development finance. This is a heuristic pending an
+    official own-country-costs definition from TOSSD; see
+    `_OWN_COUNTRY_SECTOR_CODES`'s own comment for the verification evidence
+    and measured 2024 shares behind it.
 
     Args:
         df: A `get_tossd()`-shaped frame carrying `tossd_pillar` and

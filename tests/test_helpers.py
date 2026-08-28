@@ -104,13 +104,62 @@ def test_explode_sdg_preserves_row_order() -> None:
 
 
 def test_explode_sdg_does_not_mutate_input() -> None:
-    """`explode_sdg` never adds its new columns to the caller's original frame."""
+    """`explode_sdg` never modifies the caller's original frame byte-for-byte."""
     df = pd.DataFrame({"tossd_id": ["a"], "sdg_codes_raw": ["5"]})
-    original_columns = list(df.columns)
+    original = df.copy()
 
     helpers.explode_sdg(df)
 
-    assert list(df.columns) == original_columns
+    pd.testing.assert_frame_equal(df, original)
+
+
+def test_explode_sdg_rejects_already_exploded_input() -> None:
+    """Re-running `explode_sdg` on its own output raises instead of duplicating columns."""
+    df = pd.DataFrame({"tossd_id": ["a"], "sdg_codes_raw": ["5"]})
+    once = helpers.explode_sdg(df)
+
+    with pytest.raises(ValueError, match="sdg_code"):
+        helpers.explode_sdg(once)
+
+
+def test_explode_sdg_strips_whitespace_only_tokens() -> None:
+    """A whitespace-only token between delimiters is dropped like an empty one."""
+    df = pd.DataFrame({"tossd_id": ["a"], "sdg_codes_raw": ["5; ;6"]})
+
+    result = helpers.explode_sdg(df)
+
+    assert sorted(result["sdg_code"].tolist()) == ["5", "6"]
+
+
+def test_explode_sdg_empty_input_has_documented_dtypes() -> None:
+    """A 0-row input yields a 0-row result whose columns keep the documented dtypes."""
+    df = pd.DataFrame(
+        {
+            "tossd_id": pd.Series([], dtype="object"),
+            "usd_commitment": pd.Series([], dtype="float64"),
+            "sdg_codes_raw": pd.Series([], dtype="object"),
+        }
+    )
+
+    result = helpers.explode_sdg(df)
+
+    assert len(result) == 0
+    assert result["sdg_weight"].dtype == "float64"
+    assert result["sdg_goal"].dtype == "Int8"
+    assert result["sdg_is_target"].dtype == "bool"
+    # Would raise TypeError if sdg_weight had come back object/str-dtyped.
+    assert (result["usd_commitment"] * result["sdg_weight"]).empty
+
+
+def test_explode_sdg_non_empty_output_dtypes() -> None:
+    """Declared output dtypes hold on a non-empty, multi-row case too."""
+    df = pd.DataFrame({"tossd_id": ["a", "b"], "sdg_codes_raw": ["5", "4.2"]})
+
+    result = helpers.explode_sdg(df)
+
+    assert result["sdg_goal"].dtype == "Int8"
+    assert result["sdg_is_target"].dtype == "bool"
+    assert result["sdg_weight"].dtype == "float64"
 
 
 # --- add_iso3 --------------------------------------------------------------------
@@ -169,13 +218,39 @@ def test_add_iso3_only_provider_present() -> None:
     assert "recipient_iso3" not in result.columns
 
 
+def test_add_iso3_only_recipient_present() -> None:
+    """Only `recipient_code` present in `df` yields only `recipient_iso3` added."""
+    df = pd.DataFrame({"recipient_code": [1]})
+
+    result = helpers.add_iso3(df)
+
+    assert "recipient_iso3" in result.columns
+    assert "provider_iso3" not in result.columns
+
+
+def test_add_iso3_tossd_only_entity_is_na() -> None:
+    """A TOSSD-only entity (no DAC iso3 link) resolves to NA, not an error."""
+    provider_codelist = codelists.load_codelist("provider")
+    tossd_only_code = int(
+        provider_codelist.loc[
+            provider_codelist["name"] == "Palestinian Authority", "code"
+        ].iloc[0]
+    )
+    df = pd.DataFrame({"provider_code": [tossd_only_code]})
+
+    result = helpers.add_iso3(df)
+
+    assert result["provider_iso3"].isna().all()
+
+
 def test_add_iso3_does_not_mutate_input() -> None:
-    """`add_iso3` never adds `provider_iso3` to the caller's original frame."""
+    """`add_iso3` never modifies the caller's original frame byte-for-byte."""
     df = pd.DataFrame({"provider_code": [1]})
+    original = df.copy()
 
     helpers.add_iso3(df)
 
-    assert "provider_iso3" not in df.columns
+    pd.testing.assert_frame_equal(df, original)
 
 
 def test_resolvekit_is_imported_lazily_only_by_add_iso3() -> None:
@@ -256,8 +331,21 @@ def test_extract_keywords_all_twelve_columns_present() -> None:
         "kw_transnational_benefits_global",
         "kw_non_17_3_1",
     }
-    assert expected <= set(result.columns)
+    kw_columns = {col for col in result.columns if col.startswith("kw_")}
+    assert kw_columns == expected
     assert not result.loc[0, list(expected)].any()
+
+
+def test_extract_keywords_empty_input_kw_columns_are_bool_dtype() -> None:
+    """A 0-row input still gets bool-dtyped `kw_*` columns, not float64."""
+    df = pd.DataFrame({"keywords_raw": pd.Series([], dtype="object")})
+
+    result = helpers.extract_keywords(df)
+
+    kw_columns = [col for col in result.columns if col.startswith("kw_")]
+    assert len(kw_columns) == 12
+    for column in kw_columns:
+        assert result[column].dtype == bool
 
 
 def test_extract_keywords_unknown_tokens_ignored() -> None:
@@ -327,12 +415,13 @@ def test_extract_keywords_raw_column_untouched() -> None:
 
 
 def test_extract_keywords_does_not_mutate_input() -> None:
-    """`extract_keywords` never adds `kw_*` columns to the caller's original frame."""
+    """`extract_keywords` never modifies the caller's original frame byte-for-byte."""
     df = pd.DataFrame({"keywords_raw": ["#GENDER"]})
+    original = df.copy()
 
     helpers.extract_keywords(df)
 
-    assert "kw_gender" not in df.columns
+    pd.testing.assert_frame_equal(df, original)
 
 
 # --- get_structural_breaks ----------------------------------------------------------
@@ -343,13 +432,37 @@ def test_get_structural_breaks_exact_row_count_and_columns() -> None:
     result = helpers.get_structural_breaks()
 
     assert len(result) == 5
-    assert {"dimension", "break_year", "description", "source"} <= set(result.columns)
+    assert {"dimension", "break_year", "end_year", "description", "source"} <= set(
+        result.columns
+    )
     assert set(result["dimension"]) == {
         "sub_pillar",
         "modality",
         "reporters",
         "methodology",
     }
+
+
+def test_get_structural_breaks_end_year_marks_the_reporters_drift() -> None:
+    """`end_year` matches `break_year` for discrete breaks, 2024 for the reporters drift."""
+    result = helpers.get_structural_breaks()
+
+    discrete = result.loc[result["dimension"] != "reporters"]
+    assert (discrete["end_year"] == discrete["break_year"]).all()
+
+    reporters_row = result.loc[result["dimension"] == "reporters"].iloc[0]
+    assert reporters_row["break_year"] == 2019
+    assert reporters_row["end_year"] == 2024
+
+
+def test_get_structural_breaks_no_mutation_across_calls() -> None:
+    """Mutating the returned frame never poisons a later call (cache safety)."""
+    first = helpers.get_structural_breaks()
+    first.loc[0, "dimension"] = "corrupted"
+
+    second = helpers.get_structural_breaks()
+
+    assert "corrupted" not in second["dimension"].tolist()
 
 
 # --- pillar2_own_country_costs -------------------------------------------------------
@@ -375,6 +488,21 @@ def test_pillar2_own_country_costs_filters_to_carveout_sectors() -> None:
     result = helpers.pillar2_own_country_costs(df)
 
     assert sorted(result["tossd_id"].tolist()) == ["a", "b"]
+
+
+def test_pillar2_own_country_costs_excludes_null_sector_code_rows() -> None:
+    """A null `sector_code` is excluded, not a crash."""
+    df = pd.DataFrame(
+        {
+            "tossd_id": ["a", "b"],
+            "tossd_pillar": [2, 2],
+            "sector_code": [910, None],
+        }
+    )
+
+    result = helpers.pillar2_own_country_costs(df)
+
+    assert result["tossd_id"].tolist() == ["a"]
 
 
 def test_pillar2_own_country_costs_does_not_mutate_input() -> None:

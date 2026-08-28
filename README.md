@@ -41,8 +41,9 @@ Filter by year, provider, recipient, or pillar. Providers and recipients
 accept codes or exact names (matched case-insensitively):
 
 ```python
-spain = tossd.get_tossd(years=2024, providers="Spain", pillars=1,
-                        columns="minimal", units="usd_million")
+spain = tossd.get_tossd(
+    years=2024, providers="Spain", pillars=1, columns="minimal", units="usd_million"
+)
 spain["usd_disbursement"].sum()
 ```
 
