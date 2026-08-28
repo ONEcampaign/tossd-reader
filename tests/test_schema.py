@@ -112,6 +112,12 @@ def test_preset_columns_counts() -> None:
     assert len(schema.preset_columns("all")) == len(schema.load_schema())
 
 
+def test_preset_columns_unknown_preset_raises_value_error() -> None:
+    """An unrecognised preset name raises ValueError, not a silent empty list."""
+    with pytest.raises(ValueError, match="bogus"):
+        schema.preset_columns("bogus")  # type: ignore[arg-type]
+
+
 def test_normalised_key_matching_tolerates_case_variant() -> None:
     """A case/separator-variant published header still matches its schema field."""
     table = build_tossd_table(2019, n_rows=5, seed=1)

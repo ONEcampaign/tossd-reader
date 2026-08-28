@@ -154,7 +154,7 @@ def test_get_tossd_raw_multi_year_concatenates(
     assert len(df) == sum(row_counts.values())
 
 
-# --- Fable condition 2: GET ETag re-key --------------------------------------
+# --- GET response's ETag re-keys the cache entry on a HEAD/GET mismatch ------
 
 
 def test_etag_rekey_on_head_get_mismatch(
@@ -366,7 +366,7 @@ def test_fetch_year_keeps_unknown_key_and_warns_once_with_no_etag_anywhere(
     fetch.fetch_year(year, refresh=True)
 
 
-# --- D10 validation -----------------------------------------------------------
+# --- downloaded-file validation (bad magic / truncated file) ------------------
 
 
 def test_d10_validator_rejects_bad_magic(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -377,8 +377,10 @@ def test_d10_validator_rejects_bad_magic(monkeypatch: pytest.MonkeyPatch) -> Non
     _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
     _patch_fetcher_by_url(monkeypatch, {url: (corrupt, '"e"')})
 
-    with pytest.raises(VintageValidationError, match=str(year)):
+    with pytest.raises(VintageValidationError, match=str(year)) as excinfo:
         fetch.fetch_year(year)
+    assert excinfo.value.year == year
+    assert excinfo.value.url == url
 
     cache = config.get_cache()
     assert not any(entry.key.startswith(f"tossd_{year}_") for entry in cache.entries())
@@ -399,7 +401,7 @@ def test_d10_validator_rejects_truncated_file(
         fetch.fetch_year(year)
 
 
-# --- D4 provenance sidecar ----------------------------------------------------
+# --- provenance sidecar --------------------------------------------------------
 
 
 def test_provenance_sidecar_written_and_write_if_absent(
@@ -452,7 +454,7 @@ def test_provenance_rewritten_after_sidecar_loss_falls_back_to_key_etag(
     assert record["etag"] == etag
 
 
-# --- D2 offline rules ----------------------------------------------------------
+# --- offline fallback rules -----------------------------------------------------
 
 
 def test_offline_rule_a_network_down_serves_cached_with_warning(
@@ -514,8 +516,9 @@ def test_offline_rule_b_network_down_nothing_cached_raises(
 
     monkeypatch.setattr(discovery, "_head_one", _offline_head_one)
 
-    with pytest.raises(TossdNetworkError, match="2019"):
+    with pytest.raises(TossdNetworkError, match="2019") as excinfo:
         fetch.fetch_year(2019)
+    assert excinfo.value.cache_dir == config.get_cache_dir()
 
 
 def test_offline_rule_c_known_year_unpublished_serves_cached_then_refresh_raises(
@@ -570,7 +573,7 @@ def test_offline_rule_d_unknown_year_raises_naming_available_years(
         fetch.fetch_year(2025)
 
 
-# --- H1: a GET that fails mid-stream routes into D2's offline fallback --------
+# --- a GET that fails mid-stream routes into the offline fallback -------------
 
 
 def test_get_mid_stream_drop_serves_cached_vintage_with_warning(
@@ -650,7 +653,7 @@ def test_truncated_content_length_raises_named_error_not_cached(
     assert not any(entry.key.startswith(f"tossd_{year}_") for entry in cache.entries())
 
 
-# --- M1: ETag-retry exhaustion --------------------------------------------------
+# --- ETag-retry exhaustion ------------------------------------------------------
 
 
 def test_etag_thrash_exhausts_retries_raises_tossd_network_error(
@@ -689,7 +692,7 @@ def test_etag_thrash_exhausts_retries_raises_tossd_network_error(
     assert not any(entry.key.startswith(f"tossd_{year}_") for entry in cache.entries())
 
 
-# --- M2: one discovery sweep per get_tossd_raw call, not one per year ---------
+# --- one discovery sweep per get_tossd_raw call, not one per year -------------
 
 
 def test_get_tossd_raw_refresh_sweeps_discovery_once_for_multiple_years(
@@ -724,7 +727,7 @@ def test_get_tossd_raw_refresh_sweeps_discovery_once_for_multiple_years(
     assert discover_calls == 1
 
 
-# --- M7: warning stacklevel points at the caller, not fetch.py -----------------
+# --- warning stacklevel points at the caller, not fetch.py ---------------------
 
 
 def test_serving_stale_warning_points_at_the_caller(
@@ -751,7 +754,7 @@ def test_serving_stale_warning_points_at_the_caller(
     assert record[0].filename.endswith("test_fetch.py")
 
 
-# --- L1: an empty years iterable ------------------------------------------------
+# --- an empty years iterable ----------------------------------------------------
 
 
 def test_get_tossd_raw_empty_years_raises_value_error() -> None:

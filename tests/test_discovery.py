@@ -41,6 +41,88 @@ def _fake_head_one(
     return _head_one
 
 
+class _FakeHeadResponse:
+    """A minimal stand-in for a `requests.Response` from a HEAD request."""
+
+    def __init__(
+        self, *, status_code: int, headers: dict[str, str] | None = None
+    ) -> None:
+        self.status_code = status_code
+        self.headers = headers or {}
+
+    def raise_for_status(self) -> None:
+        if self.status_code >= 400:
+            raise requests.exceptions.HTTPError(f"{self.status_code} error")
+
+
+class _FakeHeadSession:
+    """A minimal stand-in for a `requests.Session`, returning one canned HEAD response."""
+
+    def __init__(
+        self,
+        *,
+        response: _FakeHeadResponse | None = None,
+        exc: Exception | None = None,
+    ) -> None:
+        self._response = response
+        self._exc = exc
+
+    def head(self, _url: str, **_kwargs: object) -> _FakeHeadResponse:
+        if self._exc is not None:
+            raise self._exc
+        assert self._response is not None
+        return self._response
+
+
+# --- discovery._head_one, called directly (never mocked wholesale) ------------
+
+
+def test_head_one_connection_error_raises_tossd_network_error() -> None:
+    """A transport-level failure on the HEAD request itself raises TossdNetworkError."""
+    session = _FakeHeadSession(exc=requests.exceptions.ConnectionError("boom"))
+
+    with pytest.raises(TossdNetworkError, match="2020"):
+        discovery._head_one(session, 2020)
+
+
+def test_head_one_404_returns_none() -> None:
+    """A genuine 404 HEAD response resolves to None (year not currently published)."""
+    session = _FakeHeadSession(response=_FakeHeadResponse(status_code=404))
+
+    assert discovery._head_one(session, 2020) is None
+
+
+def test_head_one_500_raises_uncaught_via_raise_for_status() -> None:
+    """A non-404 error status surfaces via raise_for_status, not swallowed as a 404."""
+    session = _FakeHeadSession(response=_FakeHeadResponse(status_code=500))
+
+    with pytest.raises(requests.exceptions.HTTPError):
+        discovery._head_one(session, 2020)
+
+
+def test_head_one_200_populates_vintage_info_from_headers() -> None:
+    """A 200 response's ETag/Last-Modified/Content-Length populate VintageInfo."""
+    session = _FakeHeadSession(
+        response=_FakeHeadResponse(
+            status_code=200,
+            headers={
+                "ETag": '"e1"',
+                "Last-Modified": "Tue, 01 Jan 2024 00:00:00 GMT",
+                "Content-Length": "12345",
+            },
+        )
+    )
+
+    info = discovery._head_one(session, 2020)
+
+    assert info == discovery.VintageInfo(
+        url="https://tossd.online/tossddata_2020.parquet",
+        etag='"e1"',
+        last_modified="Tue, 01 Jan 2024 00:00:00 GMT",
+        size_bytes=12345,
+    )
+
+
 def test_known_years_accessor() -> None:
     """The packaged known-years set is exactly 2019-2024."""
     assert discovery.known_years() == (2019, 2020, 2021, 2022, 2023, 2024)

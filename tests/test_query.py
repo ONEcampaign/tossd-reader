@@ -111,7 +111,7 @@ def _with_known_parent_channel_code(table: pa.Table, code: str = "11000") -> pa.
     )
 
 
-# --- D6: categorical dtype survives a multi-year concat -----------------------
+# --- categorical dtype survives a multi-year concat ----------------------------
 
 
 def test_multi_year_concat_unifies_divergent_categorical_dictionaries(
@@ -252,6 +252,16 @@ def test_provider_filter_by_digit_string_tries_code_first(
     assert (df["provider_code"] == 4).all()
 
 
+def test_provider_bool_token_raises_type_error_not_silently_matched_as_int(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """providers=True isn't quietly treated as providers=1: bool is rejected as a token type."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=5)
+
+    with pytest.raises(TypeError, match="bool"):
+        query.get_tossd(years=2019, providers=True)
+
+
 def test_recipient_filter_by_name_and_iterable(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -375,6 +385,12 @@ def test_unknown_pillar_token_raises_value_error() -> None:
     """An unrecognised pillars= token raises ValueError, not a silent no-op."""
     with pytest.raises(ValueError, match="pillars"):
         query._normalise_pillar_token("III")
+
+
+def test_pillar_bool_token_raises_value_error_not_silently_matched_as_int() -> None:
+    """pillars=True isn't quietly treated as pillars=1: bool is excluded before the int check."""
+    with pytest.raises(ValueError, match="pillars"):
+        query._normalise_pillar_token(True)
 
 
 def test_pillar_filter_matches_tossd_pillar_and_excludes_pillar_zero(
@@ -526,7 +542,7 @@ def test_user_column_list_forces_always_present_columns(
         assert name in df.columns
 
 
-# --- F12: read-time column projection ------------------------------------------
+# --- read-time column projection ------------------------------------------------
 
 
 def _spy_on_read_table(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, object]]:
@@ -571,6 +587,61 @@ def test_columns_all_reads_every_column_no_projection(
 
     assert len(calls) == 1
     assert calls[0].get("columns") is None
+
+
+def test_recipients_filter_with_minimal_columns_reads_recipientcode_and_filters(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """recipients= + columns='minimal': recipientcode is projected in, and the filter works."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+    calls = _spy_on_read_table(monkeypatch)
+
+    df = query.get_tossd(years=2019, recipients=269, columns="minimal")
+
+    assert len(calls) == 1
+    requested = calls[0]["columns"]
+    assert requested is not None
+    assert "recipientcode" in requested
+    assert not df.empty
+    assert (df["recipient_code"] == 269).all()
+
+
+def test_explicit_parent_channel_name_column_reads_its_code_dependency(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """columns=["parent_channel_name"] pulls in ParentChannelCode and decodes it cleanly."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=10)
+    calls = _spy_on_read_table(monkeypatch)
+
+    df = query.get_tossd(years=2019, columns=["parent_channel_name"])
+
+    assert len(calls) == 1
+    requested = calls[0]["columns"]
+    assert requested is not None
+    assert "ParentChannelCode" in requested
+    assert "parent_channel_name" in df.columns
+
+
+def test_minimal_columns_without_recipients_filter_does_not_read_modality(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """columns='minimal' never reads a column genuinely outside the preset (modality).
+
+    `recipient_code` is already in the minimal preset, so it can't serve as a
+    negative control for "only forced columns get pulled in"; `modality` is
+    outside both the minimal preset and every forced-include branch, so it's
+    the column that actually catches a forced-include branch pulling in more
+    than it should.
+    """
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=10)
+    calls = _spy_on_read_table(monkeypatch)
+
+    query.get_tossd(years=2019, columns="minimal")
+
+    assert len(calls) == 1
+    requested = calls[0]["columns"]
+    assert requested is not None
+    assert "modality" not in requested
 
 
 def test_missing_column_raises_drift_even_when_projection_would_not_have_read_it(

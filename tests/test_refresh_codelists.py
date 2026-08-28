@@ -8,13 +8,24 @@ testable in the default (offline) pytest suite.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import subprocess
 import sys
 from pathlib import Path
 
+import pandas as pd
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "refresh_codelists.py"
+
+
+def _import_script():
+    """Import `refresh_codelists.py` by path (`scripts/` is not a package)."""
+    spec = importlib.util.spec_from_file_location("refresh_codelists", SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def _write_snapshot(
@@ -99,3 +110,103 @@ def test_check_detects_changed_codelist_ids_mapping(tmp_path: Path) -> None:
 
     assert result.returncode == 1
     assert "codelist_ids" in result.stdout
+
+
+# --- transformation functions: _dedupe_by_code, _project_dimension_frame, -----
+# --- _split_purpose_and_sector -------------------------------------------------
+
+
+def test_dedupe_by_code_prefers_active_status_row() -> None:
+    """Among duplicate `code` rows, the `status == "active"` row wins, regardless of order."""
+    module = _import_script()
+    frame = pd.DataFrame(
+        {
+            "code": ["1", "1", "2"],
+            "label": ["Alpha", "Alpha", "Beta"],
+            "status": ["inactive", "active", "active"],
+            "activation_date": ["2010-01-01", "2015-01-01", "2020-01-01"],
+        }
+    )
+
+    result = module._dedupe_by_code(frame)
+
+    assert len(result) == 2
+    assert result.set_index("code").loc["1", "status"] == "active"
+    assert result.set_index("code").loc["1", "activation_date"] == "2015-01-01"
+
+
+def test_dedupe_by_code_falls_back_to_latest_activation_date() -> None:
+    """With no active row for a code, the most recent `activation_date` row wins."""
+    module = _import_script()
+    frame = pd.DataFrame(
+        {
+            "code": ["3", "3"],
+            "label": ["Gamma", "Gamma"],
+            "status": ["inactive", "inactive"],
+            "activation_date": ["2010-01-01", "2020-01-01"],
+        }
+    )
+
+    result = module._dedupe_by_code(frame)
+
+    assert len(result) == 1
+    assert result.iloc[0]["activation_date"] == "2020-01-01"
+
+
+def test_project_dimension_frame_filters_tossd_and_derives_tossd_only() -> None:
+    """Non-TOSSD rows are dropped; `tossd_only` is derived from `crs == "0"`."""
+    module = _import_script()
+    frame = pd.DataFrame(
+        {
+            "code": ["10", "20", "30"],
+            "label": ["Ten", "Twenty", "Thirty"],
+            "status": ["active", "active", "active"],
+            "activation_date": ["2020-01-01"] * 3,
+            "tossd": ["1", "0", "1"],
+            "crs": ["1", "1", "0"],
+            "iso3": ["AAA", "BBB", "CCC"],
+        }
+    )
+
+    result = module._project_dimension_frame(frame)
+
+    assert list(result["code"]) == ["10", "30"]  # code "20": tossd != "1", dropped
+    assert list(result.columns) == ["code", "name", "tossd_only", "iso3"]
+    by_code = result.set_index("code")
+    assert bool(by_code.loc["10", "tossd_only"]) is False  # crs == "1"
+    assert bool(by_code.loc["30", "tossd_only"]) is True  # crs == "0"
+
+
+def test_project_dimension_frame_omits_iso3_when_source_frame_has_none() -> None:
+    """A source frame with no `iso3` column projects without one, not a KeyError."""
+    module = _import_script()
+    frame = pd.DataFrame(
+        {
+            "code": ["10"],
+            "label": ["Ten"],
+            "status": ["active"],
+            "activation_date": ["2020-01-01"],
+            "crs": ["1"],
+        }
+    )
+
+    result = module._project_dimension_frame(frame)
+
+    assert list(result.columns) == ["code", "name", "tossd_only"]
+
+
+def test_split_purpose_and_sector_by_code_length() -> None:
+    """3-digit codes become `sector`; 5- and 7-digit codes stay in `purpose`."""
+    module = _import_script()
+    projected = pd.DataFrame(
+        {
+            "code": ["110", "11220", "1122001"],
+            "name": ["Education", "Primary education", "Purpose detail"],
+            "tossd_only": [False, False, True],
+        }
+    )
+
+    result = module._split_purpose_and_sector(projected)
+
+    assert list(result["sector"]["code"]) == ["110"]
+    assert list(result["purpose"]["code"]) == ["11220", "1122001"]

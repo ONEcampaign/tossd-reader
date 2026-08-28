@@ -26,7 +26,7 @@
 
 set -euo pipefail
 
-URL_PREFIX="https://tossd.online/tossddata_"
+URL_PREFIX="${TOSSD_ARCHIVE_URL_PREFIX:-https://tossd.online/tossddata_}"
 FIRST_YEAR=2019
 
 archive_dir="${1:-./tossd-archive-$(date -u +%F)}"
