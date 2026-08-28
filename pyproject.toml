@@ -52,6 +52,10 @@ dev = [
     "ruff>=0.15.0",
     "pre-commit>=4.6.0",
 ]
+docs = [
+    "mkdocstrings-python>=2.0.7",
+    "zensical>=0.0.57",
+]
 
 [tool.ruff]
 line-length = 88

@@ -1,0 +1,40 @@
+[project]
+site_name = "tossd-reader"
+site_description = "Python package to access TOSSD activity-level data"
+site_url = "https://onecampaign.github.io/tossd-reader/"
+repo_url = "https://github.com/ONEcampaign/tossd-reader"
+
+nav = [
+  "index.md",
+  { "Tutorial" = "tutorial.md" },
+  { "How-to guides" = [
+    { "Work offline and manage the cache" = "how-to/work-offline.md" },
+    { "Export a reproducible extract" = "how-to/export-an-extract.md" },
+    { "Analyse activities by SDG" = "how-to/analyse-by-sdg.md" },
+  ] },
+  { "Reference" = [
+    { "Query and export" = "reference/query.md" },
+    { "Helpers" = "reference/helpers.md" },
+    { "Columns, presets, and units" = "reference/columns.md" },
+    { "Configuration and errors" = "reference/configuration.md" },
+  ] },
+  { "About" = [
+    { "The cache and provenance" = "about/caching.md" },
+    { "Pillars, aggregates, and breaks" = "about/data-model.md" },
+  ] },
+]
+
+[project.markdown_extensions]
+admonition = {}
+pymdownx.details = {}
+pymdownx.superfences = {}
+pymdownx.highlight.anchor_linenums = true
+pymdownx.highlight.pygments_lang_class = true
+pymdownx.inlinehilite = {}
+tables = {}
+
+[project.plugins.mkdocstrings.handlers.python]
+paths = ["src"]
+inventories = ["https://docs.python.org/3/objects.inv"]
+options.docstring_style = "google"
+options.show_source = false

@@ -111,5 +111,6 @@ repos:
         additional_dependencies:
           - mdformat-gfm>=1.0.0
           - mdformat-frontmatter>=2.1.0
-        # Example: limit to docs if desired
-        # files: ^(README\.md|docs/|.*/README\.md)$
+        # docs/ is Zensical markdown (pymdownx admonitions, mkdocstrings
+        # ::: blocks); mdformat is CommonMark-only and corrupts both.
+        exclude: ^docs/

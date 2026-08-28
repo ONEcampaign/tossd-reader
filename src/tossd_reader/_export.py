@@ -64,10 +64,10 @@ def export(
 
     Raises:
         ValueError: `years` resolves to an empty set of years.
-        UnknownCodeError, InvalidPillarError, TossdNetworkError,
-            SchemaDriftError: Same conditions as `get_tossd` (export applies
+        TossdNetworkError: Same conditions as `get_tossd`; export applies
             no provider/recipient/pillar filters, so only the fetch/schema
-            layer's own failure modes apply in practice).
+            layer's own failure modes apply in practice.
+        SchemaDriftError: Same conditions as `get_tossd`.
     """
     table, paths = query._build_table(
         years=years,
