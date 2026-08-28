@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from tossd_reader.exceptions import UnknownCodeError as UnknownCodeError
     from tossd_reader.exceptions import VintageValidationError as VintageValidationError
     from tossd_reader.fetch import get_tossd_raw as get_tossd_raw
+    from tossd_reader.query import get_tossd as get_tossd
 
 __all__ = [
     "InvalidPillarError",
@@ -32,12 +33,14 @@ __all__ = [
     "__version__",
     "get_available_filters",
     "get_codelists_version",
+    "get_tossd",
     "get_tossd_raw",
     "set_cache_dir",
 ]
 
 _LAZY_ATTRS: dict[str, tuple[str, str]] = {
     "get_tossd_raw": ("tossd_reader.fetch", "get_tossd_raw"),
+    "get_tossd": ("tossd_reader.query", "get_tossd"),
     "set_cache_dir": ("tossd_reader.config", "set_cache_dir"),
     "get_available_filters": ("tossd_reader.codelists", "get_available_filters"),
     "get_codelists_version": ("tossd_reader.codelists", "get_codelists_version"),
