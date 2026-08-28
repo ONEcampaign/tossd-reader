@@ -11,17 +11,6 @@ from tossd_reader import discovery
 from tossd_reader.exceptions import TossdNetworkError
 
 
-@pytest.fixture(autouse=True)
-def _reset_discovery_state() -> None:
-    """Clear discovery's in-process memo and warn-once state before each test.
-
-    `tests/conftest.py` does not reset per-module state between tests (the
-    plan's `_reset_warn_state` fixture isn't present on this branch), so this
-    slice's own tests reset the module directly instead.
-    """
-    discovery._reset_for_tests()
-
-
 def _fake_head_one(
     published: dict[int, dict[str, object]],
 ) -> Callable[[requests.Session, int], discovery.VintageInfo | None]:
@@ -116,3 +105,17 @@ def test_unknown_new_year_warns_once(monkeypatch: pytest.MonkeyPatch) -> None:
     # `filterwarnings = ["error"]` set globally, an unexpected warning here
     # would itself raise and fail the test.
     discovery.discover(refresh=True)
+
+
+def test_unknown_new_year_warning_points_at_the_caller(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """M7: the unknown-new-year warning's stacklevel attributes it to the caller."""
+    monkeypatch.setattr(
+        discovery, "_head_one", _fake_head_one({2025: {"etag": '"e25"'}})
+    )
+
+    with pytest.warns(UserWarning, match="2025") as record:
+        discovery.discover()
+
+    assert record[0].filename.endswith("test_discovery.py")

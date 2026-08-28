@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from tossd_reader import config, discovery
+
 
 @pytest.fixture(autouse=True)
 def _tossd_reader_cache_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -14,6 +16,20 @@ def _tossd_reader_cache_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
     Ensures no test ever reads from or writes to a real user cache directory.
     """
     monkeypatch.setenv("TOSSD_READER_CACHE_DIR", str(tmp_path))
+
+
+@pytest.fixture(autouse=True)
+def _reset_discovery_and_config_state() -> None:
+    """Reset discovery's and config's in-process module state before each test.
+
+    Both modules memoise state at module scope (discovery's HEAD-sweep memo
+    and warn-once set; config's cache-dir override and cache singleton), so a
+    test that doesn't reset them can leak fake data or a stale singleton
+    across test files. Schema's own warn-once state is reset locally instead
+    (only this slice's tests need per-file reset fixtures moved here).
+    """
+    discovery._reset_for_tests()
+    config._reset_for_tests()
 
 
 class NetworkBlockedError(OSError):

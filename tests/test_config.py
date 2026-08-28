@@ -9,18 +9,6 @@ import pytest
 from tossd_reader import config
 
 
-@pytest.fixture(autouse=True)
-def _reset_config_state() -> None:
-    """Restore `config`'s module state after each test.
-
-    `tests/conftest.py` isolates `TOSSD_READER_CACHE_DIR` per test, but a test
-    that calls `set_cache_dir` explicitly leaves that override in place for
-    every later test unless reset here.
-    """
-    yield
-    config._reset_for_tests()
-
-
 def test_get_cache_dir_follows_env_var(tmp_path: Path) -> None:
     """With no explicit override, `get_cache_dir` resolves under the env var's tmp_path."""
     resolved = config.get_cache_dir()

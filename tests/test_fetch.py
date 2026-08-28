@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import importlib.resources
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Iterable, Iterator
 from datetime import datetime
 from pathlib import Path
 
@@ -24,13 +24,13 @@ from tossd_reader.exceptions import TossdNetworkError, VintageValidationError
 
 @pytest.fixture(autouse=True)
 def _reset_state() -> None:
-    """Reset discovery's and config's module state before each test.
+    """Reset fetch's own warn-once state before each test.
 
-    `tests/conftest.py` does not reset per-module state between tests, so this
-    slice's own tests reset both modules directly instead.
+    `tests/conftest.py` resets discovery's and config's per-module state; the
+    degraded-revalidation warn-once state added to this module is reset here
+    instead, same as schema.py's own local fixture.
     """
-    discovery._reset_for_tests()
-    config._reset_for_tests()
+    fetch._reset_for_tests()
 
 
 def _read_schema() -> pd.DataFrame:
@@ -57,22 +57,23 @@ def _patch_fetcher_by_url(
 
     `sources` is read fresh on every call, so a test can mutate it between two
     `fetch_year` calls to simulate an upstream republish. The fake reproduces
-    `_make_fetcher`'s own ETag cross-check, so the `_EtagMismatchError` retry
+    `_make_fetcher`'s own ETag cross-check (including when `expected_etag` is
+    `None` but the source has its own ETag), so the `_EtagMismatchError` retry
     path is exercised the same way it would be against a real GET response.
     """
 
     def _factory(
-        url: str, _session: requests.Session, *, expected_etag: str | None
+        url: str,
+        _session: requests.Session,
+        *,
+        year: int,
+        expected_etag: str | None,
     ) -> tuple[Callable[[object], None], dict[str, str | int | None]]:
         captured: dict[str, str | int | None] = {"etag": None, "size_bytes": None}
 
         def _fetch(ctx: object) -> None:
             payload, true_etag = sources[url]
-            if (
-                expected_etag is not None
-                and true_etag is not None
-                and true_etag != expected_etag
-            ):
+            if true_etag is not None and true_etag != expected_etag:
                 raise fetch._EtagMismatchError(true_etag)
             captured["etag"] = true_etag
             captured["size_bytes"] = len(payload)
@@ -211,6 +212,45 @@ class _FakeGetSession:
         return self._response
 
 
+class _ScriptedResponse:
+    """A `_FakeGetResponse` that can drop mid-stream after yielding some chunks."""
+
+    def __init__(
+        self,
+        *,
+        headers: dict[str, str],
+        chunks: tuple[bytes, ...] = (),
+        drop_mid_stream: bool = False,
+    ) -> None:
+        self.headers = headers
+        self._chunks = chunks
+        self._drop_mid_stream = drop_mid_stream
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def iter_content(self, chunk_size: int) -> Iterator[bytes]:
+        yield from self._chunks
+        if self._drop_mid_stream:
+            raise requests.exceptions.ChunkedEncodingError("simulated mid-stream drop")
+
+    def __enter__(self) -> _ScriptedResponse:
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        return None
+
+
+class _ScriptedSession:
+    """A fake `requests.Session` that returns one canned response per `get()` call, in order."""
+
+    def __init__(self, responses: Iterable[_ScriptedResponse]) -> None:
+        self._responses = list(responses)
+
+    def get(self, _url: str, **_kwargs: object) -> _ScriptedResponse:
+        return self._responses.pop(0)
+
+
 def test_make_fetcher_streams_body_and_captures_get_headers(tmp_path: Path) -> None:
     """The real `_make_fetcher` writes the body and captures the GET's own ETag/size."""
     payload = b"PAR1-fake-body-bytes"
@@ -221,7 +261,10 @@ def test_make_fetcher_streams_body_and_captures_get_headers(tmp_path: Path) -> N
     session = _FakeGetSession(response)
 
     fetcher, captured = fetch._make_fetcher(
-        "https://tossd.online/tossddata_2019.parquet", session, expected_etag='"e1"'
+        "https://tossd.online/tossddata_2019.parquet",
+        session,
+        year=2019,
+        expected_etag='"e1"',
     )
     dest = tmp_path / "out.parquet"
     fetcher(FetchContext(key="k", path=dest, refresh=False))
@@ -239,6 +282,7 @@ def test_make_fetcher_raises_etag_mismatch_before_writing_bytes(tmp_path: Path) 
     fetcher, _captured = fetch._make_fetcher(
         "https://tossd.online/tossddata_2019.parquet",
         session,
+        year=2019,
         expected_etag='"expected"',
     )
     dest = tmp_path / "out.parquet"
@@ -248,6 +292,78 @@ def test_make_fetcher_raises_etag_mismatch_before_writing_bytes(tmp_path: Path) 
 
     assert excinfo.value.get_etag == '"actual"'
     assert not dest.exists()
+
+
+def test_make_fetcher_rekeys_when_head_had_no_etag_but_get_does(tmp_path: Path) -> None:
+    """H3: a HEAD sweep with no ETag doesn't block the GET's own ETag from winning."""
+    response = _FakeGetResponse(headers={"ETag": '"get-only-etag"'}, chunks=(b"body",))
+    session = _FakeGetSession(response)
+
+    fetcher, _captured = fetch._make_fetcher(
+        "https://tossd.online/tossddata_2019.parquet",
+        session,
+        year=2019,
+        expected_etag=None,
+    )
+    dest = tmp_path / "out.parquet"
+
+    with pytest.raises(fetch._EtagMismatchError) as excinfo:
+        fetcher(FetchContext(key="k", path=dest, refresh=False))
+
+    assert excinfo.value.get_etag == '"get-only-etag"'
+    assert not dest.exists()
+
+
+def test_fetch_year_rekeys_under_get_etag_when_head_reported_none(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """H3, integration: the entry is keyed under the GET's ETag, not left `unknown`."""
+    year = 2022
+    url = _url_for(year)
+    fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=4)
+    get_etag = '"only-the-get-has-this"'
+    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag=None)})
+    _patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), get_etag)})
+
+    path = fetch.fetch_year(year)
+
+    cache = config.get_cache()
+    entries = [
+        entry for entry in cache.entries() if entry.key.startswith(f"tossd_{year}_")
+    ]
+    assert len(entries) == 1
+    assert entries[0].key == f"tossd_{year}_{get_etag}"
+    assert entries[0].path == path
+
+
+def test_fetch_year_keeps_unknown_key_and_warns_once_with_no_etag_anywhere(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """H3, else branch: neither HEAD nor GET has an ETag -> stays `unknown`, warns once."""
+    year = 2023
+    url = _url_for(year)
+    fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=4)
+    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag=None)})
+    session = _FakeGetSession(
+        _FakeGetResponse(headers={}, chunks=(fixture.read_bytes(),))
+    )
+    monkeypatch.setattr(discovery, "get_session", lambda: session)
+
+    with pytest.warns(UserWarning, match=str(year)):
+        path = fetch.fetch_year(year)
+
+    cache = config.get_cache()
+    entries = [
+        entry for entry in cache.entries() if entry.key.startswith(f"tossd_{year}_")
+    ]
+    assert len(entries) == 1
+    assert entries[0].key == f"tossd_{year}_unknown"
+    assert entries[0].path == path
+
+    # Forced re-fetch of the same year, same process: no repeat warning. With
+    # `filterwarnings = ["error"]` set globally, an unexpected warning here
+    # would itself raise and fail the test.
+    fetch.fetch_year(year, refresh=True)
 
 
 # --- D10 validation -----------------------------------------------------------
@@ -314,6 +430,26 @@ def test_provenance_sidecar_written_and_write_if_absent(
     provenance_path.write_text(json.dumps({"sentinel": True}))
     fetch.fetch_year(year)
     assert json.loads(provenance_path.read_text()) == {"sentinel": True}
+
+
+def test_provenance_rewritten_after_sidecar_loss_falls_back_to_key_etag(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """M3: a cache hit with a lost sidecar still records the key's own ETag, not null."""
+    year = 2021
+    url = _url_for(year)
+    fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=6)
+    etag = '"stable-etag"'
+    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag=etag)})
+    _patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), etag)})
+
+    path = fetch.fetch_year(year)
+    path.with_suffix(".provenance.json").unlink()
+
+    fetch.fetch_year(year)  # a cache hit: the fetcher must not run again
+
+    record = json.loads(path.with_suffix(".provenance.json").read_text())
+    assert record["etag"] == etag
 
 
 # --- D2 offline rules ----------------------------------------------------------
@@ -432,6 +568,196 @@ def test_offline_rule_d_unknown_year_raises_naming_available_years(
 
     with pytest.raises(ValueError, match="2025"):
         fetch.fetch_year(2025)
+
+
+# --- H1: a GET that fails mid-stream routes into D2's offline fallback --------
+
+
+def test_get_mid_stream_drop_serves_cached_vintage_with_warning(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """H1: a connection drop partway through a GET falls back to the cached vintage."""
+    year = 2019
+    url = _url_for(year)
+    fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=5)
+    # Drives the real `_make_fetcher` (not the higher-level `_patch_fetcher_by_url`
+    # fake), so the mid-stream drop below exercises the actual code under test:
+    # one successful response for the initial download, then a dropped one.
+    session = _ScriptedSession(
+        [
+            _ScriptedResponse(headers={"ETag": '"e1"'}, chunks=(fixture.read_bytes(),)),
+            _ScriptedResponse(
+                headers={"ETag": '"e2"'}, chunks=(b"partial",), drop_mid_stream=True
+            ),
+        ]
+    )
+    monkeypatch.setattr(discovery, "get_session", lambda: session)
+    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e1"')})
+    cached_path = fetch.fetch_year(year)
+
+    # Simulate a republish (a new ETag, so a fresh download is attempted this
+    # time) whose GET connection then drops mid-transfer.
+    discovery._reset_for_tests()
+    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e2"')})
+
+    with pytest.warns(UserWarning, match=str(year)):
+        served_path = fetch.fetch_year(year)
+
+    assert served_path == cached_path
+
+
+def test_get_mid_stream_drop_with_nothing_cached_raises_tossd_network_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """H1: with nothing cached, a mid-stream drop raises TossdNetworkError, not a requests error."""
+    year = 2022
+    url = _url_for(year)
+    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
+    session = _ScriptedSession(
+        [
+            _ScriptedResponse(
+                headers={"ETag": '"e"'}, chunks=(b"partial",), drop_mid_stream=True
+            )
+        ]
+    )
+    monkeypatch.setattr(discovery, "get_session", lambda: session)
+
+    with pytest.raises(TossdNetworkError) as excinfo:
+        fetch.fetch_year(year)
+
+    assert not isinstance(excinfo.value, requests.exceptions.RequestException)
+
+
+def test_truncated_content_length_raises_named_error_not_cached(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """M4: a body shorter than the declared Content-Length raises, naming expected/actual."""
+    year = 2020
+    url = _url_for(year)
+    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
+    session = _FakeGetSession(
+        _FakeGetResponse(
+            headers={"ETag": '"e"', "Content-Length": "1000"}, chunks=(b"short-body",)
+        )
+    )
+    monkeypatch.setattr(discovery, "get_session", lambda: session)
+
+    with pytest.raises(TossdNetworkError, match="1000") as excinfo:
+        fetch.fetch_year(year)
+    assert "10" in str(excinfo.value)
+
+    cache = config.get_cache()
+    assert not any(entry.key.startswith(f"tossd_{year}_") for entry in cache.entries())
+
+
+# --- M1: ETag-retry exhaustion --------------------------------------------------
+
+
+def test_etag_thrash_exhausts_retries_raises_tossd_network_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """M1: an ETag that keeps changing across every retry raises TossdNetworkError."""
+    year = 2020
+    url = _url_for(year)
+    fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=3)
+    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"head-etag"')})
+    call_count = 0
+
+    def _factory(
+        _url: str, _session: requests.Session, *, year: int, expected_etag: str | None
+    ) -> tuple[Callable[[object], None], dict[str, str | int | None]]:
+        captured: dict[str, str | int | None] = {"etag": None, "size_bytes": None}
+
+        def _fetch(ctx: object) -> None:
+            nonlocal call_count
+            call_count += 1
+            true_etag = f'"attempt-{call_count}"'  # always different: never settles
+            if true_etag != expected_etag:
+                raise fetch._EtagMismatchError(true_etag)
+            captured["etag"] = true_etag
+            ctx.path.write_bytes(fixture.read_bytes())  # type: ignore[attr-defined]
+
+        return _fetch, captured
+
+    monkeypatch.setattr(fetch, "_make_fetcher", _factory)
+
+    with pytest.raises(TossdNetworkError, match=str(year)) as excinfo:
+        fetch.fetch_year(year)
+    assert url in str(excinfo.value)
+
+    cache = config.get_cache()
+    assert not any(entry.key.startswith(f"tossd_{year}_") for entry in cache.entries())
+
+
+# --- M2: one discovery sweep per get_tossd_raw call, not one per year ---------
+
+
+def test_get_tossd_raw_refresh_sweeps_discovery_once_for_multiple_years(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """M2: refresh=True across several years re-sweeps discovery once, not once per year."""
+    years = (2019, 2020)
+    published: dict[int, VintageInfo] = {}
+    sources: dict[str, tuple[bytes, str | None]] = {}
+    for year in years:
+        url = _url_for(year)
+        fixture = write_tossd_fixture(
+            tmp_path / f"fixture_{year}.parquet", year, n_rows=2
+        )
+        published[year] = VintageInfo(url=url, etag=f'"e{year}"')
+        sources[url] = (fixture.read_bytes(), f'"e{year}"')
+    _patch_discovery(monkeypatch, published)
+    _patch_fetcher_by_url(monkeypatch, sources)
+
+    discover_calls = 0
+    real_discover = discovery.discover
+
+    def _counting_discover(*, refresh: bool = False) -> dict[int, VintageInfo]:
+        nonlocal discover_calls
+        discover_calls += 1
+        return real_discover(refresh=refresh)
+
+    monkeypatch.setattr(discovery, "discover", _counting_discover)
+
+    fetch.get_tossd_raw(years=list(years), refresh=True)
+
+    assert discover_calls == 1
+
+
+# --- M7: warning stacklevel points at the caller, not fetch.py -----------------
+
+
+def test_serving_stale_warning_points_at_the_caller(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The stale-serve warning's stacklevel attributes it to fetch_year's caller."""
+    year = 2019
+    url = _url_for(year)
+    fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=5)
+    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
+    _patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e"')})
+    fetch.fetch_year(year)
+
+    discovery._reset_for_tests()
+
+    def _offline_head_one(_session: requests.Session, _year: int) -> VintageInfo | None:
+        raise TossdNetworkError("simulated outage")
+
+    monkeypatch.setattr(discovery, "_head_one", _offline_head_one)
+
+    with pytest.warns(UserWarning, match=str(year)) as record:
+        fetch.fetch_year(year)
+
+    assert record[0].filename.endswith("test_fetch.py")
+
+
+# --- L1: an empty years iterable ------------------------------------------------
+
+
+def test_get_tossd_raw_empty_years_raises_value_error() -> None:
+    """L1: `years=[]` raises early with a clear ValueError, not a raw pyarrow error."""
+    with pytest.raises(ValueError, match="years is empty"):
+        fetch.get_tossd_raw(years=[])
 
 
 # --- refresh_scope equivalence -------------------------------------------------

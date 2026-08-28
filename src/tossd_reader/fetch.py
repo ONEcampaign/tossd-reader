@@ -51,30 +51,52 @@ def get_tossd_raw(
     Returns:
         A `pandas.DataFrame`, one row per activity, across every requested
         year.
+
+    Raises:
+        ValueError: `years` resolves to an empty set of years.
     """
     resolved_years = _normalise_years(years)
+    # Resolved once for every requested year, rather than once per year: a
+    # per-year `discover()` call would re-run the whole HEAD sweep N times
+    # under `refresh=True` (or an enclosing `refresh_scope()`).
+    effective = effective_refresh("tossd_reader:get_tossd_raw", explicit=refresh)
+    vintages = _sweep_or_none(effective)
     tables = [
-        pq.read_table(fetch_year(year, refresh=refresh)) for year in resolved_years
+        pq.read_table(_resolve_year(year, vintages=vintages, refresh=effective))
+        for year in resolved_years
     ]
     combined = pa.concat_tables(tables)
     return combined.to_pandas()
 
 
 def _normalise_years(years: int | Iterable[int] | None) -> tuple[int, ...]:
-    """Normalise `years` (scalar / iterable / range) to a sorted tuple immediately."""
+    """Normalise `years` (scalar / iterable / range) to a sorted tuple immediately.
+
+    Raises:
+        ValueError: `years` is an empty iterable (an empty `pa.concat_tables`
+            call raises an opaque pyarrow error, so this is caught early).
+    """
     if years is None:
         return discovery.known_years()
     if isinstance(years, int):
         return (years,)
-    return tuple(sorted({int(year) for year in years}))
+    resolved = tuple(sorted({int(year) for year in years}))
+    if not resolved:
+        raise ValueError(
+            "years is empty: pass at least one year, or None for the packaged "
+            "known-years set."
+        )
+    return resolved
 
 
 def fetch_year(year: int, *, refresh: bool = False) -> Path:
     """Return the path to the cached raw parquet for `year`, publisher bytes verbatim.
 
-    Applies D2's offline rules: a network outage or a since-unpublished year
-    is served from the newest local vintage with a loud warning when one is
-    cached, and raises `TossdNetworkError` when nothing usable exists locally.
+    Applies D2's offline rules: a network outage (at discovery time, or a
+    connection dropped partway through the download) or a since-unpublished
+    year is served from the newest local vintage with a loud warning when one
+    is cached, and raises `TossdNetworkError` when nothing usable exists
+    locally.
 
     Args:
         year: The reporting year to fetch. Need not be in `known_years()`;
@@ -87,28 +109,51 @@ def fetch_year(year: int, *, refresh: bool = False) -> Path:
         Path to the cached parquet payload.
 
     Raises:
-        TossdNetworkError: The publisher is unreachable and nothing is
-            cached for `year`; or `year` is not currently published (and
-            `refresh` was requested, or nothing is cached for it either).
+        TossdNetworkError: The publisher is unreachable (at discovery time,
+            or the GET connection dropped partway through downloading a new
+            vintage) and nothing is cached for `year`; `year` is not
+            currently published (and `refresh` was requested, or nothing is
+            cached for it either); or the GET response's ETag kept changing
+            across every retry attempt.
         VintageValidationError: A newly downloaded vintage failed D10
             validation.
         ValueError: `year` is not currently published by the source and
             nothing is cached for it.
     """
     effective = effective_refresh(f"tossd_reader:fetch_year:{year}", explicit=refresh)
+    vintages = _sweep_or_none(effective)
+    return _resolve_year(year, vintages=vintages, refresh=effective)
 
+
+def _sweep_or_none(refresh: bool) -> dict[int, discovery.VintageInfo] | None:
+    """Run discovery's HEAD sweep, or `None` when the publisher host is unreachable."""
     try:
-        vintages = discovery.discover(refresh=effective)
+        return discovery.discover(refresh=refresh)
     except TossdNetworkError:
+        return None
+
+
+def _resolve_year(
+    year: int, *, vintages: dict[int, discovery.VintageInfo] | None, refresh: bool
+) -> Path:
+    """Resolve one year against an already-swept `vintages` mapping (or `None`).
+
+    Shared by `fetch_year` and `get_tossd_raw`, so a caller fetching several
+    years in one `get_tossd_raw` call sweeps discovery exactly once and
+    threads the same mapping and refresh flag through every year, instead of
+    re-sweeping per year (M2).
+    """
+    if vintages is None:
         return _serve_offline(year, reason="the network is unreachable")
 
     info = vintages.get(year)
     if info is None:
-        return _serve_missing(
-            year, refresh=effective, available=tuple(sorted(vintages))
-        )
+        return _serve_missing(year, refresh=refresh, available=tuple(sorted(vintages)))
 
-    return _download_and_cache(year, info, refresh=effective)
+    try:
+        return _download_and_cache(year, info, refresh=refresh)
+    except _FetcherNetworkError as exc:
+        return _serve_offline(year, reason=f"the network is unreachable ({exc})")
 
 
 @dataclass(frozen=True)
@@ -188,7 +233,11 @@ def _warn_serving_stale(year: int, cached: _CachedVintage, *, reason: str) -> No
     warnings.warn(
         f"{reason.capitalize()}; serving the cached {year} vintage retrieved "
         f"{vintage_date}{etag_note}.",
-        stacklevel=3,
+        # 5 frames up from here: _warn_serving_stale -> _serve_offline/
+        # _serve_missing -> _resolve_year -> fetch_year/get_tossd_raw ->
+        # the caller. Verified in test_fetch.py against the real call chain,
+        # not just counted by eye.
+        stacklevel=5,
     )
 
 
@@ -207,6 +256,21 @@ class _EtagMismatchError(Exception):
         )
 
 
+class _FetcherNetworkError(TossdNetworkError):
+    """Internal signal: the GET connection failed or truncated mid-transfer.
+
+    A `TossdNetworkError` subclass (so it satisfies that public contract on
+    its own), but kept distinct so `_resolve_year` can route only *this*
+    failure into D2's cached-vintage fallback. A retry-exhaustion
+    `TossdNetworkError` (mismatching ETags on every attempt) is raised as the
+    plain base class instead, so it propagates directly rather than being
+    mistaken for an offline condition.
+    """
+
+
+_MAX_ETAG_ATTEMPTS = 2
+
+
 def _download_and_cache(
     year: int, info: discovery.VintageInfo, *, refresh: bool
 ) -> Path:
@@ -215,14 +279,24 @@ def _download_and_cache(
     The HEAD-derived `info.etag` only forms the *candidate* cache key. If the
     GET response's own ETag differs, the download is retried once under the
     corrected, authoritative key.
+
+    Raises:
+        TossdNetworkError: The GET connection dropped or truncated
+            mid-transfer (a `_FetcherNetworkError`, so `_resolve_year` can
+            route it into D2's offline fallback); or the GET response's ETag
+            kept changing across every retry attempt.
+        VintageValidationError: The downloaded vintage failed D10 validation.
     """
     cache = config.get_cache()
     session = discovery.get_session()
     etag = info.etag
+    etag_history = [etag]
 
-    for _attempt in range(2):
+    for _attempt in range(_MAX_ETAG_ATTEMPTS):
         key = f"{_KEY_PREFIX}{year}_{etag or 'unknown'}"
-        fetcher, captured = _make_fetcher(info.url, session, expected_etag=etag)
+        fetcher, captured = _make_fetcher(
+            info.url, session, year=year, expected_etag=etag
+        )
         try:
             path = cache.ensure(
                 key,
@@ -234,6 +308,7 @@ def _download_and_cache(
             )
         except _EtagMismatchError as exc:
             etag = exc.get_etag
+            etag_history.append(etag)
             continue
         except ArtifactCorruptError as exc:
             raise VintageValidationError(
@@ -242,45 +317,111 @@ def _download_and_cache(
                 url=info.url,
             ) from exc
 
-        _write_provenance_if_absent(path, url=info.url, captured=captured)
+        _write_provenance_if_absent(
+            path, url=info.url, captured=captured, etag_fallback=etag
+        )
         return path
 
-    raise AssertionError("unreachable: ETag mismatch retried more than once")
+    raise TossdNetworkError(
+        f"Could not fetch {year} from {info.url}: the GET response's ETag kept "
+        f"changing across all {_MAX_ETAG_ATTEMPTS} attempts "
+        f"({' -> '.join(repr(seen) for seen in etag_history)}) — the publisher's "
+        "content is changing faster than the retry window. Try again shortly.",
+        cache_dir=config.get_cache_dir(),
+    )
 
 
 def _make_fetcher(
-    url: str, session: requests.Session, *, expected_etag: str | None
+    url: str, session: requests.Session, *, year: int, expected_etag: str | None
 ) -> tuple[Fetcher, dict[str, str | int | None]]:
     """Build a `Fetcher` that streams `url`, capturing the GET response's own ETag/size.
 
-    Raises `_EtagMismatchError` before writing any bytes if the GET response's
-    ETag differs from `expected_etag` — per Fable condition 2, the GET
-    response is authoritative for the cache key and provenance, not the HEAD
-    sweep's.
+    Raises `_EtagMismatchError` before writing any bytes whenever the GET
+    response's ETag differs from `expected_etag` — per Fable condition 2, the
+    GET response is authoritative for the cache key and provenance, not the
+    HEAD sweep's. This includes the case where `expected_etag` is `None` but
+    the GET response carries one: the HEAD sweep's missing ETag never gets a
+    chance to become authoritative, so the GET's own ETag re-keys the entry
+    instead. Only when neither HEAD nor GET ever carries an ETag does the
+    entry stay keyed `unknown`, warning once per year that D2 revalidation is
+    degraded for it.
+
+    Raises `_FetcherNetworkError` (a `TossdNetworkError`) instead of a raw
+    `requests` exception when the connection fails or the transfer
+    truncates, mirroring `discovery._head_one`'s own conversion.
     """
     captured: dict[str, str | int | None] = {"etag": None, "size_bytes": None}
 
     def _fetch(ctx: FetchContext) -> None:
-        with session.get(url, stream=True, timeout=(10.0, 60.0)) as response:
+        try:
+            response = session.get(url, stream=True, timeout=(10.0, 60.0))
+        except requests.exceptions.RequestException as exc:
+            raise _FetcherNetworkError(
+                f"Could not reach {url}: {exc}. The publisher host appears unreachable."
+            ) from exc
+
+        with response:
             response.raise_for_status()
             get_etag = response.headers.get("ETag")
-            if (
-                expected_etag is not None
-                and get_etag is not None
-                and get_etag != expected_etag
-            ):
+            if get_etag is not None and get_etag != expected_etag:
                 raise _EtagMismatchError(get_etag)
+            if get_etag is None and expected_etag is None:
+                _warn_degraded_revalidation(year)
             captured["etag"] = get_etag
             content_length = response.headers.get("Content-Length")
-            captured["size_bytes"] = (
-                int(content_length) if content_length is not None else None
+            expected_size = int(content_length) if content_length is not None else None
+            captured["size_bytes"] = expected_size
+
+            written = 0
+            try:
+                with open(ctx.path, "wb") as handle:
+                    for chunk in response.iter_content(chunk_size=1 << 20):
+                        if chunk:
+                            handle.write(chunk)
+                            written += len(chunk)
+            except requests.exceptions.RequestException as exc:
+                raise _FetcherNetworkError(
+                    f"Could not download {url}: {exc}. The connection dropped "
+                    "partway through the transfer."
+                ) from exc
+
+        if expected_size is not None and written != expected_size:
+            raise _FetcherNetworkError(
+                f"Truncated download from {url}: expected {expected_size} bytes, "
+                f"received {written} before the connection ended."
             )
-            with open(ctx.path, "wb") as handle:
-                for chunk in response.iter_content(chunk_size=1 << 20):
-                    if chunk:
-                        handle.write(chunk)
 
     return _fetch, captured
+
+
+class _FetchState:
+    """Mutable singleton state backing this module's warn-once accessor."""
+
+    def __init__(self) -> None:
+        self.warned_degraded_years: set[int] = set()
+
+
+_state = _FetchState()
+
+
+def _warn_degraded_revalidation(year: int) -> None:
+    """Warn once per year that neither HEAD nor GET ever carried an ETag for it.
+
+    Without an ETag from either request, the cache entry stays keyed
+    `unknown` and a republished vintage cannot be detected; only
+    `refresh=True` (or an enclosing `refresh_scope()`) forces a fresh
+    download.
+    """
+    if year in _state.warned_degraded_years:
+        return
+    _state.warned_degraded_years.add(year)
+    warnings.warn(
+        f"Neither the HEAD nor GET response for {year} carried an ETag, so "
+        "this vintage's cache entry cannot be revalidated against a "
+        "republish. Pass refresh=True (or wrap the call in "
+        "readerkit.refresh_scope()) to force a fresh download.",
+        stacklevel=2,
+    )
 
 
 def _validate_new_vintage(path: Path) -> None:
@@ -304,16 +445,31 @@ def _validate_new_vintage(path: Path) -> None:
 
 
 def _write_provenance_if_absent(
-    path: Path, *, url: str, captured: dict[str, str | int | None]
+    path: Path,
+    *,
+    url: str,
+    captured: dict[str, str | int | None],
+    etag_fallback: str | None,
 ) -> None:
-    """Write `<path stem>.provenance.json` beside `path`, unless one already exists (D4)."""
+    """Write `<path stem>.provenance.json` beside `path`, unless one already exists (D4).
+
+    Args:
+        path: The cached parquet payload.
+        url: The vintage's download URL.
+        captured: The fetcher's captured `etag`/`size_bytes`. Empty (both
+            `None`) on a cache hit, since the fetcher never ran.
+        etag_fallback: The cache key's own ETag (the retry loop's winning
+            `etag`), used when `captured["etag"]` is `None` — a cache hit
+            whose sidecar was lost still records the right ETag rather than
+            `null`.
+    """
     provenance_path = path.with_suffix(".provenance.json")
     if provenance_path.exists():
         return
     parquet_file = pq.ParquetFile(path)
     record = {
         "url": url,
-        "etag": captured.get("etag"),
+        "etag": captured.get("etag") or etag_fallback,
         "size_bytes": path.stat().st_size,
         "sha256": _sha256(path),
         "row_count": parquet_file.metadata.num_rows,
@@ -338,3 +494,13 @@ def _sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1 << 20), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _reset_for_tests() -> None:
+    """Clear the degraded-revalidation warn-once state.
+
+    Test-only. `tests/conftest.py` resets discovery's and config's
+    per-module state, but this slice's own warn-once state is reset locally
+    instead, same as discovery.py and schema.py's own `_reset_for_tests`.
+    """
+    _state.warned_degraded_years.clear()

@@ -158,7 +158,10 @@ def _warn_unknown_years(results: dict[int, VintageInfo]) -> None:
             f"The publisher now lists {year}, which is not yet in this "
             f"package's known-years set. Pass years={year} explicitly to "
             "fetch it.",
-            stacklevel=2,
+            # 3 frames up from here: _warn_unknown_years -> discover -> the
+            # caller. Verified in test_discovery.py against the real call
+            # chain, not just counted by eye.
+            stacklevel=3,
         )
 
 

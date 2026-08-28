@@ -136,13 +136,17 @@ def apply_schema(table: pa.Table) -> pa.Table:
     Arrow-level throughout: no pandas conversion happens here. In order:
     1. Match `schema.csv`'s `published_name`s to `table`'s actual column names
        by normalised key (casefold, `_`/`-`/space-insensitive).
-    2. A schema-expected column absent from `table` raises `SchemaDriftError`.
-    3. A `table` column not in the schema warns once per session and passes
+    2. Two or more actual column names normalising to the same key is
+       ambiguous and raises `SchemaDriftError` naming every colliding column,
+       before any of the missing/extra logic below runs.
+    3. A schema-expected column absent from `table` raises `SchemaDriftError`.
+    4. A `table` column not in the schema warns once per session and passes
        through under its original name, unchanged.
-    4. Matched columns are renamed to `snake_name`.
-    5. Empty strings become null, for every string-typed column.
-    6. Known code-case drift is normalised (e.g. modality `c01` -> `C01`).
-    7. Matched columns are cast to `target_dtype`. A cast failure raises
+    5. Matched columns are renamed to `snake_name`.
+    6. Empty strings become null, for every string- or large-string-typed
+       column.
+    7. Known code-case drift is normalised (e.g. modality `c01` -> `C01`).
+    8. Matched columns are cast to `target_dtype`. A cast failure raises
        `SchemaDriftError` naming the column and the offending value — never a
        silent null.
 
@@ -155,11 +159,28 @@ def apply_schema(table: pa.Table) -> pa.Table:
         first, followed by any unknown extra columns passed through raw.
 
     Raises:
-        SchemaDriftError: A schema-expected column is missing, or a matched
-            column's values cannot be cast to its `target_dtype`.
+        SchemaDriftError: Two or more actual columns normalise to the same
+            key; a schema-expected column is missing; or a matched column's
+            values cannot be cast to its `target_dtype`.
     """
     fields = load_schema()
-    actual_by_key = {_normalise_key(name): name for name in table.column_names}
+    actual_names_by_key: dict[str, list[str]] = {}
+    for name in table.column_names:
+        actual_names_by_key.setdefault(_normalise_key(name), []).append(name)
+
+    colliding_names = sorted(
+        name
+        for names in actual_names_by_key.values()
+        if len(names) > 1
+        for name in names
+    )
+    if colliding_names:
+        raise SchemaDriftError(
+            "Multiple published columns normalise to the same key and cannot "
+            f"be matched unambiguously: {', '.join(colliding_names)}."
+        )
+
+    actual_by_key = {key: names[0] for key, names in actual_names_by_key.items()}
 
     missing = [
         field.published_name
@@ -184,7 +205,7 @@ def apply_schema(table: pa.Table) -> pa.Table:
     for field in fields:
         actual_name = actual_by_key[_normalise_key(field.published_name)]
         column = table.column(actual_name)
-        if pa.types.is_string(column.type):
+        if pa.types.is_string(column.type) or pa.types.is_large_string(column.type):
             column = _empty_string_to_null(column)
         column = _apply_code_case_fix(column, field.snake_name)
         column = _cast_column(column, field)

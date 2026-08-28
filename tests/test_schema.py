@@ -54,6 +54,16 @@ def test_apply_schema_round_trip() -> None:
     assert result.column("modality_code")[-1].as_py() == "C01"
 
 
+def test_duplicate_normalised_column_names_raise_schema_drift_error() -> None:
+    """H2: two case-variant columns normalising to the same key raise, naming both."""
+    table = build_tossd_table(2019, n_rows=5, seed=2)
+    duplicated = table.append_column("Sector_3", table.column("sector3"))
+
+    with pytest.raises(SchemaDriftError, match="sector3") as excinfo:
+        schema.apply_schema(duplicated)
+    assert "Sector_3" in str(excinfo.value)
+
+
 def test_missing_column_raises_schema_drift_error() -> None:
     """A schema-expected column absent from the file raises SchemaDriftError."""
     table = build_tossd_table(2019, n_rows=5, seed=0)
@@ -115,3 +125,18 @@ def test_normalised_key_matching_tolerates_case_variant() -> None:
         result.column("sector_code").to_pylist()
         == table.column("sector3").cast(pa.int16()).to_pylist()
     )
+
+
+def test_large_string_empty_values_become_null() -> None:
+    """M6: empty strings in a large_string column also become null, not just `string`."""
+    table = build_tossd_table(2019, n_rows=20, seed=3)
+    column_index = table.column_names.index("agencyname_E")
+    large_string_column = table.column("agencyname_E").cast(pa.large_string())
+    with_large_string = table.set_column(
+        column_index, "agencyname_E", large_string_column
+    )
+    assert pa.types.is_large_string(with_large_string.schema.field("agencyname_E").type)
+
+    result = schema.apply_schema(with_large_string)
+
+    assert result.column("provider_agency_name").null_count > 0
