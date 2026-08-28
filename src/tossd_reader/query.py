@@ -1,10 +1,16 @@
 """The typed, filtered `get_tossd` query layer (D6/D7).
 
-Per requested year: `fetch._resolve_year` → pyarrow read → `schema.apply_schema`
-→ arrow-level row filters (provider/recipient/pillar). Then, once across every
-year: `pa.concat_tables(...).unify_dictionaries()` (D6 — a categorical column
-stays dictionary-encoded across a multi-year query), derived columns
-(`is_aggregate`, `unit`, the `parent_channel_code` decode), preset/column
+Per requested year: `fetch._resolve_year` → a column-projected pyarrow read
+(only the output columns plus internal-only needs -- `is_aggregate`'s
+`provider_code`, a row filter's `recipient_code`, the decode join's
+`parent_channel_code` -- unless `columns="all"`, which reads every column) →
+`schema.apply_schema` (given the file's full column list from the cheap,
+data-free `pq.read_schema`, so the projection never masquerades as publisher
+drift) → arrow-level row filters (provider/recipient/pillar). Then, once
+across every year: `pa.concat_tables(...).unify_dictionaries()` (D6 — a
+categorical column stays dictionary-encoded across a multi-year query),
+derived columns (`is_aggregate`, `unit`, the `parent_channel_code` decode --
+skipped entirely when `parent_channel_name` isn't requested), preset/column
 projection, units conversion, and exactly one `.to_pandas()` call at the very
 end.
 
@@ -202,6 +208,13 @@ def _build_table(
         recipients, dimension="recipient", label="recipients"
     )
     column_names = _resolve_columns(columns)
+    decode_parent_channel = _DECODE_NAME_COLUMN in column_names
+    read_all = columns == "all"
+    needed_snake_columns = _needed_read_columns(
+        column_names,
+        recipient_codes=recipient_codes,
+        decode_parent_channel=decode_parent_channel,
+    )
 
     # Resolved once for the whole call, not once per requested year: see
     # fetch.get_tossd_raw's own docstring for why (M2).
@@ -213,8 +226,15 @@ def _build_table(
     for year in resolved_years:
         path = fetch._resolve_year(year, vintages=vintages, refresh=effective)
         paths[year] = path
-        raw = pq.read_table(path)
-        typed = schema.apply_schema(raw)
+        file_column_names = list(pq.read_schema(path).names)
+        if read_all:
+            raw = pq.read_table(path)
+        else:
+            read_columns = _published_names_to_read(
+                needed_snake_columns, file_column_names=file_column_names
+            )
+            raw = pq.read_table(path, columns=read_columns)
+        typed = schema.apply_schema(raw, file_column_names=file_column_names)
         filtered = _apply_row_filters(
             typed,
             provider_codes=provider_codes,
@@ -225,7 +245,9 @@ def _build_table(
         tables.append(filtered)
 
     combined = pa.concat_tables(tables).unify_dictionaries()
-    combined = _add_derived_columns(combined, units=units)
+    combined = _add_derived_columns(
+        combined, units=units, decode_parent_channel=decode_parent_channel
+    )
     if columns == "all":
         column_names = _with_passthrough_extras(column_names, combined.column_names)
     combined = combined.select(column_names)
@@ -518,16 +540,77 @@ def _filter_pillar(
     return table.filter(mask)
 
 
+# --- column projection (read-time pushdown) -----------------------------------
+
+
+def _needed_read_columns(
+    column_names: list[str],
+    *,
+    recipient_codes: tuple[int, ...] | None,
+    decode_parent_channel: bool,
+) -> list[str]:
+    """Snake-case schema columns actually needed from the file for this query.
+
+    Always the already-resolved output columns (`column_names`, schema
+    columns among them), plus purely internal dependencies not necessarily
+    in the output: `provider_code` (the forced `is_aggregate` derived column
+    always reads it, regardless of any `providers=` filter or column
+    selection), `recipient_code` when a `recipients=` filter is set, and
+    `parent_channel_code` when the channel-codelist decode join is going to
+    run (i.e. `parent_channel_name` is requested). `tossd_pillar` and
+    `tossd_subpillar` need no separate entry here: both are always-forced
+    output columns, already in `column_names`.
+    """
+    schema_snake_names = {field.snake_name for field in schema.load_schema()}
+    needed = [name for name in column_names if name in schema_snake_names]
+    if "provider_code" not in needed:
+        needed.append("provider_code")
+    if recipient_codes is not None and "recipient_code" not in needed:
+        needed.append("recipient_code")
+    if decode_parent_channel and _DECODE_CODE_COLUMN not in needed:
+        needed.append(_DECODE_CODE_COLUMN)
+    return needed
+
+
+def _published_names_to_read(
+    snake_names: list[str], *, file_column_names: list[str]
+) -> list[str]:
+    """Map `snake_names` to published names, keeping only those present in the file.
+
+    A schema column missing from the file entirely is real drift, surfaced
+    by `schema.apply_schema`'s `file_column_names`-driven check right after
+    this projected read runs -- never silently narrowed away here.
+    """
+    file_names = set(file_column_names)
+    published_by_snake = {
+        field.snake_name: field.published_name for field in schema.load_schema()
+    }
+    read_columns: list[str] = []
+    for name in snake_names:
+        published = published_by_snake.get(name)
+        if (
+            published is not None
+            and published in file_names
+            and published not in read_columns
+        ):
+            read_columns.append(published)
+    return read_columns
+
+
 # --- derived columns, decode, projection, units -------------------------------
 
 
-def _add_derived_columns(table: pa.Table, *, units: str) -> pa.Table:
-    """Append `is_aggregate`/`unit`, then decode `parent_channel_name`."""
+def _add_derived_columns(
+    table: pa.Table, *, units: str, decode_parent_channel: bool
+) -> pa.Table:
+    """Append `is_aggregate`/`unit`, then decode `parent_channel_name` if requested."""
     is_aggregate = pc.equal(table.column("provider_code"), 0)  # ty: ignore[unresolved-attribute]
     table = table.append_column("is_aggregate", is_aggregate)
     unit_values = pa.array([units] * table.num_rows, type=pa.string())
     table = table.append_column("unit", pc.dictionary_encode(unit_values))  # ty: ignore[unresolved-attribute]
-    return _decode_parent_channel(table)
+    if decode_parent_channel:
+        table = _decode_parent_channel(table)
+    return table
 
 
 def _decode_parent_channel(table: pa.Table) -> pa.Table:

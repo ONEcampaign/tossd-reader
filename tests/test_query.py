@@ -16,7 +16,11 @@ import tossd_reader
 from tests.fixtures import build_tossd_table
 from tossd_reader import discovery, fetch, query
 from tossd_reader.discovery import VintageInfo
-from tossd_reader.exceptions import InvalidPillarError, UnknownCodeError
+from tossd_reader.exceptions import (
+    InvalidPillarError,
+    SchemaDriftError,
+    UnknownCodeError,
+)
 
 # --- shared fetch/discovery patching (mirrors tests/test_fetch.py's own helpers) --
 
@@ -520,6 +524,92 @@ def test_user_column_list_forces_always_present_columns(
     assert next(iter(df.columns)) == "provider_code"
     for name in ("tossd_pillar", "tossd_subpillar", "is_aggregate", "unit"):
         assert name in df.columns
+
+
+# --- F12: read-time column projection ------------------------------------------
+
+
+def _spy_on_read_table(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, object]]:
+    """Wrap `pyarrow.parquet.read_table` to record each call's kwargs, real read intact."""
+    calls: list[dict[str, object]] = []
+    real_read_table = pq.read_table
+
+    def _spy(path: object, **kwargs: object) -> pa.Table:
+        calls.append(kwargs)
+        return real_read_table(path, **kwargs)
+
+    monkeypatch.setattr(query.pq, "read_table", _spy)
+    return calls
+
+
+def test_minimal_preset_only_reads_published_columns_it_needs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """columns='minimal' pushes projection down: an analysis/all-only column is never read."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=10)
+    calls = _spy_on_read_table(monkeypatch)
+
+    query.get_tossd(years=2019, columns="minimal")
+
+    assert len(calls) == 1
+    requested = calls[0]["columns"]
+    assert requested is not None
+    assert "ProjectDescription" not in requested  # project_description: not in minimal
+    assert (
+        "provider" in requested
+    )  # provider_code: in minimal, and is_aggregate needs it
+
+
+def test_columns_all_reads_every_column_no_projection(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """columns='all' (the default) still reads the whole file -- no columns= kwarg at all."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=10)
+    calls = _spy_on_read_table(monkeypatch)
+
+    query.get_tossd(years=2019, columns="all")
+
+    assert len(calls) == 1
+    assert calls[0].get("columns") is None
+
+
+def test_missing_column_raises_drift_even_when_projection_would_not_have_read_it(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A file genuinely missing a schema column is still caught under a narrow projection.
+
+    `project_description` isn't in the `minimal` preset, so a naive
+    projection-only read would never notice it's gone; the missing check
+    runs against the file's full column list (`pq.read_schema`), not the
+    narrowed read, so it still raises.
+    """
+    table = build_tossd_table(2019, n_rows=5, seed=0).drop_columns(
+        ["ProjectDescription"]
+    )
+    _setup_years(monkeypatch, tmp_path, {2019: table})
+
+    with pytest.raises(SchemaDriftError, match="ProjectDescription"):
+        query.get_tossd(years=2019, columns="minimal")
+
+
+def test_extra_column_warns_under_minimal_projection_even_though_not_read(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """An unrecognised extra column still warns once under a narrow projection, but stays absent.
+
+    Unlike `columns="all"` (F1's own passthrough contract), a preset never
+    surfaces the extra in its output -- it just was never read.
+    """
+    table = build_tossd_table(2019, n_rows=5, seed=0)
+    with_extra = table.append_column(
+        "SurpriseColumnUnderProjection", pa.array(["x"] * table.num_rows)
+    )
+    _setup_years(monkeypatch, tmp_path, {2019: with_extra})
+
+    with pytest.warns(UserWarning, match="SurpriseColumnUnderProjection"):
+        df = query.get_tossd(years=2019, columns="minimal")
+
+    assert "SurpriseColumnUnderProjection" not in df.columns
 
 
 def test_columns_all_preserves_schema_drift_extra_columns(

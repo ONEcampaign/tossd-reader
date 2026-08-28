@@ -11,6 +11,9 @@ import importlib.util
 from pathlib import Path
 
 import pyarrow as pa
+import pytest
+
+from tossd_reader.exceptions import TossdNetworkError
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "check_reconciliation.py"
@@ -105,3 +108,30 @@ def test_check_reconciliation_detects_packed_delimiter_violation() -> None:
     )
 
     assert any("sector3" in failure for failure in failures)
+
+
+def test_main_prints_clear_diagnostic_when_live_check_fails(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An uncaught TossdNetworkError from the live check never leaves an empty report.
+
+    `main()`'s live entry point wraps the full-download check so a
+    `TossdNetworkError` prints a clear "Reconciliation check failed" line to
+    stdout (what the canary job captures as the issue body) and returns 1,
+    instead of an uncaught traceback going to stderr and leaving stdout (the
+    report) empty -- same fix as `check_vintage_drift.py`'s live sweep
+    wrapper.
+    """
+    module = _import_script()
+    monkeypatch.setattr(
+        module,
+        "_run_live_check",
+        lambda: (_ for _ in ()).throw(TossdNetworkError("publisher unreachable")),
+    )
+
+    exit_code = module.main([])
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "reconciliation check failed" in captured.out.lower()
+    assert "publisher unreachable" in captured.out

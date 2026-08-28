@@ -12,6 +12,7 @@ from __future__ import annotations
 import csv
 import importlib.resources
 import warnings
+from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Literal
@@ -130,7 +131,9 @@ def preset_columns(preset: Literal["minimal", "analysis", "all"]) -> list[str]:
     )
 
 
-def apply_schema(table: pa.Table) -> pa.Table:
+def apply_schema(
+    table: pa.Table, *, file_column_names: Iterable[str] | None = None
+) -> pa.Table:
     """Rename, clean, and typecast one published TOSSD vintage table (D5).
 
     Arrow-level throughout: no pandas conversion happens here. In order:
@@ -139,10 +142,13 @@ def apply_schema(table: pa.Table) -> pa.Table:
     2. Two or more actual column names normalising to the same key is
        ambiguous and raises `SchemaDriftError` naming every colliding column,
        before any of the missing/extra logic below runs.
-    3. A schema-expected column absent from `table` raises `SchemaDriftError`.
-    4. A `table` column not in the schema warns once per session and passes
-       through under its original name, unchanged.
-    5. Matched columns are renamed to `snake_name`.
+    3. A schema-expected column absent from `file_column_names` raises
+       `SchemaDriftError`.
+    4. A `file_column_names` entry not in the schema warns once per session.
+       If it's also present in `table`, it passes through under its original
+       name, unchanged.
+    5. Matched columns actually present in `table` are renamed to
+       `snake_name`.
     6. Empty strings become null, for every string- or large-string-typed
        column.
     7. Known code-case drift is normalised (e.g. modality `c01` -> `C01`).
@@ -150,27 +156,47 @@ def apply_schema(table: pa.Table) -> pa.Table:
        `SchemaDriftError` naming the column and the offending value — never a
        silent null.
 
+    A schema-expected column absent from `table` but present in
+    `file_column_names` is neither an error nor a warning: it's simply
+    omitted from the result, on the assumption the caller deliberately chose
+    not to read it (a column projection narrower than the file).
+
     Args:
         table: One vintage's raw, publisher-bytes-verbatim table (as returned
-            by reading `fetch_year`'s cached parquet with pyarrow, unmodified).
+            by reading `fetch_year`'s cached parquet with pyarrow, unmodified
+            or narrowed by a column projection).
+        file_column_names: The full column-name list as published in the
+            source file (e.g. from `pyarrow.parquet.read_schema`, cheap
+            metadata that needs no data read). Defaults to
+            `table.column_names`, preserving today's behaviour when `table`
+            already carries every published column. Pass this explicitly
+            when `table` was read with a column projection narrower than the
+            file, so the missing-expected-column drift check and the
+            unknown-extra warn-once still see the file's true column set —
+            a column deliberately not read is then never mistaken for the
+            publisher having dropped it.
 
     Returns:
-        A new `pa.Table`: schema columns renamed and typed, schema.csv order
-        first, followed by any unknown extra columns passed through raw.
+        A new `pa.Table`: schema columns actually present in `table` renamed
+        and typed, schema.csv order first, followed by any unknown extra
+        columns (also actually present in `table`) passed through raw.
 
     Raises:
         SchemaDriftError: Two or more actual columns normalise to the same
-            key; a schema-expected column is missing; or a matched column's
-            values cannot be cast to its `target_dtype`.
+            key; a schema-expected column is missing from
+            `file_column_names`; or a matched column's values cannot be cast
+            to its `target_dtype`.
     """
     fields = load_schema()
-    actual_names_by_key: dict[str, list[str]] = {}
+    matched_keys = {_normalise_key(field.published_name) for field in fields}
+
+    table_names_by_key: dict[str, list[str]] = {}
     for name in table.column_names:
-        actual_names_by_key.setdefault(_normalise_key(name), []).append(name)
+        table_names_by_key.setdefault(_normalise_key(name), []).append(name)
 
     colliding_names = sorted(
         name
-        for names in actual_names_by_key.values()
+        for names in table_names_by_key.values()
         if len(names) > 1
         for name in names
     )
@@ -180,12 +206,19 @@ def apply_schema(table: pa.Table) -> pa.Table:
             f"be matched unambiguously: {', '.join(colliding_names)}."
         )
 
-    actual_by_key = {key: names[0] for key, names in actual_names_by_key.items()}
+    table_by_key = {key: names[0] for key, names in table_names_by_key.items()}
+
+    file_names = (
+        list(table.column_names)
+        if file_column_names is None
+        else list(file_column_names)
+    )
+    file_keys = {_normalise_key(name) for name in file_names}
 
     missing = [
         field.published_name
         for field in fields
-        if _normalise_key(field.published_name) not in actual_by_key
+        if _normalise_key(field.published_name) not in file_keys
     ]
     if missing:
         raise SchemaDriftError(
@@ -194,16 +227,20 @@ def apply_schema(table: pa.Table) -> pa.Table:
             "its schema; tossd_reader's packaged schema.csv may need updating."
         )
 
-    matched_keys = {_normalise_key(field.published_name) for field in fields}
-    extra_names = [
-        name for key, name in actual_by_key.items() if key not in matched_keys
+    extra_in_file = [
+        name for name in file_names if _normalise_key(name) not in matched_keys
     ]
-    _warn_unknown_columns(extra_names)
+    _warn_unknown_columns(extra_in_file)
 
     names: list[str] = []
     arrays: list[pa.ChunkedArray | pa.Array] = []
     for field in fields:
-        actual_name = actual_by_key[_normalise_key(field.published_name)]
+        key = _normalise_key(field.published_name)
+        if key not in table_by_key:
+            # Deliberately not read (a narrower-than-file projection); already
+            # confirmed present in file_column_names above, so this is not drift.
+            continue
+        actual_name = table_by_key[key]
         column = table.column(actual_name)
         if pa.types.is_string(column.type) or pa.types.is_large_string(column.type):
             column = _empty_string_to_null(column)
@@ -212,7 +249,10 @@ def apply_schema(table: pa.Table) -> pa.Table:
         names.append(field.snake_name)
         arrays.append(column)
 
-    for name in extra_names:
+    extra_names_in_table = [
+        name for key, name in table_by_key.items() if key not in matched_keys
+    ]
+    for name in extra_names_in_table:
         names.append(name)
         arrays.append(table.column(name))
 

@@ -19,6 +19,8 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
+from tossd_reader.exceptions import TossdNetworkError
+
 # Latest year notes/build/audits/a1-reconciliation.md has recorded headline
 # totals for; bump alongside a fresh A1 audit re-run.
 YEAR: Final = 2024
@@ -121,9 +123,21 @@ def main(argv: list[str] | None = None) -> int:
     """CLI entry point: full-download `YEAR` and run the live reconciliation check.
 
     No arguments today (`argv` kept for symmetry with `check_vintage_drift.py`).
+
+    An unreachable publisher (`TossdNetworkError`) prints a clear
+    "Reconciliation check failed: <reason>" line to stdout (what the canary
+    job captures as the issue body) before returning a non-zero exit code,
+    rather than letting an uncaught traceback (stderr, not captured) leave
+    the issue body empty -- same fix as `check_vintage_drift.py`'s live
+    sweep wrapper.
     """
     del argv
-    return _report(_run_live_check(), year=YEAR)
+    try:
+        failures = _run_live_check()
+    except TossdNetworkError as exc:
+        print(f"Reconciliation check failed: {exc}")
+        return 1
+    return _report(failures, year=YEAR)
 
 
 if __name__ == "__main__":
