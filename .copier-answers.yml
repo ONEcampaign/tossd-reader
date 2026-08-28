@@ -1,0 +1,13 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: v1.1.1
+_src_path: /Users/jorge/repos/bblocks-projects
+author_email: jorge.rivera@one.org
+author_name: Jorge Rivera
+github_username: ONEcampaign
+license: mit
+preset: family
+project_description: Python package to access TOSSD activity-level data
+project_name: tossd-reader
+project_slug: tossd_reader
+project_type: package
+python_version: '3.12'
