@@ -20,11 +20,13 @@ def test_load_codelist_round_trips_a_packaged_dimension() -> None:
     assert frame["tossd_only"].dtype == bool
 
 
-def test_load_codelist_is_cached() -> None:
-    """Repeated calls for the same dimension return the identical cached object."""
+def test_load_codelist_returns_a_fresh_copy() -> None:
+    """A caller's in-place edit can't poison later calls to the same dimension."""
     first = codelists.load_codelist("pillar")
+    first.loc[0, "name"] = "mutated"
     second = codelists.load_codelist("pillar")
-    assert first is second
+    assert first is not second
+    assert (second["name"] != "mutated").all()
 
 
 def test_load_codelist_unknown_dimension_raises() -> None:

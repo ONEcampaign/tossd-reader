@@ -33,7 +33,6 @@ def _available_dimensions() -> tuple[str, ...]:
     return tuple(sorted(names))
 
 
-@lru_cache
 def load_codelist(dimension: str) -> pd.DataFrame:
     """Load one packaged codelist dimension's frame.
 
@@ -46,11 +45,18 @@ def load_codelist(dimension: str) -> pd.DataFrame:
     Returns:
         A `pandas.DataFrame` with `code`, `name`, and `tossd_only` columns
         (plus `iso3` for `provider`/`recipient`), sorted by `code` as
-        packaged.
+        packaged. Each call returns a fresh copy, so callers can mutate the
+        result without poisoning later calls.
 
     Raises:
         ValueError: `dimension` is not one of the packaged dimensions.
     """
+    return _load_codelist_cached(dimension).copy()
+
+
+@lru_cache
+def _load_codelist_cached(dimension: str) -> pd.DataFrame:
+    """Read and cache one packaged codelist CSV (shared object; do not expose)."""
     available = _available_dimensions()
     if dimension not in available:
         raise ValueError(
