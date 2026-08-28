@@ -3,8 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
+  # No base-branch filter: stacked PRs target the previous branch in the
+  # stack, not main, and still need CI.
   pull_request:
-    branches: [main]
 
 jobs:
   lint:
