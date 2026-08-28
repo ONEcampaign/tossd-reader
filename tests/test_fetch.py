@@ -418,6 +418,9 @@ def test_provenance_sidecar_written_and_write_if_absent(
     path = fetch.fetch_year(year)
     provenance_path = path.with_suffix(".provenance.json")
     assert provenance_path.exists()
+    assert not list(path.parent.glob("*.provenance.json.tmp-*")), (
+        "atomic-write temp file left behind"
+    )
 
     record = json.loads(provenance_path.read_text())
     assert record["url"] == url
@@ -504,6 +507,47 @@ def test_offline_rule_a_falls_back_to_mtime_without_a_provenance_sidecar(
         served_path = fetch.fetch_year(year)
 
     assert served_path == cached_path
+
+
+@pytest.mark.parametrize(
+    "corrupt_content",
+    [
+        b'{"url": "trunc',
+        b'"not-a-json-object"',
+        b"\x80\x81\x82",
+        b'{"retrieved_at": "not-a-date"}',
+    ],
+    ids=["truncated-json", "non-object-json", "non-utf8", "garbage-date"],
+)
+def test_offline_rule_a_tolerates_corrupt_provenance_sidecar(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, corrupt_content: bytes
+) -> None:
+    """A corrupt sidecar (e.g. truncated by a crash mid-write) degrades to the
+    mtime-based stale-serve warning, and the offline fallback keeps serving
+    the cached vintage."""
+    year = 2019
+    url = _url_for(year)
+    fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=5)
+    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
+    _patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e"')})
+    cached_path = fetch.fetch_year(year)
+    cached_path.with_suffix(".provenance.json").write_bytes(corrupt_content)
+
+    discovery._reset_for_tests()
+
+    def _offline_head_one(_session: requests.Session, _year: int) -> VintageInfo | None:
+        raise TossdNetworkError("simulated outage")
+
+    monkeypatch.setattr(discovery, "_head_one", _offline_head_one)
+
+    # A plain `pytest.warns(match=...)` would re-emit the corrupt-sidecar
+    # warning as unmatched, which filterwarnings=["error"] then escalates;
+    # capture everything and assert on the stale-serve warning directly.
+    with pytest.warns(UserWarning) as record:
+        served_path = fetch.fetch_year(year)
+
+    assert served_path == cached_path
+    assert any(str(year) in str(warning.message) for warning in record)
 
 
 def test_offline_rule_b_network_down_nothing_cached_raises(

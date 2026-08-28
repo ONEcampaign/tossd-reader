@@ -9,6 +9,29 @@ import pytest
 from tossd_reader import config, discovery, query
 
 
+@pytest.fixture(autouse=True, scope="session")
+def _session_cache_dir_floor(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Iterator[None]:
+    """Session-wide floor under the per-test cache-dir override.
+
+    The function-scoped ``_tossd_reader_cache_dir`` fixture only covers each
+    test's own body. Higher-scoped fixtures (instantiated before
+    function-scoped ones) and anything running between tests would otherwise
+    see an unset ``TOSSD_READER_CACHE_DIR`` and fall through to the user's
+    real platformdirs cache directory. Import-time code is beyond any
+    fixture's reach — collection finishes before fixtures run — but
+    ``test_package_init.py`` separately enforces that importing the package
+    touches no cache.
+    """
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setenv(
+            "TOSSD_READER_CACHE_DIR",
+            str(tmp_path_factory.mktemp("session-cache-floor")),
+        )
+        yield
+
+
 @pytest.fixture(autouse=True)
 def _tossd_reader_cache_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Point ``TOSSD_READER_CACHE_DIR`` at a per-test ``tmp_path``.

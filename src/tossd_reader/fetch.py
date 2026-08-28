@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import secrets
 import warnings
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -175,11 +177,16 @@ def _latest_cached(year: int) -> _CachedVintage | None:
     provenance = _read_provenance(newest.path) or {}
     etag = _as_str(provenance.get("etag"))
     retrieved_at_raw = _as_str(provenance.get("retrieved_at"))
-    retrieved_at = (
-        datetime.fromisoformat(retrieved_at_raw)
-        if retrieved_at_raw is not None
-        else None
-    )
+    try:
+        retrieved_at = (
+            datetime.fromisoformat(retrieved_at_raw)
+            if retrieved_at_raw is not None
+            else None
+        )
+    except ValueError:
+        # A garbage date inside otherwise-valid JSON: degrade to the mtime
+        # fallback, same as a missing sidecar.
+        retrieved_at = None
     return _CachedVintage(path=newest.path, etag=etag, retrieved_at=retrieved_at)
 
 
@@ -475,15 +482,62 @@ def _write_provenance_if_absent(
         "retrieved_at": datetime.now(UTC).isoformat(),
         "tossd_reader_version": __version__,
     }
-    provenance_path.write_text(json.dumps(record, indent=2))
+    # Written via a temp file + atomic rename so a crash mid-write can never
+    # leave a truncated sidecar behind (which `_read_provenance` would then
+    # have to discard, losing the entry's provenance for good). The suffix
+    # carries the pid plus random hex so concurrent writers never share a
+    # temp file, and matches readerkit's own `.tmp-` orphan-sweep pattern so
+    # a temp file orphaned by a crash is eventually collected by the cache
+    # directory's routine maintenance.
+    tmp = provenance_path.with_name(
+        f"{provenance_path.name}.tmp-{os.getpid()}-{secrets.token_hex(3)}"
+    )
+    tmp.write_text(json.dumps(record, indent=2))
+    tmp.replace(provenance_path)
 
 
 def _read_provenance(path: Path) -> dict[str, object] | None:
-    """Read `<path stem>.provenance.json`, or `None` if it doesn't exist."""
+    """Read `<path stem>.provenance.json`, or `None` when missing or corrupt.
+
+    A sidecar corrupted on disk (most plausibly a leftover from a non-atomic
+    write — this module's own write is atomic, see
+    `_write_provenance_if_absent`) must not take down its consumers — the
+    offline fallback's stale-serve warning and the export manifest — so a
+    present-but-unparseable sidecar warns and degrades to `None`. Filesystem
+    faults other than the file vanishing mid-read (permissions, I/O errors)
+    still propagate: those are environment problems, not corruption.
+    """
     provenance_path = path.with_suffix(".provenance.json")
     if not provenance_path.is_file():
         return None
-    return json.loads(provenance_path.read_text())
+    try:
+        record = json.loads(provenance_path.read_text())
+    except FileNotFoundError:
+        return None  # vanished since the is_file() check: same as missing
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        _warn_corrupt_provenance(provenance_path, reason=str(exc))
+        return None
+    if isinstance(record, dict):
+        return record
+    _warn_corrupt_provenance(provenance_path, reason="not a JSON object")
+    return None
+
+
+def _warn_corrupt_provenance(provenance_path: Path, *, reason: str) -> None:
+    """Warn that a present-but-unparseable sidecar is being ignored.
+
+    The warning is loud because the sidecar feeds the export manifest's audit
+    fields (`etag`/`retrieved_at`): a silent drop would leave a corrupt
+    sidecar indistinguishable in the manifest from an entry that never had
+    provenance at all.
+    """
+    warnings.warn(
+        f"Ignoring corrupt provenance sidecar {provenance_path} ({reason}); "
+        "the cached payload itself is unaffected.",
+        # 3 frames up: _warn_corrupt_provenance -> _read_provenance -> its
+        # caller (_latest_cached, or _export._vintage_provenance).
+        stacklevel=3,
+    )
 
 
 def _sha256(path: Path) -> str:

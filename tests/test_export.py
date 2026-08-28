@@ -149,6 +149,24 @@ def test_export_manifest_contents(
         datetime.fromisoformat(vintage["retrieved_at"])
 
 
+def test_export_manifest_warns_and_nulls_provenance_on_corrupt_sidecar(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A corrupt sidecar warns and yields null manifest audit fields."""
+    _setup_default_years(monkeypatch, tmp_path, [2019])
+    cached_path = fetch.fetch_year(2019)
+    cached_path.with_suffix(".provenance.json").write_text('{"url": "trunc')
+
+    with pytest.warns(UserWarning, match="corrupt provenance sidecar"):
+        destination = tossd_reader.export(tmp_path / "out", years=2019)
+
+    manifest_path = destination.parent / f"{destination.stem}.manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    vintage = manifest["vintages"]["2019"]
+    assert vintage["etag"] is None
+    assert vintage["retrieved_at"] is None
+
+
 # --- directory vs explicit file path handling -----------------------------------
 
 
