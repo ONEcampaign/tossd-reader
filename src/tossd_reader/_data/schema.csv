@@ -7,13 +7,13 @@ tossdid,tossd_id,string,string,false,true,true,false
 ProjectNumber,project_number,string,string,true,true,true,false
 recipientcode,recipient_code,string,Int16,false,true,true,false
 recipientnamee,recipient_name,string,category,false,true,true,false
-regionnamee,region_name,string,category,false,false,false,false
+regionnamee,region_name,string,category,false,false,true,false
 Channel,channel_raw_text,string,string,true,false,false,false
-ChannelCode,channel_code,string,Int32,true,false,false,false
+ChannelCode,channel_code,string,Int32,true,false,true,false
 ParentChannelCode,parent_channel_code,string,Int32,true,false,false,false
 parentchannelname_e,parent_channel_name,string,string,true,false,false,false
 otherPartners,other_partners,string,string,true,false,false,false
-ChannelName_E,channel_name,string,category,true,false,false,false
+ChannelName_E,channel_name,string,category,true,false,true,false
 Financeinstrument,finance_instrument_code,string,Int16,true,false,true,false
 FinanceinstrumentName_e,finance_instrument_name,string,category,true,false,true,false
 FinancingArrangement,financing_arrangement_code,string,category,true,false,true,false

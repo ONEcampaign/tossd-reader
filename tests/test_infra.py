@@ -74,6 +74,6 @@ def test_schema_csv_sanity() -> None:
     assert len(schema_df) == 53
     assert (schema_df["is_usd_thousand_amount"] == "true").sum() == 8
     assert (schema_df["preset_minimal"] == "true").sum() == 17
-    assert (schema_df["preset_analysis"] == "true").sum() == 39
+    assert (schema_df["preset_analysis"] == "true").sum() == 42
     assert schema_df["snake_name"].is_unique
     assert schema_df["published_name"].is_unique

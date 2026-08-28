@@ -63,8 +63,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          existing=$(gh issue list --state open --label data-drift \
-            --json number --jq '.[0].number // empty')
+          existing=$(gh issue list --state open --label data-drift --json number,title \
+            --jq '[.[] | select(.title | startswith("Codelist drift detected"))][0].number // empty')
           if [ -n "$existing" ]; then
             echo "An open codelist-drift issue already exists (#$existing); not creating a duplicate."
             exit 0

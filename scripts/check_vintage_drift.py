@@ -9,6 +9,7 @@ importable, and its diff logic testable, without ever opening a socket).
 Run manually:
     uv run python scripts/check_vintage_drift.py
     uv run python scripts/check_vintage_drift.py --check <reference.json> <live.json>
+    uv run python scripts/check_vintage_drift.py --record <output.json>
 """
 
 from __future__ import annotations
@@ -16,8 +17,11 @@ from __future__ import annotations
 import argparse
 import importlib.resources
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TypedDict
+
+from tossd_reader.exceptions import TossdNetworkError
 
 
 class _VintageRecord(TypedDict):
@@ -99,6 +103,20 @@ def _run_live_sweep() -> dict[int, _VintageRecord]:
     }
 
 
+def _write_records(path: Path, records: dict[int, _VintageRecord]) -> None:
+    """Write `records` to `path`, matching `known_vintages.json`'s own shape.
+
+    Every entry gets the same `recorded_at` stamp (this sweep's time), same
+    convention as the packaged `known_vintages.json`.
+    """
+    recorded_at = datetime.now(UTC).isoformat()
+    payload = {
+        str(year): {**record, "recorded_at": recorded_at}
+        for year, record in sorted(records.items())
+    }
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+
+
 def _report(diffs: list[str]) -> int:
     """Print `diffs` and return the process exit code."""
     if not diffs:
@@ -113,11 +131,20 @@ def _report(diffs: list[str]) -> int:
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point.
 
-    Two modes:
+    Three modes:
     - Default: sweep live and compare against the packaged
       `known_vintages.json`.
     - `--check <reference.json> <live.json>`: pure offline diff between two
       already-written `{year: {etag, size_bytes}}` JSON files; no network.
+    - `--record <output.json>`: sweep live and write a fresh
+      `known_vintages.json`-shaped snapshot to `output.json` -- the refresh
+      an operator runs after a drift alert, per the canary issue body.
+
+    A live sweep that can't reach the publisher at all (`TossdNetworkError`)
+    prints a clear "sweep failed" diagnostic to stdout (the canary job
+    captures stdout as the issue body) before returning a non-zero exit
+    code, rather than letting an uncaught traceback (stderr, not captured)
+    leave the issue body empty.
     """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -125,6 +152,11 @@ def main(argv: list[str] | None = None) -> int:
         nargs=2,
         metavar=("REFERENCE_JSON", "LIVE_JSON"),
         help="Pure offline diff between two vintage-record JSON files; exits 1 on drift.",
+    )
+    parser.add_argument(
+        "--record",
+        metavar="OUTPUT_JSON",
+        help="Sweep live and write a fresh known_vintages.json-shaped snapshot to OUTPUT_JSON.",
     )
     args = parser.parse_args(argv)
 
@@ -134,7 +166,19 @@ def main(argv: list[str] | None = None) -> int:
             diff_vintages(_load_records(reference_path), _load_records(live_path))
         )
 
-    return _report(diff_vintages(load_reference(), _run_live_sweep()))
+    try:
+        live = _run_live_sweep()
+    except TossdNetworkError as exc:
+        print(f"Vintage sweep failed: {exc}")
+        return 1
+
+    if args.record is not None:
+        output_path = Path(args.record)
+        _write_records(output_path, live)
+        print(f"Wrote {len(live)} vintage record(s) to {output_path}.")
+        return 0
+
+    return _report(diff_vintages(load_reference(), live))
 
 
 if __name__ == "__main__":

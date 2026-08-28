@@ -12,6 +12,7 @@ import pyarrow.parquet as pq
 import pytest
 import requests
 
+import tossd_reader
 from tests.fixtures import build_tossd_table
 from tossd_reader import discovery, fetch, query
 from tossd_reader.discovery import VintageInfo
@@ -92,20 +93,116 @@ def _with_bad_parent_channel_code(
     )
 
 
+def _with_known_parent_channel_code(table: pa.Table, code: str = "11000") -> pa.Table:
+    """Return a copy of `table` with row 0's `ParentChannelCode` set to `code`.
+
+    `code="11000"` ("Provider Government") is present in the packaged
+    `channel.csv` codelist.
+    """
+    index = table.column_names.index("ParentChannelCode")
+    values = table.column("ParentChannelCode").to_pylist()
+    values[0] = code
+    return table.set_column(
+        index, "ParentChannelCode", pa.array(values, type=pa.string())
+    )
+
+
 # --- D6: categorical dtype survives a multi-year concat -----------------------
 
 
-def test_multi_year_concat_keeps_categorical_dtype(
+def test_multi_year_concat_unifies_divergent_categorical_dictionaries(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """A 3-year query keeps `provider_name` dictionary-encoded end to end."""
-    years = [2019, 2020, 2021]
-    _setup_default_years(monkeypatch, tmp_path, years, n_rows=20)
+    """A 3-year query keeps `provider_name` dictionary-encoded, even with divergent per-year vocab.
 
-    df = query.get_tossd(years=years)
+    Each year uses a different `n_rows` (and seed) so its `provider_name`
+    dictionary covers a genuinely different subset of the fixture's 5
+    providers plus the aggregate row (2019: 2 distinct, 2020: all 6, 2021: 4
+    distinct) -- unlike a same-seed/same-size fixture (every year already
+    carrying an identical dictionary), this can't pass merely because
+    `.unify_dictionaries()` was a no-op; only genuinely reconciling
+    different per-chunk dictionaries into one shared dictionary does.
+    """
+    tables = {
+        2019: build_tossd_table(2019, n_rows=4, seed=0),
+        2020: build_tossd_table(2020, n_rows=8, seed=1),
+        2021: build_tossd_table(2021, n_rows=6, seed=2),
+    }
+    _setup_years(monkeypatch, tmp_path, tables)
 
+    combined, _paths = query._build_table(
+        years=[2019, 2020, 2021],
+        providers=None,
+        recipients=None,
+        pillars=None,
+        columns="all",
+        units="usd_thousand",
+        refresh=False,
+        op_name="test:unify_dictionaries",
+    )
+    provider_column = combined.column("provider_name")
+    dictionaries = [chunk.dictionary.to_pylist() for chunk in provider_column.chunks]
+    assert len(dictionaries) > 1, "fixture setup should produce multiple chunks"
+    assert all(dictionary == dictionaries[0] for dictionary in dictionaries), (
+        "unify_dictionaries should give every chunk an identical dictionary"
+    )
+
+    df = combined.to_pandas()
     assert isinstance(df["provider_name"].dtype, pd.CategoricalDtype)
-    assert len(df) == 20 * len(years)
+    assert set(df["provider_name"]) == {
+        "Aggregate",
+        "Provider Alpha",
+        "Provider Beta",
+        "Provider Delta",
+        "Provider Epsilon",
+        "Provider Gamma",
+    }
+    assert len(df) == 4 + 8 + 6
+
+
+# --- one discovery sweep per call, not once per requested year ----------------
+
+
+def test_get_tossd_multi_year_refresh_sweeps_discovery_exactly_once(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A multi-year get_tossd(refresh=True) call sweeps discovery once, not once per year."""
+    years = [2019, 2020, 2021]
+    _setup_default_years(monkeypatch, tmp_path, years, n_rows=5)
+
+    calls: list[bool] = []
+    real_discover = discovery.discover
+
+    def _spy(*, refresh: bool = False) -> dict:
+        calls.append(refresh)
+        return real_discover(refresh=refresh)
+
+    monkeypatch.setattr(discovery, "discover", _spy)
+
+    query.get_tossd(years=years, refresh=True)
+
+    assert len(calls) == 1
+
+
+def test_export_multi_year_refresh_sweeps_discovery_exactly_once(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A multi-year export(refresh=True) call sweeps discovery once, not once per year."""
+    years = [2019, 2020, 2021]
+    _setup_default_years(monkeypatch, tmp_path, years, n_rows=5)
+
+    calls: list[bool] = []
+    real_discover = discovery.discover
+
+    def _spy(*, refresh: bool = False) -> dict:
+        calls.append(refresh)
+        return real_discover(refresh=refresh)
+
+    monkeypatch.setattr(discovery, "discover", _spy)
+
+    tossd_reader.export(tmp_path / "out", years=years, refresh=True)
+
+    assert len(calls) == 1
 
 
 # --- providers / recipients: code / name / digit-string / miss ----------------
@@ -163,6 +260,26 @@ def test_recipient_filter_by_name_and_iterable(
     assert set(df["recipient_code"]) <= {55, 269}
 
 
+def test_provider_int_outside_int16_range_raises_unknown_code_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A plain-int provider code outside Int16 range raises UnknownCodeError, not ArrowInvalid."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=5)
+
+    with pytest.raises(UnknownCodeError, match="123456789"):
+        query.get_tossd(years=2019, providers=123456789)
+
+
+def test_recipient_int_outside_int16_range_raises_unknown_code_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A plain-int recipient code outside Int16 range raises UnknownCodeError, not ArrowInvalid."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=5)
+
+    with pytest.raises(UnknownCodeError, match="-99999"):
+        query.get_tossd(years=2019, recipients=-99999)
+
+
 def test_unknown_provider_name_raises_unknown_code_error_with_suggestions(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -202,6 +319,23 @@ def test_resolvekit_is_imported_lazily_only_on_the_unknown_code_error_path() -> 
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "OK"
+
+
+def test_suggestion_falls_back_to_difflib_when_resolvekit_raises(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """If resolvekit's suggestion helper raises, the difflib fallback still suggests sensibly."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=5)
+
+    def _boom(dimension: str, token: str) -> list[str]:
+        raise RuntimeError("resolvekit exploded")
+
+    monkeypatch.setattr(query, "_suggest_with_resolvekit", _boom)
+
+    with pytest.raises(UnknownCodeError, match="Austrai") as excinfo:
+        query.get_tossd(years=2019, providers="Austrai")
+
+    assert "Austria" in str(excinfo.value)
 
 
 # --- pillars: every token, filter semantics, pillar-0 --------------------------
@@ -388,6 +522,45 @@ def test_user_column_list_forces_always_present_columns(
         assert name in df.columns
 
 
+def test_columns_all_preserves_schema_drift_extra_columns(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A schema-drift passthrough column survives columns="all" and export(), not presets/lists.
+
+    `schema.apply_schema` passes an unknown extra column through raw (with a
+    warning), documented as "only visible with columns='all'" -- this checks
+    that promise actually holds end to end, for both `get_tossd` and
+    `export()`.
+    """
+    table = build_tossd_table(2019, n_rows=10, seed=0)
+    with_extra = table.append_column(
+        "SurpriseNewColumn", pa.array(["x"] * table.num_rows)
+    )
+    _setup_years(monkeypatch, tmp_path, {2019: with_extra})
+
+    with pytest.warns(UserWarning, match="SurpriseNewColumn"):
+        df_all = query.get_tossd(years=2019, columns="all")
+    assert "SurpriseNewColumn" in df_all.columns
+    assert df_all["SurpriseNewColumn"].tolist() == ["x"] * 10
+    # schema columns first, extras appended before the always-forced derived
+    # columns (is_aggregate/unit).
+    assert list(df_all.columns)[-3:] == ["SurpriseNewColumn", "is_aggregate", "unit"]
+
+    df_minimal = query.get_tossd(years=2019, columns="minimal")
+    assert "SurpriseNewColumn" not in df_minimal.columns
+
+    df_analysis = query.get_tossd(years=2019, columns="analysis")
+    assert "SurpriseNewColumn" not in df_analysis.columns
+
+    df_explicit = query.get_tossd(years=2019, columns=["provider_code"])
+    assert "SurpriseNewColumn" not in df_explicit.columns
+
+    destination = tossd_reader.export(tmp_path / "out", years=2019)
+    written = pq.read_table(destination)
+    assert "SurpriseNewColumn" in written.column_names
+    assert written.column("SurpriseNewColumn").to_pylist() == ["x"] * 10
+
+
 def test_unknown_column_name_raises_value_error_with_suggestion(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -501,6 +674,18 @@ def test_unknown_parent_channel_code_warns_aggregated_and_passes_through_null(
     # code only). filterwarnings=["error"] means an unexpected repeat would
     # fail this test outright.
     query.get_tossd(years=2019)
+
+
+def test_known_parent_channel_code_decodes_to_channel_codelist_name(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A parent_channel_code present in the packaged channel codelist decodes to its label."""
+    table = _with_known_parent_channel_code(build_tossd_table(2019, n_rows=20, seed=0))
+    _setup_years(monkeypatch, tmp_path, {2019: table})
+
+    df = query.get_tossd(years=2019)
+
+    assert df.loc[0, "parent_channel_name"] == "Provider Government"
 
 
 def test_reset_for_tests_clears_unknown_code_warn_state(

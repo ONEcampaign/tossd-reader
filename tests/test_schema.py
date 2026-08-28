@@ -108,7 +108,7 @@ def test_cast_failure_raises_schema_drift_error() -> None:
 def test_preset_columns_counts() -> None:
     """Regression pins for preset sizes: update these if schema.csv's preset flags change."""
     assert len(schema.preset_columns("minimal")) == 17
-    assert len(schema.preset_columns("analysis")) == 39
+    assert len(schema.preset_columns("analysis")) == 42
     assert len(schema.preset_columns("all")) == len(schema.load_schema())
 
 

@@ -55,6 +55,14 @@ def export(
         vintage provenance (etag/retrieved_at), the total row count, and
         the export's creation timestamp.
 
+    Note:
+        `years=None` (the default) materialises the full packaged
+        known-years set as one arrow table, all in memory, before it's
+        ever written to disk (`columns="all"`, per this function's own
+        contract) -- measured at roughly 2.1GB+ resident for the full set.
+        Pass an explicit `years=` to export a smaller slice if that's a
+        concern.
+
     Raises:
         ValueError: `years` resolves to an empty set of years.
         UnknownCodeError, InvalidPillarError, TossdNetworkError,

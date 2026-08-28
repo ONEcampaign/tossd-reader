@@ -13,6 +13,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
+from tossd_reader.exceptions import TossdNetworkError
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "check_vintage_drift.py"
 
@@ -88,6 +92,52 @@ def test_check_detects_new_year(tmp_path: Path) -> None:
 
     assert result.returncode == 1
     assert "newly published" in result.stdout
+
+
+def test_main_prints_clear_diagnostic_when_live_sweep_fails(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An uncaught TossdNetworkError from the live sweep never leaves an empty report.
+
+    `main()`'s default (network) mode wraps the live sweep so a
+    `TossdNetworkError` prints a clear "sweep failed" line to stdout (what
+    the canary job captures as the issue body) and returns 1, instead of an
+    uncaught traceback going to stderr and leaving stdout (the report) empty.
+    """
+    module = _import_script()
+    monkeypatch.setattr(
+        module,
+        "_run_live_sweep",
+        lambda: (_ for _ in ()).throw(TossdNetworkError("publisher unreachable")),
+    )
+
+    exit_code = module.main([])
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "sweep failed" in captured.out.lower()
+    assert "publisher unreachable" in captured.out
+
+
+def test_record_mode_writes_a_fresh_known_vintages_snapshot(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`--record <path>` sweeps live and writes a known_vintages.json-shaped file."""
+    module = _import_script()
+    monkeypatch.setattr(
+        module,
+        "_run_live_sweep",
+        lambda: {2019: {"etag": '"e19"', "size_bytes": 100}},
+    )
+    output_path = tmp_path / "known_vintages.json"
+
+    exit_code = module.main(["--record", str(output_path)])
+
+    assert exit_code == 0
+    payload = json.loads(output_path.read_text())
+    assert payload["2019"]["etag"] == '"e19"'
+    assert payload["2019"]["size_bytes"] == 100
+    assert "recorded_at" in payload["2019"]
 
 
 def test_load_reference_reads_the_packaged_known_vintages_json() -> None:

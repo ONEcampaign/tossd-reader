@@ -226,6 +226,8 @@ def _build_table(
 
     combined = pa.concat_tables(tables).unify_dictionaries()
     combined = _add_derived_columns(combined, units=units)
+    if columns == "all":
+        column_names = _with_passthrough_extras(column_names, combined.column_names)
     combined = combined.select(column_names)
     combined = _convert_units(combined, units=units)
 
@@ -451,21 +453,54 @@ def _apply_row_filters(
 ) -> pa.Table:
     """Apply every requested filter to one year's already-typed table."""
     if provider_codes is not None:
-        table = _filter_codes(table, "provider_code", provider_codes)
+        table = _filter_codes(table, "provider_code", provider_codes, label="providers")
     if recipient_codes is not None:
-        table = _filter_codes(table, "recipient_code", recipient_codes)
+        table = _filter_codes(
+            table, "recipient_code", recipient_codes, label="recipients"
+        )
     if pillar_main is not None:
         table = _filter_pillar(table, pillar_main, pillar_sub)
     return table
 
 
 def _filter_codes(
-    table: pa.Table, column_name: str, codes: tuple[int, ...]
+    table: pa.Table, column_name: str, codes: tuple[int, ...], *, label: str
 ) -> pa.Table:
-    """Keep only rows whose `column_name` value is one of `codes`."""
+    """Keep only rows whose `column_name` value is one of `codes`.
+
+    A plain `int` token is trusted directly as a code (never checked against
+    the packaged codelist -- see `_resolve_one_code`), but it still has to
+    fit the file's actual column type (`Int16` for both `provider_code` and
+    `recipient_code` today). A value that doesn't raises `UnknownCodeError`
+    naming the offender, rather than leaking pyarrow's own `ArrowInvalid`.
+    """
     column = table.column(column_name)
-    values = pa.array(codes, type=column.type)
+    values = _codes_as_array(codes, column.type, label=label)
     return table.filter(pc.is_in(column, value_set=values))  # ty: ignore[unresolved-attribute]
+
+
+def _codes_as_array(
+    codes: tuple[int, ...], target_type: pa.DataType, *, label: str
+) -> pa.Array:
+    """Cast `codes` to `target_type`, raising `UnknownCodeError` naming any out-of-range value."""
+    try:
+        return pa.array(codes, type=target_type)
+    except pa.lib.ArrowInvalid as exc:
+        offending = [code for code in codes if _code_overflows(code, target_type)]
+        values = ", ".join(str(code) for code in offending)
+        raise UnknownCodeError(
+            f"{values} did not match any {label} code: outside the range "
+            f"representable by the published file's {target_type} column."
+        ) from exc
+
+
+def _code_overflows(code: int, target_type: pa.DataType) -> bool:
+    """Whether `code` cannot be represented as `target_type` (e.g. Int16 overflow)."""
+    try:
+        pa.array([code], type=target_type)
+    except pa.lib.ArrowInvalid:
+        return True
+    return False
 
 
 def _filter_pillar(
@@ -534,7 +569,7 @@ def _warn_unknown_decode_codes(column_name: str, missing_values: list[object]) -
         f"{len(new_missing)} code(s) across 1 column(s) not in the packaged "
         "codelists (vintage newer than snapshot?): "
         f"{column_name} has {', '.join(new_missing)}.",
-        # 4 frames up from here: _warn_unknown_decode_codes ->
+        # 5 frames up from here: _warn_unknown_decode_codes ->
         # _decode_parent_channel -> _add_derived_columns -> _build_table ->
         # get_tossd (or export()) -> the caller. Both wrap `_build_table` at
         # the same depth, so this stacklevel is correct either way. Verified
@@ -561,6 +596,39 @@ def _resolve_columns(
         if forced not in selected:
             selected.append(forced)
     return selected
+
+
+def _with_passthrough_extras(
+    column_names: list[str], actual_names: list[str]
+) -> list[str]:
+    """Extend an already-resolved `columns="all"` list with any passthrough extras.
+
+    `schema.apply_schema` deliberately passes an unknown-extra column through
+    raw (with a one-time warning) rather than dropping it, but a plain
+    `combined.select(column_names)` built from `schema.preset_columns("all")`
+    silently drops it anyway, contradicting that warning's own text ("only
+    visible with `columns='all'`"). Only called for `columns="all"`: presets
+    and explicit `columns=` lists never gain extras.
+
+    Args:
+        column_names: The already-resolved `"all"`-preset column list (schema
+            columns, in schema.csv order, plus the forced derived columns).
+        actual_names: `combined.column_names` -- the combined table's actual
+            columns, schema columns first, any extras next (in file order,
+            per `apply_schema`), then the derived columns.
+
+    Returns:
+        `column_names` unchanged if there are no extras; otherwise schema
+        columns first, extras appended in file order, then the derived
+        columns (`is_aggregate`/`unit`) last.
+    """
+    extras = [name for name in actual_names if name not in column_names]
+    if not extras:
+        return column_names
+    schema_names = set(schema.preset_columns("all"))
+    schema_ordered = [name for name in column_names if name in schema_names]
+    derived_ordered = [name for name in column_names if name not in schema_names]
+    return schema_ordered + extras + derived_ordered
 
 
 def _valid_column_names() -> set[str]:
