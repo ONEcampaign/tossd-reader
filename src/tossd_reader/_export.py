@@ -20,14 +20,13 @@ __init__.py` re-exports `export` from here instead.
 from __future__ import annotations
 
 import hashlib
-import importlib.resources
 import json
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pyarrow.parquet as pq
 
-from tossd_reader import __version__, fetch, query
+from tossd_reader import __version__, _resources, fetch, query
 
 _OP_NAME = "tossd_reader:export"
 _COMPRESSION = "zstd"
@@ -150,7 +149,6 @@ def _vintage_provenance(path: Path) -> dict[str, str | None]:
 
 def _schema_hash() -> str:
     """Sha256 of the packaged `_data/schema.csv`, CRLF-normalised for OS-stability."""
-    resource = importlib.resources.files("tossd_reader") / "_data" / "schema.csv"
-    with importlib.resources.as_file(resource) as schema_path:
+    with _resources.data_path("schema.csv") as schema_path:
         data = schema_path.read_bytes()
     return hashlib.sha256(data.replace(b"\r\n", b"\n")).hexdigest()

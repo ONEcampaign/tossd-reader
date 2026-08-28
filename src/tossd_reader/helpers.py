@@ -15,11 +15,12 @@ into `sys.modules`.
 
 from __future__ import annotations
 
-import importlib.resources
 from functools import lru_cache
 from typing import TYPE_CHECKING
 
 import pandas as pd
+
+from tossd_reader import _resources
 
 if TYPE_CHECKING:
     import resolvekit
@@ -222,10 +223,7 @@ def add_iso3(df: pd.DataFrame) -> pd.DataFrame:
 @lru_cache
 def _keyword_markers() -> pd.DataFrame:
     """Load the packaged 12-marker keyword table (`_data/keyword_markers.csv`)."""
-    resource = (
-        importlib.resources.files("tossd_reader") / "_data" / "keyword_markers.csv"
-    )
-    with importlib.resources.as_file(resource) as path:
+    with _resources.data_path("keyword_markers.csv") as path:
         return pd.read_csv(path)
 
 
@@ -292,10 +290,7 @@ def extract_keywords(df: pd.DataFrame) -> pd.DataFrame:
 @lru_cache
 def _load_structural_breaks() -> pd.DataFrame:
     """Load (once per process) the packaged structural-breaks reference table."""
-    resource = (
-        importlib.resources.files("tossd_reader") / "_data" / "structural_breaks.csv"
-    )
-    with importlib.resources.as_file(resource) as path:
+    with _resources.data_path("structural_breaks.csv") as path:
         return pd.read_csv(path)
 
 

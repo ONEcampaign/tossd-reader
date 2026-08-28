@@ -8,7 +8,6 @@ requested year comes back missing; this module only reports what it saw.
 
 from __future__ import annotations
 
-import importlib.resources
 import json
 import warnings
 from dataclasses import dataclass
@@ -18,6 +17,7 @@ from functools import cache
 import requests
 from readerkit import build_session
 
+from tossd_reader import _resources
 from tossd_reader.exceptions import TossdNetworkError
 
 _APP_NAME = "tossd-reader"
@@ -64,8 +64,7 @@ _state = _DiscoveryState()
 @cache
 def known_years() -> tuple[int, ...]:
     """Return the packaged known-years set (`_data/known_years.json`)."""
-    resource = importlib.resources.files("tossd_reader") / "_data" / "known_years.json"
-    with importlib.resources.as_file(resource) as path:
+    with _resources.data_path("known_years.json") as path:
         years = json.loads(path.read_text())
     return tuple(sorted(years))
 

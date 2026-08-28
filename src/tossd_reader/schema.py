@@ -10,7 +10,6 @@ error: it warns once per session and passes through raw, visible only in
 from __future__ import annotations
 
 import csv
-import importlib.resources
 import warnings
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -20,6 +19,7 @@ from typing import Literal
 import pyarrow as pa
 import pyarrow.compute as pc
 
+from tossd_reader import _resources
 from tossd_reader.exceptions import SchemaDriftError
 
 _SEPARATOR_TABLE = str.maketrans("", "", "_- ")
@@ -87,8 +87,7 @@ def load_schema() -> tuple[SchemaField, ...]:
     Cached for the life of the process — the packaged schema table never
     changes at runtime.
     """
-    resource = importlib.resources.files("tossd_reader") / "_data" / "schema.csv"
-    with importlib.resources.as_file(resource) as path, path.open(newline="") as handle:
+    with _resources.data_path("schema.csv") as path, path.open(newline="") as handle:
         return tuple(_parse_row(row) for row in csv.DictReader(handle))
 
 

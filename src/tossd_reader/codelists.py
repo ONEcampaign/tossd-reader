@@ -12,13 +12,13 @@ module only loads and reports what is packaged.
 
 from __future__ import annotations
 
-import importlib.resources
 import json
 from datetime import datetime
 from functools import lru_cache
 
 import pandas as pd
 
+from tossd_reader import _resources
 from tossd_reader.discovery import known_years
 
 _YEARS_KEY = "years"
@@ -27,8 +27,7 @@ _YEARS_KEY = "years"
 @lru_cache
 def _available_dimensions() -> tuple[str, ...]:
     """Return every packaged codelist dimension name, sorted alphabetically."""
-    resource = importlib.resources.files("tossd_reader") / "_data" / "codelists"
-    with importlib.resources.as_file(resource) as path:
+    with _resources.data_path("codelists") as path:
         names = [child.stem for child in path.glob("*.csv")]
     return tuple(sorted(names))
 
@@ -63,13 +62,7 @@ def _load_codelist_cached(dimension: str) -> pd.DataFrame:
             f"Unknown codelist dimension {dimension!r}; available: "
             f"{', '.join(available)}."
         )
-    resource = (
-        importlib.resources.files("tossd_reader")
-        / "_data"
-        / "codelists"
-        / f"{dimension}.csv"
-    )
-    with importlib.resources.as_file(resource) as path:
+    with _resources.data_path("codelists", f"{dimension}.csv") as path:
         return pd.read_csv(path, dtype={"code": str})
 
 
@@ -101,12 +94,6 @@ def get_codelists_version() -> str:
         The `_version.json` `fetched_at` stamp's date portion, e.g.
         `"2026-08-28"`.
     """
-    resource = (
-        importlib.resources.files("tossd_reader")
-        / "_data"
-        / "codelists"
-        / "_version.json"
-    )
-    with importlib.resources.as_file(resource) as path:
+    with _resources.data_path("codelists", "_version.json") as path:
         payload = json.loads(path.read_text())
     return datetime.fromisoformat(payload["fetched_at"]).date().isoformat()
