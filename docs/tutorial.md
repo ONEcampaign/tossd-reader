@@ -62,10 +62,9 @@ sen.shape
 `recipients="Senegal"` matches the name case-foldedly against the packaged
 recipient codelist. `columns="minimal"` keeps 19 columns, enough for this
 tutorial (`tossd_pillar` and `is_aggregate` are always included regardless of
-the preset). `columns="all"` would return 55, the 53 published columns plus
-2 computed ones. `units="usd_million"` divides the eight `usd_*` amount
-columns by 1000, so disbursements read in millions instead of the published
-thousands.
+the preset). `columns="all"` would return 55, the 53 published columns plus 2
+computed ones. `units="usd_million"` divides the eight `usd_*` amount columns
+by 1000, so disbursements read in millions instead of the published thousands.
 
 Sort by disbursement to see the largest activities:
 
@@ -105,7 +104,7 @@ Name: usd_disbursement, dtype: float64
 Group by `provider_name` to rank Senegal's largest providers the same way:
 
 ```python
-# ❌ "Aggregate" isn't a provider, it's the publisher's pseudo-provider rows
+# ❌ "Aggregate" is the publisher's pseudo-provider rows, not a real provider name
 sen.groupby("provider_name", observed=True)["usd_disbursement"].sum().sort_values(
     ascending=False
 ).round(1).head(5)
@@ -150,8 +149,8 @@ rows are real disbursements and belong in a pillar-level total.
 
 ## Step 4: Extend to all six years
 
-Drop `years=2024` for a `range` covering 2019 through 2024, the full
-published history:
+Drop `years=2024` for a `range` covering 2019 through 2024, the
+full published history:
 
 !!! warning "Heads up"
 
@@ -208,10 +207,10 @@ year
 2024          NaN  2280.6  367.4
 ```
 
-The `0` column is a placeholder
-pillar the publisher used for a handful of rows between 2020 and 2023, not a
-third pillar. [About the data model](about/data-model.md) covers it and the
-rest of the pillar and aggregate mechanics in full.
+The `0` column is a placeholder pillar the publisher used for a handful of
+rows between 2020 and 2023, not a third pillar.
+[About the data model](about/data-model.md) covers it and the rest of the
+pillar and aggregate mechanics in full.
 
 ## Step 5: Save the result
 
@@ -232,17 +231,21 @@ rows, ready for a spreadsheet or a chart.
 
 ## What you learned
 
-- Pulled a filtered, typed frame for Senegal's 2024 TOSSD activity, 4,802 rows across 19 columns
-- Totalled Senegal's 2024 disbursements by pillar, 2280.6 USD million in Pillar I against 367.4 in Pillar II
-- Ranked providers with `is_aggregate` filtered out, which moved Japan into fifth place
-- Combined all six published years, 2019 through 2024, into one frame and pivoted it by year and pillar
+- Pulled a filtered, typed frame for Senegal's 2024 TOSSD activity, 4,802 rows
+  across 19 columns
+- Totalled Senegal's 2024 disbursements by pillar, 2280.6 USD million in Pillar
+  I against 367.4 in Pillar II
+- Ranked providers with `is_aggregate` filtered out, which moved
+  Japan into fifth place
+- Combined all six published years, 2019 through 2024, into one frame and
+  pivoted it by year and pillar
 - Saved the pivot to `senegal_tossd_by_pillar_2019_2024.csv`
 
 ## What's next
 
-- [About the data model](about/data-model.md): the full pillar, sub-pillar,
-  and aggregate-row mechanics behind what you filtered here.
-- [Work offline and manage the cache](how-to/work-offline.md): where the
-  downloaded files live, and how to query without a network connection.
-- [Query and export](reference/query.md): every `get_tossd` parameter, plus
-  `export` for freezing a full reproducible extract to disk.
+- [About the data model](about/data-model.md) covers the full pillar,
+  sub-pillar, and aggregate-row mechanics behind what you filtered here.
+- [Work offline and manage the cache](how-to/work-offline.md) covers where the
+  downloaded files live and how to query without a network connection.
+- [Query and export](reference/query.md) documents every `get_tossd` parameter,
+  plus `export` for freezing a full reproducible extract to disk.

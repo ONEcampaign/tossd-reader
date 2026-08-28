@@ -3,10 +3,10 @@
 As of v0.1, `tossd_reader.helpers` ships five functions that run after
 `get_tossd()`, on the frame it returns. All five take a `pandas.DataFrame`
 and return a new one (`get_structural_breaks` takes none and returns the
-packaged reference table instead). None of them mutate the frame you pass
-in, and none of them touch the network. `add_iso3` looks like the one
-exception. It resolves codes through a `resolvekit` module bundled for
-offline use, so no request goes out.
+packaged reference table instead). None of them mutate the input frame, and
+none of them touch the network. `add_iso3` looks like the one exception. It
+resolves codes through a `resolvekit` module bundled for offline use, so no
+request goes out.
 
 Each helper checks its required columns up front and raises `ValueError`
 naming the one it's missing, rather than failing later with a bare
@@ -106,6 +106,6 @@ category. Sector families 910 (administrative costs of donors) and 930
 disbursements in 2024. TOSSD has not published an official
 own-country-costs definition.
 
-Next: [Analyse activities by SDG](../how-to/analyse-by-sdg.md) walks
+Next, [Analyse activities by SDG](../how-to/analyse-by-sdg.md) walks
 through `explode_sdg` end to end. [Columns, presets, and units](columns.md)
 lists what each preset carries.

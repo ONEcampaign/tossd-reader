@@ -38,19 +38,17 @@ pip install git+https://github.com/ONEcampaign/tossd-reader.git
 ## Where to go next
 
 - [Tutorial](tutorial.md) builds a year-by-pillar disbursement table for
-  Senegal across all six published years, about ten minutes including the
-  one-time download.
+  Senegal across all six published years, about ten minutes including
+  the one-time download.
 - [How to work offline and manage the cache](how-to/work-offline.md) covers
   moving the cache directory, forcing a refresh, and what happens when the
   publisher is unreachable.
 - [How to export a reproducible extract](how-to/export-an-extract.md) walks
-  through writing a full, unfiltered extract to parquet with a provenance
-  manifest.
+  through writing a full, unfiltered extract to parquet with a provenance manifest.
 - [How to analyse activities by SDG](how-to/analyse-by-sdg.md) shows how to
   explode the packed SDG codes and sum weighted disbursements per goal.
 - [Query and export](reference/query.md) documents `get_tossd`,
-  `get_tossd_raw`, `export`, `get_available_filters`, and
-  `get_codelists_version`.
+  `get_tossd_raw`, `export`, `get_available_filters`, and `get_codelists_version`.
 - [Helpers](reference/helpers.md), [Columns, presets, and units](reference/columns.md),
   and [Configuration and errors](reference/configuration.md) cover the
   post-query helper functions, the column presets, and `set_cache_dir` with
