@@ -1,4 +1,4 @@
-"""Unit tests for fetch.py: caching, D2 offline rules, D4 provenance, D10 validation."""
+"""Unit tests for fetch.py: caching, offline fallback rules, provenance, structural validation."""
 
 from __future__ import annotations
 
@@ -295,7 +295,7 @@ def test_make_fetcher_raises_etag_mismatch_before_writing_bytes(tmp_path: Path) 
 
 
 def test_make_fetcher_rekeys_when_head_had_no_etag_but_get_does(tmp_path: Path) -> None:
-    """H3: a HEAD sweep with no ETag doesn't block the GET's own ETag from winning."""
+    """A HEAD sweep with no ETag still lets the GET's own ETag win."""
     response = _FakeGetResponse(headers={"ETag": '"get-only-etag"'}, chunks=(b"body",))
     session = _FakeGetSession(response)
 
@@ -317,7 +317,7 @@ def test_make_fetcher_rekeys_when_head_had_no_etag_but_get_does(tmp_path: Path) 
 def test_fetch_year_rekeys_under_get_etag_when_head_reported_none(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """H3, integration: the entry is keyed under the GET's ETag, not left `unknown`."""
+    """The entry is keyed under the GET's ETag, not left `unknown`."""
     year = 2022
     url = _url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=4)
@@ -339,7 +339,7 @@ def test_fetch_year_rekeys_under_get_etag_when_head_reported_none(
 def test_fetch_year_keeps_unknown_key_and_warns_once_with_no_etag_anywhere(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """H3, else branch: neither HEAD nor GET has an ETag -> stays `unknown`, warns once."""
+    """Neither HEAD nor GET has an ETag -> stays `unknown`, warns once."""
     year = 2023
     url = _url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=4)
@@ -435,7 +435,7 @@ def test_provenance_sidecar_written_and_write_if_absent(
 def test_provenance_rewritten_after_sidecar_loss_falls_back_to_key_etag(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """M3: a cache hit with a lost sidecar still records the key's own ETag, not null."""
+    """A cache hit with a lost sidecar still records the key's own ETag, not null."""
     year = 2021
     url = _url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=6)
@@ -458,7 +458,7 @@ def test_provenance_rewritten_after_sidecar_loss_falls_back_to_key_etag(
 def test_offline_rule_a_network_down_serves_cached_with_warning(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Rule (a): network down + year cached -> serve the newest local vintage, one warning."""
+    """Network down + year cached -> serve the newest local vintage, one warning."""
     year = 2019
     url = _url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=5)
@@ -507,7 +507,7 @@ def test_offline_rule_a_falls_back_to_mtime_without_a_provenance_sidecar(
 def test_offline_rule_b_network_down_nothing_cached_raises(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Rule (b): network down + nothing cached -> raise, never an empty frame."""
+    """Network down + nothing cached -> raise, never an empty frame."""
 
     def _offline_head_one(_session: requests.Session, _year: int) -> VintageInfo | None:
         raise TossdNetworkError("simulated outage")
@@ -521,7 +521,7 @@ def test_offline_rule_b_network_down_nothing_cached_raises(
 def test_offline_rule_c_known_year_unpublished_serves_cached_then_refresh_raises(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Rule (c): a known cached year 404s; refresh=True on it raises instead."""
+    """A known cached year 404s; refresh=True on it raises instead."""
     year = 2020
     url = _url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=5)
@@ -545,7 +545,7 @@ def test_offline_rule_c_known_year_unpublished_serves_cached_then_refresh_raises
 def test_offline_rule_d_unknown_year_honoured_when_discovered(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Rule (d): a year outside `known_years()` is honoured once discovery finds it."""
+    """A year outside `known_years()` is honoured once discovery finds it."""
     year = 2025
     assert year not in discovery.known_years()
     url = _url_for(year)
@@ -563,7 +563,7 @@ def test_offline_rule_d_unknown_year_honoured_when_discovered(
 def test_offline_rule_d_unknown_year_raises_naming_available_years(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Rule (d), else branch: not discovered and nothing cached -> raise naming available years."""
+    """Not discovered and nothing cached -> raise naming available years."""
     _patch_discovery(monkeypatch, {2019: VintageInfo(url=_url_for(2019), etag='"e"')})
 
     with pytest.raises(ValueError, match="2025"):
@@ -576,7 +576,7 @@ def test_offline_rule_d_unknown_year_raises_naming_available_years(
 def test_get_mid_stream_drop_serves_cached_vintage_with_warning(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """H1: a connection drop partway through a GET falls back to the cached vintage."""
+    """A connection drop partway through a GET falls back to the cached vintage."""
     year = 2019
     url = _url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=5)
@@ -609,7 +609,7 @@ def test_get_mid_stream_drop_serves_cached_vintage_with_warning(
 def test_get_mid_stream_drop_with_nothing_cached_raises_tossd_network_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """H1: with nothing cached, a mid-stream drop raises TossdNetworkError, not a requests error."""
+    """With nothing cached, a mid-stream drop raises TossdNetworkError, not a requests error."""
     year = 2022
     url = _url_for(year)
     _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
@@ -631,7 +631,7 @@ def test_get_mid_stream_drop_with_nothing_cached_raises_tossd_network_error(
 def test_truncated_content_length_raises_named_error_not_cached(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """M4: a body shorter than the declared Content-Length raises, naming expected/actual."""
+    """A body shorter than the declared Content-Length raises, naming expected/actual."""
     year = 2020
     url = _url_for(year)
     _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
@@ -656,7 +656,7 @@ def test_truncated_content_length_raises_named_error_not_cached(
 def test_etag_thrash_exhausts_retries_raises_tossd_network_error(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """M1: an ETag that keeps changing across every retry raises TossdNetworkError."""
+    """An ETag that keeps changing across every retry raises TossdNetworkError."""
     year = 2020
     url = _url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=3)
@@ -695,7 +695,7 @@ def test_etag_thrash_exhausts_retries_raises_tossd_network_error(
 def test_get_tossd_raw_refresh_sweeps_discovery_once_for_multiple_years(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """M2: refresh=True across several years re-sweeps discovery once, not once per year."""
+    """refresh=True across several years re-sweeps discovery once, not once per year."""
     years = (2019, 2020)
     published: dict[int, VintageInfo] = {}
     sources: dict[str, tuple[bytes, str | None]] = {}
@@ -755,7 +755,7 @@ def test_serving_stale_warning_points_at_the_caller(
 
 
 def test_get_tossd_raw_empty_years_raises_value_error() -> None:
-    """L1: `years=[]` raises early with a clear ValueError, not a raw pyarrow error."""
+    """`years=[]` raises early with a clear ValueError, not a raw pyarrow error."""
     with pytest.raises(ValueError, match="years is empty"):
         fetch.get_tossd_raw(years=[])
 

@@ -1,4 +1,4 @@
-"""Unit tests for the schema layer (D5): apply_schema, preset_columns, drift."""
+"""Unit tests for the schema layer: apply_schema, preset_columns, drift."""
 
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ def test_apply_schema_round_trip() -> None:
 
 
 def test_duplicate_normalised_column_names_raise_schema_drift_error() -> None:
-    """H2: two case-variant columns normalising to the same key raise, naming both."""
+    """Two case-variant columns normalising to the same key raise, naming both."""
     table = build_tossd_table(2019, n_rows=5, seed=2)
     duplicated = table.append_column("Sector_3", table.column("sector3"))
 
@@ -128,7 +128,7 @@ def test_normalised_key_matching_tolerates_case_variant() -> None:
 
 
 def test_large_string_empty_values_become_null() -> None:
-    """M6: empty strings in a large_string column also become null, not just `string`."""
+    """Empty strings in a large_string column also become null, not just `string`."""
     table = build_tossd_table(2019, n_rows=20, seed=3)
     column_index = table.column_names.index("agencyname_E")
     large_string_column = table.column("agencyname_E").cast(pa.large_string())

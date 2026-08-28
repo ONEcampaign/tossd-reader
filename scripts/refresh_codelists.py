@@ -15,8 +15,8 @@ Run under the `codelists` dependency group only:
 
 Licence note: this script, and the packaged snapshot it produces, redistributes
 OECD development-finance codelist data. Redistribution licensing for a public
-release is tracked outside this repo (phase 6) and is not resolved by
-packaging the snapshot here.
+release is unresolved and tracked outside this repo; packaging the snapshot
+here does not resolve it.
 """
 
 from __future__ import annotations

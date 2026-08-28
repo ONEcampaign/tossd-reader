@@ -5,7 +5,7 @@ Cache-directory resolution defers to readerkit's own precedence: an explicit
 variable (readerkit derives this name itself from `app="tossd-reader"`), then
 platformdirs. `get_cache()` is the lazy singleton `fetch.py` uses to store
 downloaded vintages: one `readerkit.ArtifactCache` in the `"raw"` namespace,
-with D3's hardcoded bounds.
+with hardcoded size/count bounds and no user-facing config surface.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ force re-downloading the ~2.4M-row dataset."""
 
 _NAMESPACE: Final = "raw"
 _KEEP_N: Final = 24
-_MAX_BYTES: Final = 4 * 1024**3  # 4 GB (D3, hardcoded, no user config surface)
+_MAX_BYTES: Final = 4 * 1024**3  # 4 GB, hardcoded (no user config surface)
 
 
 class _Unset:

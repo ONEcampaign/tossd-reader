@@ -1,4 +1,4 @@
-"""Unit tests for the post-query analytical helpers (D8): `tossd_reader.helpers`."""
+"""Unit tests for the post-query analytical helpers: `tossd_reader.helpers`."""
 
 from __future__ import annotations
 

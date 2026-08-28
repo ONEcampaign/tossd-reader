@@ -3,8 +3,8 @@
 One base, `TossdReaderError`, with a shallow tree of purpose-specific
 subclasses below it. `SchemaDriftError`, `UnknownCodeError` and
 `InvalidPillarError` are defined here so the whole hierarchy is importable
-from this module alone, but they are raised by later slices (the schema layer
-and the query layer respectively), not by anything in this one.
+from this module alone, but they are raised by the schema layer and the
+query layer respectively, not by anything in this one.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ class TossdNetworkError(TossdReaderError):
 
 
 class VintageValidationError(TossdReaderError):
-    """Raised when a freshly downloaded vintage fails D10 structural validation.
+    """Raised when a freshly downloaded vintage fails structural validation.
 
     Never raised for an already-cached vintage; validation runs once, on a new
     download only.
@@ -63,14 +63,14 @@ class VintageValidationError(TossdReaderError):
 class SchemaDriftError(TossdReaderError):
     """Raised when a published file's columns no longer match the packaged schema.
 
-    Raised by the schema layer (slice 1.2), not by anything in this slice.
+    Raised by the schema layer, not by anything in this module.
     """
 
 
 class UnknownCodeError(TossdReaderError):
     """Raised when a provider/recipient name or code cannot be resolved.
 
-    Raised by the query layer (slice 2.2), which attaches ranked resolvekit
+    Raised by the query layer, which attaches ranked resolvekit
     suggestions to the message. Left as a minimal placeholder here.
     """
 
@@ -78,5 +78,5 @@ class UnknownCodeError(TossdReaderError):
 class InvalidPillarError(TossdReaderError):
     """Raised when a sub-pillar filter is requested for a year that cannot support it.
 
-    Raised by the query layer (slice 2.2). Left as a minimal placeholder here.
+    Raised by the query layer. Left as a minimal placeholder here.
     """

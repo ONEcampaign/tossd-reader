@@ -1,4 +1,4 @@
-"""Unit tests for the query layer (D6/D7): get_tossd and its D7 binding semantics."""
+"""Unit tests for the query layer: get_tossd and its sub-pillar binding semantics."""
 
 from __future__ import annotations
 
@@ -367,7 +367,7 @@ def test_suggestion_falls_back_to_difflib_when_resolvekit_raises(
 def test_every_pillar_token_normalises_correctly(
     token: int | str, expected: tuple
 ) -> None:
-    """Every documented D7 pillar token maps to the right (pillar, subpillar) pair."""
+    """Every documented pillar token maps to the right (pillar, subpillar) pair."""
     assert query._normalise_pillar_token(token) == expected
 
 
@@ -445,7 +445,7 @@ def test_subpillar_default_years_auto_narrows_with_one_warning(
     """years=None + a sub-pillar filter narrows to >=2023 years, warning once.
 
     The narrowed default (>=2023) always includes 2023 itself, so the
-    coverage warning (D7) fires alongside the narrowing warning in the same
+    coverage warning fires alongside the narrowing warning in the same
     call: `pytest.warns` is used unmatched here and both are asserted
     explicitly, rather than `match=`, which only tolerates a single warning
     under this suite's `filterwarnings = ["error"]`.

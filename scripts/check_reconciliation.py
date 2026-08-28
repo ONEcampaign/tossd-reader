@@ -1,4 +1,4 @@
-"""Canary helper: full-download A1 headline-total reconciliation + packed-delimiter check.
+"""Canary helper: full-download headline-total reconciliation + packed-delimiter check.
 
 Used by `.github/workflows/canary.yml`'s monthly reconciliation job. The
 check itself (`check_reconciliation`) is pure and offline-testable against a
@@ -21,8 +21,8 @@ import pyarrow.parquet as pq
 
 from tossd_reader.exceptions import TossdNetworkError
 
-# Latest year notes/build/audits/a1-reconciliation.md has recorded headline
-# totals for; bump alongside a fresh A1 audit re-run.
+# Latest year with a verified reconciliation baseline; bump when a fresh
+# baseline is verified for a later year.
 YEAR: Final = 2024
 EXPECTED_TOTALS_USD_K: Final[dict[str, float]] = {
     "p1_disb": 364_114_132.08,
@@ -128,7 +128,7 @@ def main(argv: list[str] | None = None) -> int:
     "Reconciliation check failed: <reason>" line to stdout (what the canary
     job captures as the issue body) before returning a non-zero exit code,
     rather than letting an uncaught traceback (stderr, not captured) leave
-    the issue body empty -- same fix as `check_vintage_drift.py`'s live
+    the issue body empty -- same behaviour as `check_vintage_drift.py`'s live
     sweep wrapper.
     """
     del argv

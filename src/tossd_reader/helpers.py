@@ -1,4 +1,4 @@
-"""Post-query analytical helpers for `get_tossd()` output (D8).
+"""Post-query analytical helpers for `get_tossd()` output.
 
 Every helper here operates on a `pandas.DataFrame` already shaped like
 `get_tossd()`'s output (snake_case columns) and raises a `ValueError` naming
@@ -90,9 +90,9 @@ def _parse_sdg_token(token: str) -> tuple[int, bool]:
     Bare integers (`"5"`) are goal-level. `goal.target` tokens (`"5.2"`,
     `"6.b"` -- the target suffix can be a digit or a letter) are
     target-level, except the rare `goal.0` variant (12 occurrences in the
-    a4-audited 2024 file, vastly outnumbered by the bare-integer goal
-    convention) -- no SDG target is numbered `.0`, so this is a goal-level
-    tag spelled with a trailing `.0`, not a real target.
+    2024 file, vastly outnumbered by the bare-integer goal convention) -- no
+    SDG target is numbered `.0`, so this is a goal-level tag spelled with a
+    trailing `.0`, not a real target.
     """
     goal_part, sep, target_part = token.partition(".")
     if not sep or target_part == "0":
@@ -248,8 +248,8 @@ def extract_keywords(df: pd.DataFrame) -> pd.DataFrame:
     Matching casefolds each `keywords_raw` token and strips a leading `#`,
     so `"COVID-19"` and `"#COVID-19"` both count as the `covid_19` marker.
     Only the fixed 12-marker vocabulary shipped as `_data/keyword_markers.csv`
-    is recognised; every other token in `keywords_raw` (a4 measured 315
-    distinct tokens across the full vocabulary) is ignored.
+    is recognised; every other token in `keywords_raw` (315 distinct tokens
+    across the full vocabulary) is ignored.
 
     Args:
         df: A `get_tossd()`-shaped frame carrying `keywords_raw`.

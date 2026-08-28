@@ -1,4 +1,4 @@
-"""Unit tests for the runtime codelist loader (slice 2.1): round-trip, filters, version."""
+"""Unit tests for the runtime codelist loader: round-trip, filters, version."""
 
 from __future__ import annotations
 

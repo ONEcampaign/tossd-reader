@@ -1,4 +1,4 @@
-"""Read-time schema layer for published TOSSD parquet vintages (D5).
+"""Read-time schema layer for published TOSSD parquet vintages.
 
 Drift contract: a published file missing a column the packaged schema expects
 is a hard `SchemaDriftError` — never silently dropped or nulled. A published
@@ -50,14 +50,15 @@ class SchemaField:
             `"Int8"`/`"Int16"`/`"Int32"` (nullable arrow ints), `"category"`
             (dictionary-encoded), `"float64"`, or `"string"` (left as-is).
         nullable: Whether the publisher has ever shipped a real null/empty
-            value for this column. Informational only in this slice.
+            value for this column. Informational only; not consumed
+            anywhere in this package.
         preset_minimal: Whether the column is included in the `"minimal"`
             preset.
         preset_analysis: Whether the column is included in the `"analysis"`
             preset.
         is_usd_thousand_amount: Whether the column is one of the 8 USD amount
-            fields (reported in USD thousands). Consumed by the query layer
-            (slice 2.2), not by anything in this module.
+            fields (reported in USD thousands). Consumed by the query layer,
+            not by anything in this module.
     """
 
     published_name: str
@@ -113,7 +114,7 @@ def preset_columns(preset: Literal["minimal", "analysis", "all"]) -> list[str]:
 
     Returns:
         Snake_case column names. Validation of arbitrary user-supplied column
-        lists happens in the query layer (slice 2.2), not here.
+        lists happens in the query layer, not here.
 
     Raises:
         ValueError: `preset` is not one of the three recognised names.
@@ -133,7 +134,7 @@ def preset_columns(preset: Literal["minimal", "analysis", "all"]) -> list[str]:
 def apply_schema(
     table: pa.Table, *, file_column_names: Iterable[str] | None = None
 ) -> pa.Table:
-    """Rename, clean, and typecast one published TOSSD vintage table (D5).
+    """Rename, clean, and typecast one published TOSSD vintage table.
 
     Arrow-level throughout: no pandas conversion happens here. In order:
     1. Match `schema.csv`'s `published_name`s to `table`'s actual column names
@@ -167,8 +168,8 @@ def apply_schema(
         file_column_names: The full column-name list as published in the
             source file (e.g. from `pyarrow.parquet.read_schema`, cheap
             metadata that needs no data read). Defaults to
-            `table.column_names`, preserving today's behaviour when `table`
-            already carries every published column. Pass this explicitly
+            `table.column_names`, which is correct whenever `table` already
+            carries every published column. Pass this explicitly
             when `table` was read with a column projection narrower than the
             file, so the missing-expected-column drift check and the
             unknown-extra warn-once still see the file's true column set —
@@ -353,6 +354,6 @@ def _reset_for_tests() -> None:
     """Clear the warn-once state for unknown columns.
 
     Test-only. `conftest.py` does not reset per-module state between tests,
-    so this slice's own tests reset the module directly instead.
+    so this module's own tests reset it directly instead.
     """
     _state.warned_unknown_columns.clear()

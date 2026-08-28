@@ -1,4 +1,4 @@
-"""HEAD-sweep discovery of published TOSSD vintages (D2).
+"""HEAD-sweep discovery of published TOSSD vintages.
 
 One HEAD request per year, from 2019 through the current calendar year, swept
 once per process and memoised in-process — there is no persisted TTL map.
@@ -33,8 +33,7 @@ class VintageInfo:
         url: The vintage's download URL.
         etag: The HEAD response's `ETag`, when the server sent one. Only an
             optimisation for forming the candidate cache key — `fetch.py`
-            treats the GET response's own ETag as authoritative (Fable
-            condition 2).
+            treats the GET response's own ETag as authoritative.
         last_modified: The HEAD response's `Last-Modified`, when sent.
         size_bytes: The HEAD response's `Content-Length`, when sent.
     """
@@ -158,8 +157,7 @@ def _warn_unknown_years(results: dict[int, VintageInfo]) -> None:
             f"package's known-years set. Pass years={year} explicitly to "
             "fetch it.",
             # 3 frames up from here: _warn_unknown_years -> discover -> the
-            # caller. Verified in test_discovery.py against the real call
-            # chain, not just counted by eye.
+            # caller.
             stacklevel=3,
         )
 
@@ -167,9 +165,9 @@ def _warn_unknown_years(results: dict[int, VintageInfo]) -> None:
 def _reset_for_tests() -> None:
     """Clear the in-process sweep memo and warn-once state.
 
-    Test-only. `conftest.py` does not (yet) reset per-module state between
-    tests, so tests that exercise `discover()`'s memoisation or warn-once
-    behaviour call this themselves via a local fixture.
+    Test-only. `conftest.py` does not reset per-module state between tests,
+    so tests that exercise `discover()`'s memoisation or warn-once behaviour
+    call this themselves via a local fixture.
     """
     _state.memo = None
     _state.warned_years.clear()

@@ -1,4 +1,4 @@
-"""Runtime loader for tossd_reader's packaged OECD codelist snapshot (D6/D7).
+"""Runtime loader for tossd_reader's packaged OECD codelist snapshot.
 
 Reads only the packaged CSVs and `_version.json` under `_data/codelists/` --
 no network access, and no import of `oda_reader` (that lives in the
@@ -6,8 +6,8 @@ maintainer-only `codelists` dependency group; `scripts/refresh_codelists.py`
 is what produces the snapshot this module reads).
 
 No name-resolution logic lives here: turning a user-supplied name or code
-into a validated filter value is the query layer's job (slice 2.2). This
-module only loads and reports what is packaged.
+into a validated filter value is the query layer's job. This module only
+loads and reports what is packaged.
 """
 
 from __future__ import annotations

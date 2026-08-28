@@ -1,4 +1,4 @@
-"""The typed, filtered `get_tossd` query layer (D6/D7).
+"""The typed, filtered `get_tossd` query layer.
 
 Per requested year: `fetch._resolve_year` → a column-projected pyarrow read
 (only the output columns plus internal-only needs -- `is_aggregate`'s
@@ -7,7 +7,7 @@ Per requested year: `fetch._resolve_year` → a column-projected pyarrow read
 `schema.apply_schema` (given the file's full column list from the cheap,
 data-free `pq.read_schema`, so the projection never masquerades as publisher
 drift) → arrow-level row filters (provider/recipient/pillar). Then, once
-across every year: `pa.concat_tables(...).unify_dictionaries()` (D6 — a
+across every year: `pa.concat_tables(...).unify_dictionaries()` (a
 categorical column stays dictionary-encoded across a multi-year query),
 derived columns (`is_aggregate`, `unit`, the `parent_channel_code` decode --
 skipped entirely when `parent_channel_name` isn't requested), preset/column
@@ -17,8 +17,7 @@ end.
 Discovery is swept once per `get_tossd` call (not once per requested year),
 the same `_sweep_or_none` pattern `fetch.get_tossd_raw` already uses. A
 year outside the packaged known-years set is honoured or rejected by
-`fetch._resolve_year` itself (slice 1.1's rule d) — this module never
-duplicates that logic.
+`fetch._resolve_year` itself — this module never duplicates that logic.
 """
 
 from __future__ import annotations
@@ -45,8 +44,8 @@ _MAX_SUGGESTIONS = 5
 _SUBPILLAR_MIN_YEAR = 2023
 _SUBPILLAR_COVERAGE_WARN_YEAR = 2023
 _PILLAR_2022_TRACE_ROWS = 24
-"""a4 audit: 2022 carries only 24 `Tossdpillar2='21'` trace rows (out of
-~128,900 pillar-2 rows); the substantive rollout starts in 2023."""
+"""2022 carries only 24 `Tossdpillar2='21'` trace rows (out of ~128,900
+pillar-2 rows); the substantive rollout starts in 2023."""
 
 _PILLAR_TOKENS: dict[str, tuple[str, str | None]] = {
     "1": ("1", None),
@@ -217,7 +216,7 @@ def _build_table(
     )
 
     # Resolved once for the whole call, not once per requested year: see
-    # fetch.get_tossd_raw's own docstring for why (M2).
+    # fetch.get_tossd_raw's own docstring for why.
     effective = effective_refresh(op_name, explicit=refresh)
     vintages = fetch._sweep_or_none(effective)
 
@@ -288,7 +287,7 @@ def _normalise_pillar_token(pillar: int | str) -> tuple[str, str | None]:
 def _resolve_subpillar_years(
     resolved_years: tuple[int, ...], *, years_was_none: bool
 ) -> tuple[int, ...]:
-    """Apply D7's sub-pillar year policy, returning the (possibly narrowed) years."""
+    """Apply the sub-pillar year policy, returning the (possibly narrowed) years."""
     bad_years = [year for year in resolved_years if year < _SUBPILLAR_MIN_YEAR]
     if bad_years:
         if not years_was_none:
@@ -333,8 +332,7 @@ def _warn_subpillar_narrowed(
         # 5 frames up from here: _warn_subpillar_narrowed ->
         # _resolve_subpillar_years -> _build_table -> get_tossd -> the
         # caller (only get_tossd reaches this path; export() forces
-        # pillars=None). Verified in test_query.py against the real call
-        # chain, not just counted by eye.
+        # pillars=None).
         stacklevel=5,
     )
 
@@ -655,8 +653,7 @@ def _warn_unknown_decode_codes(column_name: str, missing_values: list[object]) -
         # 5 frames up from here: _warn_unknown_decode_codes ->
         # _decode_parent_channel -> _add_derived_columns -> _build_table ->
         # get_tossd (or export()) -> the caller. Both wrap `_build_table` at
-        # the same depth, so this stacklevel is correct either way. Verified
-        # in test_query.py against the real call chain.
+        # the same depth, so this stacklevel is correct either way.
         stacklevel=6,
     )
 
@@ -752,7 +749,7 @@ def _reset_for_tests() -> None:
 
     Test-only. Wired into `tests/conftest.py`'s shared autouse fixture
     (alongside discovery's and config's own resets), rather than a local
-    per-file fixture, since the plan reserved this reset hook for this slice.
+    per-file fixture.
     """
     _state.warned_subpillar_narrow = False
     _state.warned_subpillar_2023_coverage = False

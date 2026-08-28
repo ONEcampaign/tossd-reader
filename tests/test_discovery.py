@@ -1,4 +1,4 @@
-"""Unit tests for the discovery HEAD-sweep layer (D2)."""
+"""Unit tests for the discovery HEAD-sweep layer."""
 
 from __future__ import annotations
 
@@ -110,7 +110,7 @@ def test_unknown_new_year_warns_once(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_unknown_new_year_warning_points_at_the_caller(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """M7: the unknown-new-year warning's stacklevel attributes it to the caller."""
+    """The unknown-new-year warning's stacklevel attributes it to the caller."""
     monkeypatch.setattr(
         discovery, "_head_one", _fake_head_one({2025: {"etag": '"e25"'}})
     )

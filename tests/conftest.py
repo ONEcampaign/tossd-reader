@@ -27,8 +27,7 @@ def _reset_discovery_and_config_state() -> None:
     query's warn-once sets for the sub-pillar and unknown-decode-code
     warnings), so a test that doesn't reset them can leak fake data or a
     stale singleton across test files. Fetch's and schema's own warn-once
-    state is reset locally instead (per-file fixtures already in place before
-    this reset hook was extended to query.py, per the build plan).
+    state is reset locally instead, each via its own per-file fixture.
     """
     discovery._reset_for_tests()
     config._reset_for_tests()

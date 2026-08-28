@@ -1,9 +1,9 @@
-"""Fetch and cache raw TOSSD parquet vintages (D2 offline rules, D3, D4, D10).
+"""Fetch and cache raw TOSSD parquet vintages.
 
 `fetch_year` returns a path to one year's cached, publisher-bytes-verbatim
 parquet file. `get_tossd_raw` is the public entry point that fetches one or
 more years and concatenates them, still as published (no renaming, no dtype
-work — that's the schema layer, slice 1.2).
+work — that's the schema layer).
 """
 
 from __future__ import annotations
@@ -92,11 +92,10 @@ def _normalise_years(years: int | Iterable[int] | None) -> tuple[int, ...]:
 def fetch_year(year: int, *, refresh: bool = False) -> Path:
     """Return the path to the cached raw parquet for `year`, publisher bytes verbatim.
 
-    Applies D2's offline rules: a network outage (at discovery time, or a
-    connection dropped partway through the download) or a since-unpublished
-    year is served from the newest local vintage with a loud warning when one
-    is cached, and raises `TossdNetworkError` when nothing usable exists
-    locally.
+    A network outage (at discovery time, or a connection dropped partway
+    through the download) or a since-unpublished year is served from the
+    newest local vintage with a loud warning when one is cached, and raises
+    `TossdNetworkError` when nothing usable exists locally.
 
     Args:
         year: The reporting year to fetch. Need not be in `known_years()`;
@@ -115,7 +114,7 @@ def fetch_year(year: int, *, refresh: bool = False) -> Path:
             currently published (and `refresh` was requested, or nothing is
             cached for it either); or the GET response's ETag kept changing
             across every retry attempt.
-        VintageValidationError: A newly downloaded vintage failed D10
+        VintageValidationError: A newly downloaded vintage failed structural
             validation.
         ValueError: `year` is not currently published by the source and
             nothing is cached for it.
@@ -141,7 +140,7 @@ def _resolve_year(
     Shared by `fetch_year` and `get_tossd_raw`, so a caller fetching several
     years in one `get_tossd_raw` call sweeps discovery exactly once and
     threads the same mapping and refresh flag through every year, instead of
-    re-sweeping per year (M2).
+    re-sweeping per year.
     """
     if vintages is None:
         return _serve_offline(year, reason="the network is unreachable")
@@ -190,7 +189,7 @@ def _as_str(value: object) -> str | None:
 
 
 def _serve_offline(year: int, *, reason: str) -> Path:
-    """D2 rules (a)/(b): network is unreachable for this whole sweep."""
+    """Serve the newest cached vintage, or raise, when the network is unreachable for this whole sweep."""
     cached = _latest_cached(year)
     if cached is None:
         cache_dir = config.get_cache_dir()
@@ -204,7 +203,7 @@ def _serve_offline(year: int, *, reason: str) -> Path:
 
 
 def _serve_missing(year: int, *, refresh: bool, available: tuple[int, ...]) -> Path:
-    """D2 rules (c)/(d): the sweep ran, but `year` was not among its results."""
+    """Serve the newest cached vintage, or raise, when the sweep ran but `year` was not among its results."""
     cached = _latest_cached(year)
     if cached is None:
         raise ValueError(
@@ -222,7 +221,7 @@ def _serve_missing(year: int, *, refresh: bool, available: tuple[int, ...]) -> P
 
 
 def _warn_serving_stale(year: int, cached: _CachedVintage, *, reason: str) -> None:
-    """Emit D2's one loud warning naming the vintage date being served instead."""
+    """Emit the one loud warning naming the vintage date being served instead."""
     if cached.retrieved_at is not None:
         vintage_date = cached.retrieved_at.isoformat()
     else:
@@ -235,8 +234,7 @@ def _warn_serving_stale(year: int, cached: _CachedVintage, *, reason: str) -> No
         f"{vintage_date}{etag_note}.",
         # 5 frames up from here: _warn_serving_stale -> _serve_offline/
         # _serve_missing -> _resolve_year -> fetch_year/get_tossd_raw ->
-        # the caller. Verified in test_fetch.py against the real call chain,
-        # not just counted by eye.
+        # the caller.
         stacklevel=5,
     )
 
@@ -261,7 +259,7 @@ class _FetcherNetworkError(TossdNetworkError):
 
     A `TossdNetworkError` subclass (so it satisfies that public contract on
     its own), but kept distinct so `_resolve_year` can route only *this*
-    failure into D2's cached-vintage fallback. A retry-exhaustion
+    failure into the cached-vintage fallback. A retry-exhaustion
     `TossdNetworkError` (mismatching ETags on every attempt) is raised as the
     plain base class instead, so it propagates directly rather than being
     mistaken for an offline condition.
@@ -274,7 +272,7 @@ _MAX_ETAG_ATTEMPTS = 2
 def _download_and_cache(
     year: int, info: discovery.VintageInfo, *, refresh: bool
 ) -> Path:
-    """Download (or reuse) the cached artifact for `year`, honouring Fable condition 2.
+    """Download (or reuse) the cached artifact for `year`.
 
     The HEAD-derived `info.etag` only forms the *candidate* cache key. If the
     GET response's own ETag differs, the download is retried once under the
@@ -283,9 +281,10 @@ def _download_and_cache(
     Raises:
         TossdNetworkError: The GET connection dropped or truncated
             mid-transfer (a `_FetcherNetworkError`, so `_resolve_year` can
-            route it into D2's offline fallback); or the GET response's ETag
+            route it into the offline fallback); or the GET response's ETag
             kept changing across every retry attempt.
-        VintageValidationError: The downloaded vintage failed D10 validation.
+        VintageValidationError: The downloaded vintage failed structural
+            validation.
     """
     cache = config.get_cache()
     session = discovery.get_session()
@@ -337,14 +336,14 @@ def _make_fetcher(
     """Build a `Fetcher` that streams `url`, capturing the GET response's own ETag/size.
 
     Raises `_EtagMismatchError` before writing any bytes whenever the GET
-    response's ETag differs from `expected_etag` — per Fable condition 2, the
-    GET response is authoritative for the cache key and provenance, not the
-    HEAD sweep's. This includes the case where `expected_etag` is `None` but
-    the GET response carries one: the HEAD sweep's missing ETag never gets a
-    chance to become authoritative, so the GET's own ETag re-keys the entry
-    instead. Only when neither HEAD nor GET ever carries an ETag does the
-    entry stay keyed `unknown`, warning once per year that D2 revalidation is
-    degraded for it.
+    response's ETag differs from `expected_etag` — the GET response is
+    authoritative for the cache key and provenance, not the HEAD sweep's.
+    This includes the case where `expected_etag` is `None` but the GET
+    response carries one: the HEAD sweep's missing ETag never gets a chance
+    to become authoritative, so the GET's own ETag re-keys the entry instead.
+    Only when neither HEAD nor GET ever carries an ETag does the entry stay
+    keyed `unknown`, warning once per year that revalidation is degraded for
+    it.
 
     Raises `_FetcherNetworkError` (a `TossdNetworkError`) instead of a raw
     `requests` exception when the connection fails or the transfer
@@ -425,7 +424,7 @@ def _warn_degraded_revalidation(year: int) -> None:
 
 
 def _validate_new_vintage(path: Path) -> None:
-    """D10: reject a newly downloaded vintage that fails structural validation.
+    """Reject a newly downloaded vintage that fails structural validation.
 
     Checks the `PAR1` parquet magic, that pyarrow can read the footer and
     metadata, and that every string column's data validates fully. Raises on
@@ -451,7 +450,7 @@ def _write_provenance_if_absent(
     captured: dict[str, str | int | None],
     etag_fallback: str | None,
 ) -> None:
-    """Write `<path stem>.provenance.json` beside `path`, unless one already exists (D4).
+    """Write `<path stem>.provenance.json` beside `path`, unless one already exists.
 
     Args:
         path: The cached parquet payload.
@@ -500,7 +499,7 @@ def _reset_for_tests() -> None:
     """Clear the degraded-revalidation warn-once state.
 
     Test-only. `tests/conftest.py` resets discovery's and config's
-    per-module state, but this slice's own warn-once state is reset locally
-    instead, same as discovery.py and schema.py's own `_reset_for_tests`.
+    per-module state, but this module's own warn-once state is reset locally
+    instead, same as discovery.py's and schema.py's own `_reset_for_tests`.
     """
     _state.warned_degraded_years.clear()

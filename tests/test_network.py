@@ -1,4 +1,4 @@
-"""Standing regression suite against the live TOSSD publisher (D5 conformance / A1).
+"""Standing regression suite against the live TOSSD publisher.
 
 Not part of the default test run: gated on `TOSSD_READER_NETWORK_TESTS=1` in
 addition to pytest's own `network` marker (already deselected by default via
@@ -32,16 +32,16 @@ pytestmark = [
 
 _SMALLEST_YEAR = 2019
 _EXPECTED_2019_ROW_COUNT = 290_914
-"""Recorded in notes/build/audits/a1-reconciliation.md §2 and §6."""
+"""2019's verified row count."""
 
 _EXPECTED_2024_TOTALS_USD_K = {
     "p1_disb": 364_114_132.08,
     "p2_disb": 133_561_849.36,
     "mob": 79_646_259.46,
 }
-"""Recorded in notes/build/audits/a1-reconciliation.md §6 — gross disbursements
-by TossdPillar plus total USD_amountmobilised, reproducing the publisher's own
-2024 homepage prose (364.1bn / 133.6bn / 79.6bn) to 1dp."""
+"""Gross disbursements by TossdPillar plus total USD_amountmobilised,
+reproducing the publisher's own 2024 homepage prose (364.1bn / 133.6bn /
+79.6bn) to 1dp."""
 _TOLERANCE_USD_K = 1.0
 
 
@@ -74,7 +74,7 @@ def test_smallest_year_conforms_to_packaged_schema() -> None:
 
 
 def test_smallest_year_row_count_matches_recorded_value() -> None:
-    """2019's row count matches the value recorded in a1-reconciliation.md §2/§6."""
+    """2019's row count matches the verified reference value."""
     path = fetch.fetch_year(_SMALLEST_YEAR)
     actual = pq.read_metadata(path).num_rows
 
@@ -86,7 +86,7 @@ def test_smallest_year_row_count_matches_recorded_value() -> None:
 
 @pytest.mark.slow
 def test_2024_headline_reconciliation() -> None:
-    """Gross disbursements by TossdPillar (+ total mobilised) reproduce A1's 2024 figures."""
+    """Gross disbursements by TossdPillar (+ total mobilised) reproduce the recorded 2024 reconciliation figures."""
     path = fetch.fetch_year(2024)
     table = pq.read_table(
         path, columns=["TossdPillar", "USD_disbursements", "USD_amountmobilised"]
@@ -109,7 +109,7 @@ def test_2024_headline_reconciliation() -> None:
 
 @pytest.mark.slow
 def test_2024_headline_reconciliation_full_pipeline() -> None:
-    """`get_tossd(years=2024)` grouped sums reproduce A1's 2024 figures, end to end.
+    """`get_tossd(years=2024)` grouped sums reproduce the recorded 2024 reconciliation figures, end to end.
 
     Unlike `test_2024_headline_reconciliation` above (raw published columns,
     proving the source file itself), this drives the full schema/query
