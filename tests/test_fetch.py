@@ -510,21 +510,29 @@ def test_offline_rule_a_falls_back_to_mtime_without_a_provenance_sidecar(
 
 
 @pytest.mark.parametrize(
-    "corrupt_content",
+    ("corrupt_content", "warns_corrupt"),
     [
-        b'{"url": "trunc',
-        b'"not-a-json-object"',
-        b"\x80\x81\x82",
-        b'{"retrieved_at": "not-a-date"}',
+        (b'{"url": "trunc', True),
+        (b'"not-a-json-object"', True),
+        (b"\x80\x81\x82", True),
+        (b'{"retrieved_at": "not-a-date"}', False),
     ],
     ids=["truncated-json", "non-object-json", "non-utf8", "garbage-date"],
 )
 def test_offline_rule_a_tolerates_corrupt_provenance_sidecar(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, corrupt_content: bytes
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    corrupt_content: bytes,
+    warns_corrupt: bool,
 ) -> None:
-    """A corrupt sidecar (e.g. truncated by a crash mid-write) degrades to the
-    mtime-based stale-serve warning, and the offline fallback keeps serving
-    the cached vintage."""
+    """A corrupt or unparseable-date sidecar degrades to the mtime-based
+    stale-serve warning, and the offline fallback keeps serving the cached
+    vintage.
+
+    An unparseable sidecar (truncated, non-object, or non-UTF-8) also warns
+    about the corrupt sidecar; a sidecar that parses but holds a bad date
+    degrades silently.
+    """
     year = 2019
     url = _url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=5)
@@ -540,14 +548,20 @@ def test_offline_rule_a_tolerates_corrupt_provenance_sidecar(
 
     monkeypatch.setattr(discovery, "_head_one", _offline_head_one)
 
-    # A plain `pytest.warns(match=...)` would re-emit the corrupt-sidecar
-    # warning as unmatched, which filterwarnings=["error"] then escalates;
-    # capture everything and assert on the stale-serve warning directly.
+    # The corrupt cases emit two warnings, one per concern. A
+    # `pytest.warns(match=...)` re-emits whichever one it did not match,
+    # which filterwarnings=["error"] then escalates; capture everything and
+    # assert on each warning directly.
     with pytest.warns(UserWarning) as record:
         served_path = fetch.fetch_year(year)
 
+    messages = [str(warning.message) for warning in record]
     assert served_path == cached_path
-    assert any(str(year) in str(warning.message) for warning in record)
+    assert any(str(year) in message for message in messages)
+    assert (
+        any("corrupt provenance sidecar" in message for message in messages)
+        == warns_corrupt
+    )
 
 
 def test_offline_rule_b_network_down_nothing_cached_raises(

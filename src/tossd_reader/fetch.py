@@ -482,17 +482,13 @@ def _write_provenance_if_absent(
         "retrieved_at": datetime.now(UTC).isoformat(),
         "tossd_reader_version": __version__,
     }
-    # Written via a temp file + atomic rename so a crash mid-write can never
-    # leave a truncated sidecar behind (which `_read_provenance` would then
-    # have to discard, losing the entry's provenance for good). The suffix
-    # carries the pid plus random hex so concurrent writers never share a
-    # temp file, and matches readerkit's own `.tmp-` orphan-sweep pattern so
-    # a temp file orphaned by a crash is eventually collected by the cache
-    # directory's routine maintenance.
+    # Written via a temp file + atomic rename, so a reader always sees a
+    # complete sidecar. The suffix carries the pid plus random hex, so
+    # concurrent writers each get a distinct temp file.
     tmp = provenance_path.with_name(
         f"{provenance_path.name}.tmp-{os.getpid()}-{secrets.token_hex(3)}"
     )
-    tmp.write_text(json.dumps(record, indent=2))
+    tmp.write_text(json.dumps(record, indent=2), encoding="utf-8")
     tmp.replace(provenance_path)
 
 
@@ -511,7 +507,7 @@ def _read_provenance(path: Path) -> dict[str, object] | None:
     if not provenance_path.is_file():
         return None
     try:
-        record = json.loads(provenance_path.read_text())
+        record = json.loads(provenance_path.read_text(encoding="utf-8"))
     except FileNotFoundError:
         return None  # vanished since the is_file() check: same as missing
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
