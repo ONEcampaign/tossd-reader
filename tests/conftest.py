@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from tossd_reader import _discovery, config, query
+from tossd_reader import _discovery, _pillars, config, query
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -42,12 +42,13 @@ def _tossd_reader_cache_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
 
 
 @pytest.fixture(autouse=True)
-def _reset_discovery_and_config_state() -> None:
-    """Reset _discovery's, config's, and query's in-process module state before each test.
+def _reset_discovery_config_query_and_pillars_state() -> None:
+    """Reset _discovery's, config's, query's, and _pillars's module state before each test.
 
-    All three modules memoise state at module scope (_discovery's HEAD-sweep
+    All four modules memoise state at module scope (_discovery's HEAD-sweep
     memo and warn-once set; config's cache-dir override and cache singleton;
-    query's warn-once sets for the sub-pillar and unknown-decode-code
+    query's warn-once set for unknown-decode-code warnings; _pillars's
+    warn-once flags for the sub-pillar-narrowing and 2023-coverage
     warnings), so a test that doesn't reset them can leak fake data or a
     stale singleton across test files. Fetch's and _schema's own warn-once
     state is reset locally instead, each via its own per-file fixture.
@@ -55,6 +56,7 @@ def _reset_discovery_and_config_state() -> None:
     _discovery._reset_for_tests()
     config._reset_for_tests()
     query._reset_for_tests()
+    _pillars._reset_for_tests()
 
 
 class NetworkBlockedError(OSError):
