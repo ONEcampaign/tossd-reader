@@ -13,7 +13,7 @@ import pytest
 import requests
 
 import tossd_reader
-from tests.fixtures import build_tossd_table
+from tests.fixtures import _load_schema, build_tossd_table
 from tossd_reader import discovery, fetch, query
 from tossd_reader.discovery import VintageInfo
 from tossd_reader.exceptions import (
@@ -814,6 +814,32 @@ def test_empty_result_after_filtering_warns_and_returns_typed_frame(
     assert df.empty
     assert "provider_code" in df.columns
     assert str(df["provider_code"].dtype) in {"int16", "Int16"}
+
+
+def test_delivered_dtypes_match_the_packaged_schema(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Every non-string column arrives as the `target_dtype` `schema.csv` declares.
+
+    A bare `to_pandas()` hands back numpy `int16` where the schema says `Int16`,
+    and widens any integer column holding nulls to `float64`, which is how
+    `sector_code` came to read `910.0`. The `types_mapper` keeps the delivered
+    frame matching the packaged contract, and this pins it.
+    """
+    _setup_default_years(monkeypatch, tmp_path, [2019])
+
+    df = query.get_tossd(years=2019, columns="all")
+    declared = _load_schema()
+
+    mismatches = {
+        row["snake_name"]: (row["target_dtype"], str(df[row["snake_name"]].dtype))
+        for _, row in declared.iterrows()
+        if row["snake_name"] in df.columns
+        and row["target_dtype"] != "string"
+        and str(df[row["snake_name"]].dtype) != row["target_dtype"]
+    }
+
+    assert mismatches == {}
 
 
 # --- unknown decode codes: aggregated end-of-query warning --------------------

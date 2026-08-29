@@ -93,12 +93,20 @@ def _independent_schema_hash() -> str:
 def test_export_roundtrip_matches_pipeline_output(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """Reading the exported parquet back matches `get_tossd(columns="all")`'s own output."""
+    """Reading the exported parquet back matches `get_tossd(columns="all")`'s own output.
+
+    The read uses the same `types_mapper` `get_tossd` does. Parquet stores the
+    nullable integer widths faithfully, but pandas' default conversion widens
+    any integer column holding nulls to `float64`, so a bare `to_pandas()`
+    would compare two different conversions rather than two datasets.
+    """
     years = [2019, 2020]
     _setup_default_years(monkeypatch, tmp_path, years)
 
     destination = tossd_reader.export(tmp_path / "out", years=years)
-    written = pq.read_table(destination).to_pandas()
+    written = pq.read_table(destination).to_pandas(
+        types_mapper=query._ARROW_TO_PANDAS_INT.get
+    )
     expected = query.get_tossd(years=years, columns="all")
 
     assert list(written.columns) == list(expected.columns)

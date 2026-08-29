@@ -37,6 +37,16 @@ from readerkit.refresh import effective_refresh
 from tossd_reader import codelists, fetch, schema
 from tossd_reader.exceptions import InvalidPillarError, UnknownCodeError
 
+# A bare `to_pandas()` widens any Arrow integer column holding nulls to
+# `float64`, so `sector_code` would read `910.0` and `schema.csv`'s declared
+# `Int16` would not survive the round-trip. Passing this as `types_mapper`
+# keeps the delivered frame matching the packaged schema.
+_ARROW_TO_PANDAS_INT: dict[pa.DataType, pd.api.extensions.ExtensionDtype] = {
+    pa.int8(): pd.Int8Dtype(),
+    pa.int16(): pd.Int16Dtype(),
+    pa.int32(): pd.Int32Dtype(),
+}
+
 _VALID_UNITS = ("usd_thousand", "usd_million")
 _FORCED_COLUMNS = ("tossd_pillar", "tossd_subpillar", "is_aggregate", "unit")
 _MAX_SUGGESTIONS = 5
@@ -154,7 +164,7 @@ def get_tossd(
         refresh=refresh,
         op_name="tossd_reader:get_tossd",
     )
-    return combined.to_pandas()
+    return combined.to_pandas(types_mapper=_ARROW_TO_PANDAS_INT.get)
 
 
 def _build_table(
