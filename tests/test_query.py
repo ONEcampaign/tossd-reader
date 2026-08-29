@@ -14,7 +14,7 @@ import requests
 
 import tossd_reader
 from tests.factories import _load_schema, build_tossd_table
-from tossd_reader import _discovery, _pillars, fetch, query
+from tossd_reader import _discovery, _matching, _pillars, fetch, query
 from tossd_reader._discovery import VintageInfo
 from tossd_reader.exceptions import (
     InvalidPillarError,
@@ -314,9 +314,10 @@ def test_resolvekit_is_imported_lazily_only_on_the_unknown_code_error_path() -> 
     script = (
         "import sys\n"
         "import tossd_reader.query as query\n"
+        "import tossd_reader._matching as _matching\n"
         "assert 'resolvekit' not in sys.modules\n"
         "try:\n"
-        "    query._resolve_dimension_codes(\n"
+        "    _matching.resolve_dimension_codes(\n"
         "        'Definitely Not A Real Provider', dimension='provider', label='providers'\n"
         "    )\n"
         "except Exception:\n"
@@ -344,7 +345,7 @@ def test_suggestion_falls_back_to_difflib_when_resolvekit_raises(
     def _boom(dimension: str, token: str) -> list[str]:
         raise RuntimeError("resolvekit exploded")
 
-    monkeypatch.setattr(query, "_suggest_with_resolvekit", _boom)
+    monkeypatch.setattr(_matching, "_suggest_with_resolvekit", _boom)
 
     with pytest.raises(UnknownCodeError, match="Austrai") as excinfo:
         query.get_tossd(years=2019, providers="Austrai")
