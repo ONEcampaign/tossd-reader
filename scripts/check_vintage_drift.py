@@ -15,12 +15,12 @@ Run manually:
 from __future__ import annotations
 
 import argparse
-import importlib.resources
 import json
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TypedDict
 
+from tossd_reader import _resources
 from tossd_reader.exceptions import TossdNetworkError
 
 
@@ -31,11 +31,8 @@ class _VintageRecord(TypedDict):
 
 def load_reference() -> dict[int, _VintageRecord]:
     """Load the packaged `_data/known_vintages.json` reference snapshot."""
-    resource = (
-        importlib.resources.files("tossd_reader") / "_data" / "known_vintages.json"
-    )
-    with importlib.resources.as_file(resource) as path:
-        return _load_records(Path(path))
+    with _resources.data_path("known_vintages.json") as path:
+        return _load_records(path)
 
 
 def _load_records(path: Path) -> dict[int, _VintageRecord]:
