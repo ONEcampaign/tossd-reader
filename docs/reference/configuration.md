@@ -30,17 +30,17 @@ The cache keeps the newest 24 artefacts and 4 GB, whichever bound is reached fir
 
 ## Warnings
 
-| Source         | Trigger                                                                                                                                                       | Repeats?                                                                  |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `discovery.py` | The publisher now lists a year outside the packaged known-years set.                                                                                          | Once per newly seen year, per process.                                    |
-| `fetch.py`     | The publisher is unreachable, or a requested year is no longer listed, and a cached vintage is served instead.                                                | No package-level suppression. Fires on every affected call.               |
-| `fetch.py`     | Neither the HEAD nor the GET response carried an `ETag` for a year, so it's cached under an `unknown` key.                                                    | Once per year, per process.                                               |
-| `fetch.py`     | A vintage's provenance sidecar exists but can't be parsed as JSON and is ignored; that year's `etag`/`retrieved_at` are `null` in an export manifest. | No package-level suppression. Fires on every read of the corrupt sidecar. |
-| `query.py`     | `get_tossd`'s filters matched no rows.                                                                                                                        | No package-level suppression. Fires on every empty-result call.           |
-| `query.py`     | A sub-pillar filter (`pillars=21/22/"II.A"/"II.B"`) with the default `years=None` narrows to 2023 onward.                                                     | Once per process.                                                         |
-| `query.py`     | A sub-pillar filter's resolved years include 2023, where tagging coverage is incomplete.                                                                      | Once per process.                                                         |
-| `query.py`     | A `parent_channel_code` value isn't in the packaged codelist, when `parent_channel_name` is requested.                                                        | Once per newly seen code, per process.                                    |
-| `schema.py`    | The published file carries a column not in the packaged schema (visible only under `columns="all"`).                                                          | Once per newly seen column name, per process.                             |
+| Source          | Trigger                                                                                                                                                       | Repeats?                                                                  |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Discovery       | The publisher now lists a year outside the packaged known-years set.                                                                                          | Once per newly seen year, per process.                                    |
+| Fetch and cache | The publisher is unreachable, or a requested year is no longer listed, and a cached vintage is served instead.                                                | No package-level suppression. Fires on every affected call.               |
+| Fetch and cache | Neither the HEAD nor the GET response carried an `ETag` for a year, so it's cached under an `unknown` key.                                                    | Once per year, per process.                                               |
+| Fetch and cache | A vintage's provenance sidecar exists but can't be parsed as JSON and is ignored; that year's `etag`/`retrieved_at` are `null` in an export manifest. | No package-level suppression. Fires on every read of the corrupt sidecar. |
+| Query           | `get_tossd`'s filters matched no rows.                                                                                                                        | No package-level suppression. Fires on every empty-result call.           |
+| Query           | A sub-pillar filter (`pillars=21/22/"II.A"/"II.B"`) with the default `years=None` narrows to 2023 onward.                                                     | Once per process.                                                         |
+| Query           | A sub-pillar filter's resolved years include 2023, where tagging coverage is incomplete.                                                                      | Once per process.                                                         |
+| Query           | A `parent_channel_code` value isn't in the packaged codelist, when `parent_channel_name` is requested.                                                        | Once per newly seen code, per process.                                    |
+| Schema check    | The published file carries a column not in the packaged schema (visible only under `columns="all"`).                                                          | Once per newly seen column name, per process.                             |
 
 ## Errors
 
