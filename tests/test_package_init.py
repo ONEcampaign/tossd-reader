@@ -23,7 +23,7 @@ from tossd_reader import exceptions
         ("add_iso3", "tossd_reader.analysis"),
         ("extract_keywords", "tossd_reader.analysis"),
         ("get_structural_breaks", "tossd_reader.analysis"),
-        ("pillar2_own_country_costs", "tossd_reader.analysis"),
+        ("pillar2_provider_costs", "tossd_reader.analysis"),
         ("TossdReaderError", exceptions.TossdReaderError),
         ("TossdNetworkError", exceptions.TossdNetworkError),
         ("VintageValidationError", exceptions.VintageValidationError),

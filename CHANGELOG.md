@@ -19,7 +19,7 @@ Initial release. Covers TOSSD activity-level vintages 2019 to 2024.
   `get_codelists_version`.
 - Weekly codelist drift monitoring against the live endpoint.
 - Helpers: `explode_sdg`, `add_iso3`, `extract_keywords`,
-  `get_structural_breaks`, `pillar2_own_country_costs`.
+  `get_structural_breaks`, `pillar2_provider_costs`.
 - Data canaries: weekly vintage-change detection and monthly full-download
   reconciliation against recorded headline totals.
 

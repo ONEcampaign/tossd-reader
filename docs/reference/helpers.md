@@ -6,13 +6,13 @@ _As of v0.1._
 
 Each helper checks its required columns up front and raises `ValueError` naming the column it's missing.
 
-| Helper                      | Requires                                | Smallest preset |
-| --------------------------- | --------------------------------------- | --------------- |
-| `explode_sdg`               | `sdg_codes_raw`                         | `"analysis"`    |
-| `extract_keywords`          | `keywords_raw`                          | `"analysis"`    |
-| `add_iso3`                  | `provider_code` and/or `recipient_code` | `"minimal"`     |
-| `pillar2_own_country_costs` | `tossd_pillar`, `sector_code`           | `"analysis"`    |
-| `get_structural_breaks`     | none, takes no frame                    | n/a             |
+| Helper                   | Requires                                | Smallest preset |
+| ------------------------ | --------------------------------------- | --------------- |
+| `explode_sdg`            | `sdg_codes_raw`                         | `"analysis"`    |
+| `extract_keywords`       | `keywords_raw`                          | `"analysis"`    |
+| `add_iso3`               | `provider_code` and/or `recipient_code` | `"minimal"`     |
+| `pillar2_provider_costs` | `tossd_pillar`, `sector_code`           | `"analysis"`    |
+| `get_structural_breaks`  | none, takes no frame                    | n/a             |
 
 <!-- prettier-ignore -->
 ::: tossd_reader.analysis.explode_sdg
@@ -49,7 +49,7 @@ dtype: int64
       heading_level: 2
 
 <!-- prettier-ignore -->
-::: tossd_reader.analysis.pillar2_own_country_costs
+::: tossd_reader.analysis.pillar2_provider_costs
     options:
       heading_level: 2
 
@@ -80,5 +80,5 @@ The frame's fifth column, `source`, names the audit each row is verified against
 
 - [Analyse activities by SDG](../how-to/analyse-by-sdg.md). `explode_sdg` end to end, from a query through the per-goal totals.
 - [Measure climate and gender finance with keyword markers](../how-to/analyse-by-keyword.md). `extract_keywords` end to end, including how the twelve markers combine.
-- [Measure how much Pillar II stays in donor countries](../how-to/own-country-costs.md). `pillar2_own_country_costs` end to end, with the sector split.
+- [Measure Pillar II expenditures in the provider country](../how-to/provider-costs.md). `pillar2_provider_costs` end to end, with the sector split.
 - [Join TOSSD to other country datasets](../how-to/join-other-datasets.md). `add_iso3` end to end, joined against another dataset's own ISO3 column.

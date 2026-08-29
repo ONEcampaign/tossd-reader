@@ -104,7 +104,7 @@ def test_explode_sdg_preserves_row_order() -> None:
 
 
 def test_explode_sdg_does_not_mutate_input() -> None:
-    """`explode_sdg` never modifies the caller's original frame byte-for-byte."""
+    """`explode_sdg` leaves the caller's original frame unchanged, byte-for-byte."""
     df = pd.DataFrame({"tossd_id": ["a"], "sdg_codes_raw": ["5"]})
     original = df.copy()
 
@@ -244,7 +244,7 @@ def test_add_iso3_tossd_only_entity_is_na() -> None:
 
 
 def test_add_iso3_does_not_mutate_input() -> None:
-    """`add_iso3` never modifies the caller's original frame byte-for-byte."""
+    """`add_iso3` leaves the caller's original frame unchanged, byte-for-byte."""
     df = pd.DataFrame({"provider_code": [1]})
     original = df.copy()
 
@@ -263,7 +263,7 @@ def test_resolvekit_is_imported_lazily_only_by_add_iso3() -> None:
         "tossd_reader.explode_sdg(pd.DataFrame({'sdg_codes_raw': ['5']}))\n"
         "tossd_reader.extract_keywords(pd.DataFrame({'keywords_raw': ['#GENDER']}))\n"
         "tossd_reader.get_structural_breaks()\n"
-        "tossd_reader.pillar2_own_country_costs(\n"
+        "tossd_reader.pillar2_provider_costs(\n"
         "    pd.DataFrame({'tossd_pillar': [2], 'sector_code': [910]})\n"
         ")\n"
         "assert 'resolvekit' not in sys.modules\n"
@@ -337,7 +337,7 @@ def test_extract_keywords_all_twelve_columns_present() -> None:
 
 
 def test_extract_keywords_empty_input_kw_columns_are_bool_dtype() -> None:
-    """A 0-row input still gets bool-dtyped `kw_*` columns, not float64."""
+    """The `kw_*` columns keep bool dtype even on a 0-row input."""
     df = pd.DataFrame({"keywords_raw": pd.Series([], dtype="object")})
 
     result = analysis.extract_keywords(df)
@@ -349,7 +349,7 @@ def test_extract_keywords_empty_input_kw_columns_are_bool_dtype() -> None:
 
 
 def test_extract_keywords_unknown_tokens_ignored() -> None:
-    """A token outside the 12-marker vocabulary sets no column and doesn't raise."""
+    """An unrecognised token is silently ignored."""
     df = pd.DataFrame({"keywords_raw": ["R&D|CLIMATE"]})
 
     result = analysis.extract_keywords(df)
@@ -415,7 +415,7 @@ def test_extract_keywords_raw_column_untouched() -> None:
 
 
 def test_extract_keywords_does_not_mutate_input() -> None:
-    """`extract_keywords` never modifies the caller's original frame byte-for-byte."""
+    """`extract_keywords` leaves the caller's original frame unchanged, byte-for-byte."""
     df = pd.DataFrame({"keywords_raw": ["#GENDER"]})
     original = df.copy()
 
@@ -471,7 +471,7 @@ def test_get_structural_breaks_reporters_row_states_its_counting_rule() -> None:
 
 
 def test_get_structural_breaks_no_mutation_across_calls() -> None:
-    """Mutating the returned frame never poisons a later call (cache safety)."""
+    """get_structural_breaks() returns a fresh copy each call, so mutating one result leaves the cache and later calls unaffected."""
     first = analysis.get_structural_breaks()
     first.loc[0, "dimension"] = "corrupted"
 
@@ -480,17 +480,17 @@ def test_get_structural_breaks_no_mutation_across_calls() -> None:
     assert "corrupted" not in second["dimension"].tolist()
 
 
-# --- pillar2_own_country_costs -------------------------------------------------------
+# --- pillar2_provider_costs -------------------------------------------------------
 
 
-def test_pillar2_own_country_costs_missing_columns_raises() -> None:
+def test_pillar2_provider_costs_missing_columns_raises() -> None:
     """Raises naming whichever of `tossd_pillar`/`sector_code` is absent."""
     df = pd.DataFrame({"tossd_pillar": [2]})
     with pytest.raises(ValueError, match="sector_code"):
-        analysis.pillar2_own_country_costs(df)
+        analysis.pillar2_provider_costs(df)
 
 
-def test_pillar2_own_country_costs_filters_to_carveout_sectors() -> None:
+def test_pillar2_provider_costs_filters_to_carveout_sectors() -> None:
     """Keeps only pillar-2 rows whose sector_code is 910 or 930."""
     df = pd.DataFrame(
         {
@@ -500,12 +500,12 @@ def test_pillar2_own_country_costs_filters_to_carveout_sectors() -> None:
         }
     )
 
-    result = analysis.pillar2_own_country_costs(df)
+    result = analysis.pillar2_provider_costs(df)
 
     assert sorted(result["tossd_id"].tolist()) == ["a", "b"]
 
 
-def test_pillar2_own_country_costs_excludes_null_sector_code_rows() -> None:
+def test_pillar2_provider_costs_excludes_null_sector_code_rows() -> None:
     """A null `sector_code` is excluded, not a crash."""
     df = pd.DataFrame(
         {
@@ -515,16 +515,16 @@ def test_pillar2_own_country_costs_excludes_null_sector_code_rows() -> None:
         }
     )
 
-    result = analysis.pillar2_own_country_costs(df)
+    result = analysis.pillar2_provider_costs(df)
 
     assert result["tossd_id"].tolist() == ["a"]
 
 
-def test_pillar2_own_country_costs_does_not_mutate_input() -> None:
-    """Filtering never modifies the caller's original frame."""
+def test_pillar2_provider_costs_does_not_mutate_input() -> None:
+    """Filtering leaves the caller's original frame unchanged."""
     df = pd.DataFrame({"tossd_pillar": [2, 1], "sector_code": [910, 110]})
     original = df.copy()
 
-    analysis.pillar2_own_country_costs(df)
+    analysis.pillar2_provider_costs(df)
 
     pd.testing.assert_frame_equal(df, original)

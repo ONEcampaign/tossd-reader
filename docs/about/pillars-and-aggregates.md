@@ -40,11 +40,11 @@ Keep aggregate rows to match publisher-level headline figures. Exclude them when
 
 The 2020 to 2023 files carry a few hundred rows tagged pillar `0`, a publisher artefact from before the current two-pillar structure. `pillars=None` (the default) keeps them, so an unfiltered `get_tossd()` reproduces the row count of the published file exactly. Any other `pillars=` value excludes them, because `tossd_pillar in {1, 2}` only matches pillars 1 and 2.
 
-## Own-country costs
+## Provider costs
 
-Part of Pillar II covers administrative overhead and in-donor refugee costs, spending recorded inside the provider's own country. `pillar2_own_country_costs()` isolates that share by filtering pillar-2 rows to sector families 910 (administrative costs of donors, a proxy for donor overhead) and 930 (domestic expenditures for refugees and asylum seekers). On the 2024 data that's 35.6% of pillar-2 gross disbursements.
+Part of Pillar II covers administrative overhead and in-donor refugee costs, which TOSSD's Reporting Instructions describe as "expenditures in the provider country". `pillar2_provider_costs()` isolates that share by filtering pillar-2 rows to sector families 910 (administrative costs of donors, a proxy for provider overhead) and 930 (domestic expenditures for refugees and asylum seekers), an estimated 35.6% of pillar-2 gross disbursements on the 2024 data.
 
-Sector 720 rows are in-country humanitarian aid delivered by agencies such as UNHCR and UNICEF, so they fall outside the carve-out. TOSSD publishes no official own-country-costs definition. The carve-out is the two sector families that match that description.
+Sector 720 rows are in-country humanitarian aid delivered by agencies such as UNHCR and UNICEF, so they fall outside the carve-out.
 
 ## Concessionality
 
@@ -54,4 +54,4 @@ Sector 720 rows are in-country humanitarian aid delivered by agencies such as UN
 
 - [How to rank providers by disbursement](../how-to/rank-providers.md). The full aggregate-exclusion recipe, with the 2024 figures.
 - [How to split Pillar II into its sub-pillars](../how-to/analyse-by-subpillar.md). The II.A/II.B filter, the 2023 coverage gap, and the warnings it raises.
-- [Helpers](../reference/helpers.md). `pillar2_own_country_costs()`'s full parameter and return-value reference.
+- [Helpers](../reference/helpers.md). `pillar2_provider_costs()`'s full parameter and return-value reference.

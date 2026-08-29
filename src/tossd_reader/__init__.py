@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from tossd_reader.analysis import extract_keywords as extract_keywords
     from tossd_reader.analysis import get_structural_breaks as get_structural_breaks
     from tossd_reader.analysis import (
-        pillar2_own_country_costs as pillar2_own_country_costs,
+        pillar2_provider_costs as pillar2_provider_costs,
     )
     from tossd_reader.codelists import get_available_filters as get_available_filters
     from tossd_reader.codelists import get_codelists_version as get_codelists_version
@@ -48,7 +48,7 @@ __all__ = [
     "get_structural_breaks",
     "get_tossd",
     "get_tossd_raw",
-    "pillar2_own_country_costs",
+    "pillar2_provider_costs",
     "set_cache_dir",
 ]
 
@@ -69,7 +69,7 @@ _LAZY_ATTRS: dict[str, tuple[str, str]] = {
     "add_iso3": ("tossd_reader.analysis", "add_iso3"),
     "extract_keywords": ("tossd_reader.analysis", "extract_keywords"),
     "get_structural_breaks": ("tossd_reader.analysis", "get_structural_breaks"),
-    "pillar2_own_country_costs": ("tossd_reader.analysis", "pillar2_own_country_costs"),
+    "pillar2_provider_costs": ("tossd_reader.analysis", "pillar2_provider_costs"),
 }
 
 

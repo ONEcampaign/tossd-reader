@@ -1,10 +1,10 @@
 """Post-query analysis toolkit for `get_tossd()` output.
 
-`explode_sdg`, `add_iso3`, `extract_keywords`, and `pillar2_own_country_costs`
+`explode_sdg`, `add_iso3`, `extract_keywords`, and `pillar2_provider_costs`
 each operate on a `pandas.DataFrame` already shaped like `get_tossd()`'s
 output (snake_case columns) and raise a `ValueError` naming any column they
-need but don't find, rather than a bare `KeyError`. None of these mutate the
-caller's frame -- each returns a new one. `get_structural_breaks` takes no
+need but don't find, rather than a bare `KeyError`. Each returns a new
+frame, leaving the caller's frame untouched. `get_structural_breaks` takes no
 frame at all: it returns the packaged structural-breaks reference table.
 
 `add_iso3` is the one helper here that touches `resolvekit`: `import
@@ -31,11 +31,9 @@ _SDG_DELIMITER = ";"
 _KEYWORD_DELIMITER = "|"
 
 _ISO3_GEO_MODULE = "geo.countries"
-"""resolvekit's bundled (offline, no-download) country module. Carries the
-OECD DAC provider/recipient numeric codelists as `oecd:provider`/
-`oecd:recipient` code systems, linked to `iso3` -- verified byte-for-byte
-against every packaged provider (159) and recipient (177) code: 0
-mismatches against the packaged codelist's own `iso3` column."""
+"""resolvekit's bundled (offline, no-download) country module. See
+`add_iso3` for the codelist link this module provides and its
+verification."""
 
 _ISO3_LINKS: dict[str, tuple[str, str]] = {
     "provider_code": ("provider_iso3", "oecd:provider"),
@@ -43,22 +41,11 @@ _ISO3_LINKS: dict[str, tuple[str, str]] = {
 }
 """`code column -> (new iso3 column, resolvekit code system)`."""
 
-_OWN_COUNTRY_SECTOR_CODES = (910, 930)
+_PROVIDER_COST_SECTOR_CODES = (910, 930)
 """Verified against the 2026-04 archive's 2024 vintage (`sector_code`/
 `sector`): 910 = "Administrative Costs of Donors", 930 = "Domestic
-expenditures for refugees/asylum seekers". 930 records spending inside the
-provider's own territory by definition; 910 is a proxy for donor
-administrative overhead, which predominantly but not exclusively stays in
-the provider country (some administrative costs are incurred in-country at
-the recipient end). Restricted to pillar-2
-rows, together they measured 27,275 of 155,908 pillar-2 rows (17.5%), 35.6%
-of pillar-2 `USD_disbursements`, and 31.0% of pillar-2 `USD_Commitment` --
-consistent with the ~30% of Pillar II net disbursements the
-AidWatch/Oxfam/ActionAid critique attributes to non-recipient-country
-costs. Sector `720` ("Humanitarian Assistance") sits outside the
-carve-out: those rows (UNHCR/UNICEF/US-run programmes, e.g. "USAID Travel
-and Transportation") are ordinary in-country humanitarian aid, not
-own-country costs."""
+expenditures for refugees/asylum seekers". See `pillar2_provider_costs`
+for what this carve-out measures and why sector 720 is excluded."""
 
 
 def _require_columns(df: pd.DataFrame, *names: str, func_name: str) -> None:
@@ -94,7 +81,7 @@ def _parse_sdg_token(token: str) -> tuple[int, bool]:
     target-level, except the rare `goal.0` variant (12 occurrences in the
     2024 file, vastly outnumbered by the bare-integer goal convention) -- no
     SDG target is numbered `.0`, so this is a goal-level tag spelled with a
-    trailing `.0`, not a real target.
+    trailing `.0`.
     """
     goal_part, sep, target_part = token.partition(".")
     if not sep or target_part == "0":
@@ -183,8 +170,8 @@ def add_iso3(df: pd.DataFrame) -> pd.DataFrame:
     name-keyed join would collapse distinct providers into one row. The
     packaged codelist names them apart, so codes carry no such collision.
 
-    Uses `resolvekit`'s bundled `geo.countries` module, which needs no
-    download and no network. That module carries the OECD DAC
+    Uses `resolvekit`'s bundled `geo.countries` module, which runs entirely
+    offline, with no download step. That module carries the OECD DAC
     provider/recipient numeric codelists as the `oecd:provider` and
     `oecd:recipient` code systems, linked to `iso3`, and its link was
     checked against all 159 packaged provider codes and all 177 recipient
@@ -312,21 +299,21 @@ def get_structural_breaks() -> pd.DataFrame:
 
     Returns:
         A new `pandas.DataFrame` (a copy of the cached table, so editing it
-        never affects later calls) with exactly 5 rows and columns
+        leaves later calls unaffected) with exactly 5 rows and columns
         `dimension`, `break_year`, `end_year`, `description`, `source`. For
         the four discrete breaks `end_year` equals `break_year`; the
-        `reporters` row's `end_year` (2024) instead marks the end of that
-        row's continuous 2019-2024 drift, so it isn't misread as "safe after
-        `break_year`".
+        `reporters` row's `end_year` (2024) marks the end of that row's
+        continuous 2019-2024 drift, so every year from `break_year` through
+        `end_year` counts as affected.
     """
     return _load_structural_breaks().copy()
 
 
-# --- pillar2_own_country_costs -------------------------------------------------------
+# --- pillar2_provider_costs -------------------------------------------------------
 
 
-def pillar2_own_country_costs(df: pd.DataFrame) -> pd.DataFrame:
-    """Filter pillar-2 rows to the provider-country own-country-costs carve-out.
+def pillar2_provider_costs(df: pd.DataFrame) -> pd.DataFrame:
+    """Filter pillar-2 rows to the provider-costs carve-out.
 
     Sector family 930 ("Domestic expenditures for refugees/asylum seekers")
     records spending inside the provider's own territory by definition.
@@ -334,19 +321,21 @@ def pillar2_own_country_costs(df: pd.DataFrame) -> pd.DataFrame:
     donor administrative overhead, which predominantly stays in the provider
     country, though some administrative costs are incurred at the recipient
     end. Together the two are the share that the AidWatch, Oxfam, and
-    ActionAid critique of TOSSD Pillar II identifies as staying at home
-    rather than funding cross-border development.
+    ActionAid critique of TOSSD Pillar II identifies as the domestic-spending
+    share of Pillar II.
 
     On the 2024 vintage the two families cover 27,275 of 155,908 pillar-2
     rows (17.5%), 35.6% of pillar-2 gross disbursements, and 31.0% of
     pillar-2 commitments, consistent with the roughly 30% share that
     critique attributes to these costs. Sector family 720 ("Humanitarian
-    Assistance") sits outside the carve-out: those rows are in-country
+    Assistance") sits outside the carve-out. Those rows are in-country
     humanitarian aid delivered by agencies such as UNHCR and UNICEF.
 
-    TOSSD publishes no official own-country-costs definition, so this is a
-    heuristic built from the two sector families that match that
-    description.
+    TOSSD's Reporting Instructions describe this category as "expenditures
+    in the provider country". Analysts commonly call this spending
+    "in-donor" costs. TOSSD does not publish a ready-made carve-out
+    matching that label, so this is a heuristic built from sector families
+    910 and 930 that approximate it.
 
     Args:
         df: A `get_tossd()`-shaped frame carrying `tossd_pillar` and
@@ -364,7 +353,9 @@ def pillar2_own_country_costs(df: pd.DataFrame) -> pd.DataFrame:
         ValueError: `df` is missing `tossd_pillar` or `sector_code`.
     """
     _require_columns(
-        df, "tossd_pillar", "sector_code", func_name="pillar2_own_country_costs"
+        df, "tossd_pillar", "sector_code", func_name="pillar2_provider_costs"
     )
-    mask = (df["tossd_pillar"] == 2) & df["sector_code"].isin(_OWN_COUNTRY_SECTOR_CODES)
+    mask = (df["tossd_pillar"] == 2) & df["sector_code"].isin(
+        _PROVIDER_COST_SECTOR_CODES
+    )
     return df.loc[mask].copy()
