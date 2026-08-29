@@ -28,7 +28,7 @@ def _reset_state() -> None:
 
     `tests/conftest.py` resets discovery's and config's per-module state; the
     degraded-revalidation warn-once state added to this module is reset here
-    instead, same as schema.py's own local fixture.
+    instead, same as _schema.py's own local fixture.
     """
     fetch._reset_for_tests()
 

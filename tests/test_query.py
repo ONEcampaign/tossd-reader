@@ -688,7 +688,7 @@ def test_columns_all_preserves_schema_drift_extra_columns(
 ) -> None:
     """A schema-drift passthrough column survives columns="all" and export(), not presets/lists.
 
-    `schema.apply_schema` passes an unknown extra column through raw (with a
+    `_schema.apply_schema` passes an unknown extra column through raw (with a
     warning), documented as "only visible with columns='all'" -- this checks
     that promise actually holds end to end, for both `get_tossd` and
     `export()`.

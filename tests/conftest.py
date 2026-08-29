@@ -49,7 +49,7 @@ def _reset_discovery_and_config_state() -> None:
     memo and warn-once set; config's cache-dir override and cache singleton;
     query's warn-once sets for the sub-pillar and unknown-decode-code
     warnings), so a test that doesn't reset them can leak fake data or a
-    stale singleton across test files. Fetch's and schema's own warn-once
+    stale singleton across test files. Fetch's and _schema's own warn-once
     state is reset locally instead, each via its own per-file fixture.
     """
     discovery._reset_for_tests()

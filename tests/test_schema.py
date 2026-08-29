@@ -6,18 +6,18 @@ import pyarrow as pa
 import pytest
 
 from tests.fixtures import build_tossd_table
-from tossd_reader import schema
+from tossd_reader import _schema
 from tossd_reader.exceptions import SchemaDriftError
 
 
 @pytest.fixture(autouse=True)
 def _reset_schema_state() -> None:
-    """Clear schema.py's warn-once state before each test.
+    """Clear _schema.py's warn-once state before each test.
 
     `tests/conftest.py` does not reset per-module state between tests, so
     this slice's own tests reset the module directly instead.
     """
-    schema._reset_for_tests()
+    _schema._reset_for_tests()
 
 
 def test_apply_schema_round_trip() -> None:
@@ -29,9 +29,9 @@ def test_apply_schema_round_trip() -> None:
     """
     table = build_tossd_table(2024, n_rows=21, seed=0)
 
-    result = schema.apply_schema(table)
+    result = _schema.apply_schema(table)
 
-    expected_names = [field.snake_name for field in schema.load_schema()]
+    expected_names = [field.snake_name for field in _schema.load_schema()]
     assert list(result.column_names) == expected_names
 
     # dtypes: nullable ints, dictionary-encoded categories, float64 amounts.
@@ -60,7 +60,7 @@ def test_duplicate_normalised_column_names_raise_schema_drift_error() -> None:
     duplicated = table.append_column("Sector_3", table.column("sector3"))
 
     with pytest.raises(SchemaDriftError, match="sector3") as excinfo:
-        schema.apply_schema(duplicated)
+        _schema.apply_schema(duplicated)
     assert "Sector_3" in str(excinfo.value)
 
 
@@ -70,7 +70,7 @@ def test_missing_column_raises_schema_drift_error() -> None:
     dropped = table.drop_columns(["ProviderNameE"])
 
     with pytest.raises(SchemaDriftError, match="ProviderNameE"):
-        schema.apply_schema(dropped)
+        _schema.apply_schema(dropped)
 
 
 def test_extra_column_warns_once_and_passes_through() -> None:
@@ -79,14 +79,14 @@ def test_extra_column_warns_once_and_passes_through() -> None:
     with_extra = table.append_column("SomeNewColumn", pa.array(["x"] * table.num_rows))
 
     with pytest.warns(UserWarning, match="SomeNewColumn"):
-        result = schema.apply_schema(with_extra)
+        result = _schema.apply_schema(with_extra)
     assert "SomeNewColumn" in result.column_names
     assert result.column("SomeNewColumn").to_pylist() == ["x"] * table.num_rows
 
     # Same extra column again, same process: no repeat warning. With
     # `filterwarnings = ["error"]` set globally, an unexpected warning here
     # would itself raise and fail the test.
-    schema.apply_schema(with_extra)
+    _schema.apply_schema(with_extra)
 
 
 def test_cast_failure_raises_schema_drift_error() -> None:
@@ -101,21 +101,21 @@ def test_cast_failure_raises_schema_drift_error() -> None:
     )
 
     with pytest.raises(SchemaDriftError, match="purpose_code") as excinfo:
-        schema.apply_schema(poisoned)
+        _schema.apply_schema(poisoned)
     assert "abc" in str(excinfo.value)
 
 
 def test_preset_columns_counts() -> None:
     """Regression pins for preset sizes: update these if schema.csv's preset flags change."""
-    assert len(schema.preset_columns("minimal")) == 17
-    assert len(schema.preset_columns("analysis")) == 42
-    assert len(schema.preset_columns("all")) == len(schema.load_schema())
+    assert len(_schema.preset_columns("minimal")) == 17
+    assert len(_schema.preset_columns("analysis")) == 42
+    assert len(_schema.preset_columns("all")) == len(_schema.load_schema())
 
 
 def test_preset_columns_unknown_preset_raises_value_error() -> None:
     """An unrecognised preset name raises ValueError, not a silent empty list."""
     with pytest.raises(ValueError, match="bogus"):
-        schema.preset_columns("bogus")  # type: ignore[arg-type]
+        _schema.preset_columns("bogus")  # type: ignore[arg-type]
 
 
 def test_normalised_key_matching_tolerates_case_variant() -> None:
@@ -124,7 +124,7 @@ def test_normalised_key_matching_tolerates_case_variant() -> None:
     renamed = ["Sector_3" if name == "sector3" else name for name in table.column_names]
     variant_table = table.rename_columns(renamed)
 
-    result = schema.apply_schema(variant_table)
+    result = _schema.apply_schema(variant_table)
 
     assert "sector_code" in result.column_names
     assert (
@@ -143,6 +143,6 @@ def test_large_string_empty_values_become_null() -> None:
     )
     assert pa.types.is_large_string(with_large_string.schema.field("agencyname_E").type)
 
-    result = schema.apply_schema(with_large_string)
+    result = _schema.apply_schema(with_large_string)
 
     assert result.column("provider_agency_name").null_count > 0

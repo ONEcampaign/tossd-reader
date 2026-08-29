@@ -4,7 +4,7 @@ Per requested year: `fetch._resolve_year` → a column-projected pyarrow read
 (only the output columns plus internal-only needs -- `is_aggregate`'s
 `provider_code`, a row filter's `recipient_code`, the decode join's
 `parent_channel_code` -- unless `columns="all"`, which reads every column) →
-`schema.apply_schema` (given the file's full column list from the cheap,
+`_schema.apply_schema` (given the file's full column list from the cheap,
 data-free `pq.read_schema`, so the projection never masquerades as publisher
 drift) → arrow-level row filters (provider/recipient/pillar). Then, once
 across every year: `pa.concat_tables(...).unify_dictionaries()` (a
@@ -34,7 +34,7 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from readerkit.refresh import effective_refresh
 
-from tossd_reader import codelists, fetch, schema
+from tossd_reader import _schema, codelists, fetch
 from tossd_reader.exceptions import InvalidPillarError, UnknownCodeError
 
 # A bare `to_pandas()` widens any Arrow integer column holding nulls to
@@ -124,7 +124,7 @@ def get_tossd(
             bar a 24-row 2022 trace); with the default `years=None` it
             instead silently narrows to years >= 2023, with one warning.
         columns: `"all"` (default, every packaged column), `"minimal"`,
-            `"analysis"` (see `schema.preset_columns`), or an explicit
+            `"analysis"` (see `_schema.preset_columns`), or an explicit
             `list[str]` of snake_case column names. `tossd_pillar`,
             `tossd_subpillar`, `is_aggregate`, and `unit` are always present
             in the result regardless of this selection.
@@ -243,7 +243,7 @@ def _build_table(
                 needed_snake_columns, file_column_names=file_column_names
             )
             raw = pq.read_table(path, columns=read_columns)
-        typed = schema.apply_schema(raw, file_column_names=file_column_names)
+        typed = _schema.apply_schema(raw, file_column_names=file_column_names)
         filtered = _apply_row_filters(
             typed,
             provider_codes=provider_codes,
@@ -569,7 +569,7 @@ def _needed_read_columns(
     `tossd_subpillar` need no separate entry here: both are always-forced
     output columns, already in `column_names`.
     """
-    schema_snake_names = {field.snake_name for field in schema.load_schema()}
+    schema_snake_names = {field.snake_name for field in _schema.load_schema()}
     needed = [name for name in column_names if name in schema_snake_names]
     if "provider_code" not in needed:
         needed.append("provider_code")
@@ -586,12 +586,12 @@ def _published_names_to_read(
     """Map `snake_names` to published names, keeping only those present in the file.
 
     A schema column missing from the file entirely is real drift, surfaced
-    by `schema.apply_schema`'s `file_column_names`-driven check right after
+    by `_schema.apply_schema`'s `file_column_names`-driven check right after
     this projected read runs -- never silently narrowed away here.
     """
     file_names = set(file_column_names)
     published_by_snake = {
-        field.snake_name: field.published_name for field in schema.load_schema()
+        field.snake_name: field.published_name for field in _schema.load_schema()
     }
     read_columns: list[str] = []
     for name in snake_names:
@@ -673,7 +673,7 @@ def _resolve_columns(
 ) -> list[str]:
     """Resolve `columns=` to the final column list, forcing the always-present four."""
     if isinstance(columns, str):
-        selected = list(schema.preset_columns(columns))
+        selected = list(_schema.preset_columns(columns))
     else:
         valid_names = _valid_column_names()
         selected = []
@@ -693,9 +693,9 @@ def _with_passthrough_extras(
 ) -> list[str]:
     """Extend an already-resolved `columns="all"` list with any passthrough extras.
 
-    `schema.apply_schema` deliberately passes an unknown-extra column through
+    `_schema.apply_schema` deliberately passes an unknown-extra column through
     raw (with a one-time warning) rather than dropping it, but a plain
-    `combined.select(column_names)` built from `schema.preset_columns("all")`
+    `combined.select(column_names)` built from `_schema.preset_columns("all")`
     silently drops it anyway, contradicting that warning's own text ("only
     visible with `columns='all'`"). Only called for `columns="all"`: presets
     and explicit `columns=` lists never gain extras.
@@ -715,7 +715,7 @@ def _with_passthrough_extras(
     extras = [name for name in actual_names if name not in column_names]
     if not extras:
         return column_names
-    schema_names = set(schema.preset_columns("all"))
+    schema_names = set(_schema.preset_columns("all"))
     schema_ordered = [name for name in column_names if name in schema_names]
     derived_ordered = [name for name in column_names if name not in schema_names]
     return schema_ordered + extras + derived_ordered
@@ -723,7 +723,7 @@ def _with_passthrough_extras(
 
 def _valid_column_names() -> set[str]:
     """Every column name `get_tossd` can produce: schema columns + derived ones."""
-    return {field.snake_name for field in schema.load_schema()} | set(_FORCED_COLUMNS)
+    return {field.snake_name for field in _schema.load_schema()} | set(_FORCED_COLUMNS)
 
 
 def _unknown_column_message(name: str, valid_names: set[str]) -> str:
@@ -743,7 +743,7 @@ def _convert_units(table: pa.Table, *, units: str) -> pa.Table:
         return table
     amount_columns = {
         field.snake_name
-        for field in schema.load_schema()
+        for field in _schema.load_schema()
         if field.is_usd_thousand_amount
     }
     for name in table.column_names:

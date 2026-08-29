@@ -20,7 +20,7 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 import pytest
 
-from tossd_reader import discovery, fetch, query, schema
+from tossd_reader import _schema, discovery, fetch, query
 
 pytestmark = [
     pytest.mark.network,
@@ -68,7 +68,7 @@ def test_smallest_year_conforms_to_packaged_schema() -> None:
     path = fetch.fetch_year(_SMALLEST_YEAR)
     table = pq.read_table(path)
 
-    result = schema.apply_schema(table)
+    result = _schema.apply_schema(table)
 
     assert result.num_rows == table.num_rows
 

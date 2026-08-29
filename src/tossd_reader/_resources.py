@@ -1,6 +1,6 @@
 """Shared packaged-`_data/` path resolution.
 
-Every module that reads a file under `_data/` -- `schema.csv` (`schema.py`,
+Every module that reads a file under `_data/` -- `schema.csv` (`_schema.py`,
 `_export.py`), the codelist CSVs and `_version.json` (`codelists.py`),
 `known_years.json` (`discovery.py`), and `keyword_markers.csv`/
 `structural_breaks.csv` (`analysis.py`) -- resolves it through

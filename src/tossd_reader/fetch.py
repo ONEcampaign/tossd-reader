@@ -451,6 +451,6 @@ def _reset_for_tests() -> None:
 
     Test-only. `tests/conftest.py` resets discovery's and config's
     per-module state, but this module's own warn-once state is reset locally
-    instead, same as discovery.py's and schema.py's own `_reset_for_tests`.
+    instead, same as discovery.py's and _schema.py's own `_reset_for_tests`.
     """
     _state.warned_degraded_years.clear()

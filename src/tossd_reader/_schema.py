@@ -1,5 +1,7 @@
 """Read-time schema layer for published TOSSD parquet vintages.
 
+Private module. Consumed by query.py (and the tests).
+
 Drift contract: a published file missing a column the packaged schema expects
 is a hard `SchemaDriftError` — never silently dropped or nulled. A published
 file carrying a column the packaged schema doesn't know about is not an
