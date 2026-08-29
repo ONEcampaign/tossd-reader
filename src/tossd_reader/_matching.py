@@ -3,6 +3,10 @@
 Private module. Consumed by query.py (and the tests). Fuzzy COLUMN-name
 suggestion (for an unrecognised `columns=` entry) deliberately stays in
 query.py.
+
+`_suggest_with_resolvekit` imports `resolvekit` lazily, inside its own
+body -- a package-level import stays banned project-wide, so importing
+this module never pulls resolvekit into `sys.modules`.
 """
 
 from __future__ import annotations

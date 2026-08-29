@@ -36,8 +36,8 @@ def get_tossd_raw(
 ) -> pd.DataFrame:
     """Return raw TOSSD activity-level data, exactly as published.
 
-    No renaming, no dtype casting, no unit conversion — publisher column
-    names, dtypes, and column order, verbatim.
+    Publisher column names, dtypes, and column order, verbatim -- no
+    renaming, no dtype casting, no unit conversion.
 
     Args:
         years: A single year, or an iterable of years (a `range` included).

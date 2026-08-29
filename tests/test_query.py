@@ -255,7 +255,7 @@ def test_provider_filter_by_digit_string_tries_code_first(
 def test_provider_bool_token_raises_type_error_not_silently_matched_as_int(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """providers=True isn't quietly treated as providers=1: bool is rejected as a token type."""
+    """bool is rejected as a distinct token type before the int/str checks, since Python's bool subclasses int and would otherwise match providers=1."""
     _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=5)
 
     with pytest.raises(TypeError, match="bool"):
@@ -310,7 +310,7 @@ def test_unknown_provider_name_raises_unknown_code_error_with_suggestions(
 
 
 def test_resolvekit_is_imported_lazily_only_on_the_unknown_code_error_path() -> None:
-    """`resolvekit` is never imported by the module itself, only on an actual miss."""
+    """`resolvekit` is imported only on an actual miss, never by the module itself."""
     script = (
         "import sys\n"
         "import tossd_reader.query as query\n"
@@ -631,7 +631,7 @@ def test_extra_column_warns_under_minimal_projection_even_though_not_read(
 ) -> None:
     """An unrecognised extra column still warns once under a narrow projection, but stays absent.
 
-    Unlike `columns="all"` (F1's own passthrough contract), a preset never
+    Unlike `columns="all"`'s own passthrough contract, a preset never
     surfaces the extra in its output -- it just was never read.
     """
     table = build_tossd_table(2019, n_rows=5, seed=0)

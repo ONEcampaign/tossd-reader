@@ -17,7 +17,7 @@ end.
 Discovery is swept once per `get_tossd` call (not once per requested year),
 the same `sweep_or_none` pattern `fetch.get_tossd_raw` already uses. A
 year outside the packaged known-years set is honoured or rejected by
-`fetch.resolve_year` itself — this module never duplicates that logic.
+`fetch.resolve_year` itself, the sole place that logic lives.
 
 Pillar/sub-pillar token resolution lives in `_pillars.py`; `providers=`/
 `recipients=` code resolution lives in `_matching.py`.
@@ -209,7 +209,7 @@ def build_table(
     )
 
     # Resolved once for the whole call, not once per requested year: see
-    # fetch.get_tossd_raw's own docstring for why.
+    # fetch.get_tossd_raw's own comment for why.
     effective = effective_refresh(op_name, explicit=refresh)
     vintages = fetch.sweep_or_none(effective)
 

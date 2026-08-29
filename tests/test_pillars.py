@@ -40,6 +40,6 @@ def test_unknown_pillar_token_raises_value_error() -> None:
 
 
 def test_pillar_bool_token_raises_value_error_not_silently_matched_as_int() -> None:
-    """pillars=True isn't quietly treated as pillars=1: bool is excluded before the int check."""
+    """bool is excluded before the int check, since Python's bool subclasses int and would otherwise match pillars=1."""
     with pytest.raises(ValueError, match="pillars"):
         _pillars.normalise_pillar_token(True)
