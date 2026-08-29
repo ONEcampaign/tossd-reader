@@ -1,9 +1,8 @@
 """Shared helpers for tests that exercise `scripts/` entries by path.
 
-`scripts/` is deliberately not a package (its entries are standalone
-operator/maintainer scripts, not importable library code), so tests that
-need to reach into one for unit-level coverage load it by file path via
-`importlib.util` instead of a normal import.
+`scripts/` holds standalone operator/maintainer scripts, not importable
+library code, so tests that need to reach into one for unit-level coverage
+load it by file path via `importlib.util`.
 """
 
 from __future__ import annotations

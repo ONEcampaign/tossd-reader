@@ -449,8 +449,8 @@ def _validate_new_vintage(path: Path) -> None:
 def _reset_for_tests() -> None:
     """Clear the degraded-revalidation warn-once state.
 
-    Test-only. `tests/conftest.py` resets _discovery's and config's
-    per-module state, but this module's own warn-once state is reset locally
-    instead, same as _discovery.py's and _schema.py's own `_reset_for_tests`.
+    Test-only. `tests/conftest.py`'s autouse fixture resets _discovery's,
+    config's, and query's per-module state; this module's own warn-once state
+    is reset locally instead, same as _schema.py's own local fixture.
     """
     _state.warned_degraded_years.clear()

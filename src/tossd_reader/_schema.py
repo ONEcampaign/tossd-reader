@@ -355,7 +355,8 @@ def _warn_unknown_columns(names: list[str]) -> None:
 def _reset_for_tests() -> None:
     """Clear the warn-once state for unknown columns.
 
-    Test-only. `conftest.py` does not reset per-module state between tests,
-    so this module's own tests reset it directly instead.
+    Test-only. `tests/conftest.py` resets _discovery's, config's, and
+    query's per-module state; this module's own warn-once state is reset
+    here instead, same as fetch.py's own local fixture.
     """
     _state.warned_unknown_columns.clear()

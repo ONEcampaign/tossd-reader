@@ -14,8 +14,9 @@ from tossd_reader.exceptions import SchemaDriftError
 def _reset_schema_state() -> None:
     """Clear _schema.py's warn-once state before each test.
 
-    `tests/conftest.py` does not reset per-module state between tests, so
-    this slice's own tests reset the module directly instead.
+    `tests/conftest.py` resets _discovery's, config's, and query's per-module
+    state; _schema's own warn-once state is reset here instead, same as
+    fetch.py's own local fixture.
     """
     _schema._reset_for_tests()
 

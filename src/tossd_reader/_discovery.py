@@ -167,9 +167,8 @@ def _warn_unknown_years(results: dict[int, VintageInfo]) -> None:
 def _reset_for_tests() -> None:
     """Clear the in-process sweep memo and warn-once state.
 
-    Test-only. `conftest.py` does not reset per-module state between tests,
-    so tests that exercise `discover()`'s memoisation or warn-once behaviour
-    call this themselves via a local fixture.
+    Test-only. Called by `tests/conftest.py`'s autouse fixture before every
+    test.
     """
     _state.memo = None
     _state.warned_years.clear()

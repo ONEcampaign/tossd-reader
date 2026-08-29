@@ -14,7 +14,7 @@
 #
 # destination-dir defaults to ./tossd-archive-<UTC date>. Deliberately dumb:
 # bash + curl + shasum only, no other dependencies. Sweeps year 2019 through
-# the current UTC calendar year (same range discovery.py's own HEAD sweep
+# the current UTC calendar year (same range _discovery.py's own HEAD sweep
 # covers) and simply skips a year that isn't currently published (HTTP 404).
 #
 # A curl transfer failure (connection reset, truncated body, etc.) is NOT the
