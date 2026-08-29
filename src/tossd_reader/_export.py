@@ -26,7 +26,7 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
-from tossd_reader import __version__, _resources, fetch, query
+from tossd_reader import __version__, _provenance, _resources, query
 
 _OP_NAME = "tossd_reader:export"
 _COMPRESSION = "zstd"
@@ -135,10 +135,10 @@ def _vintage_provenance(path: Path) -> dict[str, str | None]:
     """Return `{"etag": ..., "retrieved_at": ...}` from `path`'s provenance sidecar.
 
     Both fields are `None` when the sidecar is missing (should not happen in
-    practice: `fetch._write_provenance_if_absent` writes one for every
+    practice: `_provenance.write_provenance_if_absent` writes one for every
     downloaded vintage), rather than raising.
     """
-    provenance = fetch._read_provenance(path) or {}
+    provenance = _provenance.read_provenance(path) or {}
     etag = provenance.get("etag")
     retrieved_at = provenance.get("retrieved_at")
     return {
