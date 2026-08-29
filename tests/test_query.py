@@ -13,7 +13,7 @@ import pytest
 import requests
 
 import tossd_reader
-from tests.fixtures import _load_schema, build_tossd_table
+from tests.factories import _load_schema, build_tossd_table
 from tossd_reader import _discovery, fetch, query
 from tossd_reader._discovery import VintageInfo
 from tossd_reader.exceptions import (

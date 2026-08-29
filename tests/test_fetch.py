@@ -16,7 +16,7 @@ import requests
 from readerkit import FetchContext, refresh_scope
 
 import tossd_reader
-from tests.fixtures import write_tossd_fixture
+from tests.factories import write_tossd_fixture
 from tossd_reader import _discovery, config, fetch
 from tossd_reader._discovery import VintageInfo
 from tossd_reader.exceptions import TossdNetworkError, VintageValidationError

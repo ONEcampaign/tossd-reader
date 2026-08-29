@@ -20,7 +20,7 @@ import pytest
 import requests
 
 import tossd_reader
-from tests.fixtures import build_tossd_table
+from tests.factories import build_tossd_table
 from tossd_reader import _discovery, fetch, query
 from tossd_reader._discovery import VintageInfo
 

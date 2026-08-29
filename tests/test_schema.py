@@ -5,7 +5,7 @@ from __future__ import annotations
 import pyarrow as pa
 import pytest
 
-from tests.fixtures import build_tossd_table
+from tests.factories import build_tossd_table
 from tossd_reader import _schema
 from tossd_reader.exceptions import SchemaDriftError
 

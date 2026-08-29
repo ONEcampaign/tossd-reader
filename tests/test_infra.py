@@ -7,7 +7,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 
 import tossd_reader
-from tests.fixtures import build_tossd_table, write_tossd_fixture
+from tests.factories import build_tossd_table, write_tossd_fixture
 
 
 def test_import_exposes_version() -> None:
