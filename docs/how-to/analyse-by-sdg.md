@@ -1,13 +1,13 @@
-# How to analyse activities by SDG
+# How to split disbursements across SDG goals
 
-Turn a `get_tossd` frame into per-SDG-goal disbursement totals, with
-multi-tagged activities split so the totals renormalise correctly.
+Turn a `get_tossd` frame into per-goal disbursement totals, with
+multi-tagged activities split so the weighted amounts renormalise to
+each activity's original disbursement.
 
 ## Steps
 
 1. **Query with the `"analysis"` column preset.** `explode_sdg` reads
-   `sdg_codes_raw`. That column ships in `"analysis"`. `"minimal"` doesn't
-   carry it.
+   `sdg_codes_raw`, which ships in `"analysis"` but not `"minimal"`.
 
    ```python
    import tossd_reader as tossd
@@ -18,19 +18,12 @@ multi-tagged activities split so the totals renormalise correctly.
    ```
 
 2. **Explode the SDG codes.** `sdg_codes_raw` packs one or more
-   `;`-delimited codes per activity, goals (`4`) and targets (`4.1`) mixed
-   together. `explode_sdg` gives each code its own row:
+   `;`-delimited codes per activity, goals (`4`) and targets (`4.1`)
+   mixed together. `explode_sdg` gives each code its own row and adds a
+   `sdg_weight` of `1/n` for the `n` codes that row carried:
 
    ```python
    sdg = tossd.explode_sdg(sen_a)
-   ```
-
-   ```text
-   len(sen_a), len(sdg)
-   (4802, 10640)
-   ```
-
-   ```python
    sdg[["sdg_code", "sdg_goal", "sdg_is_target", "sdg_weight"]].head()
    ```
 
@@ -43,15 +36,12 @@ multi-tagged activities split so the totals renormalise correctly.
    4       10        10          False    0.333333
    ```
 
-   An activity tagged with three codes turns into three rows, each carrying
-   `sdg_weight = 1/3`. `sdg_goal` is the code's integer goal part, so a
-   target like `4.1` and a goal-level tag like `4` group together.
+   `sdg_goal` is the code's integer goal part, so a target like `4.1`
+   and a goal-level tag like `4` group together.
 
-3. **Sum `usd_disbursement * sdg_weight`, grouped by `sdg_goal`.** Each
-   weighted row carries a fraction of the activity's amount. An activity
-   split across 3 codes contributes a third of its amount to each of the
-   three rows, and the three weighted amounts sum back to the activity's
-   original disbursement.
+3. **Sum `usd_disbursement * sdg_weight`, grouped by `sdg_goal`.** The
+   weighted amounts for one activity's codes sum back to that
+   activity's original disbursement.
 
    ```python
    sdg["usd_weighted"] = sdg["usd_disbursement"] * sdg["sdg_weight"]
@@ -73,27 +63,17 @@ multi-tagged activities split so the totals renormalise correctly.
    Name: usd_weighted, dtype: float64
    ```
 
+<!-- prettier-ignore -->
 !!! warning "Heads up"
-
-    Activities with no SDG tag (`sdg_codes_raw` empty or null) are dropped
-    from `sdg`, so they contribute nothing to any goal total. The per-goal
-    totals above sum to the SDG-tagged subset of `sen_a`, not to
-    `sen_a["usd_disbursement"].sum()`. On this Senegal 2024 slice the tagged
-    subset is 65.4% of the frame's disbursements.
+    Activities with no SDG tag (`sdg_codes_raw` empty or null) are
+    dropped from `sdg`, so the goal totals above sum to the SDG-tagged
+    subset of `sen_a`, not to `sen_a["usd_disbursement"].sum()`. On this
+    Senegal 2024 slice the tagged subset is 65.4% of the frame's
+    disbursements.
 
 ## Verify it worked
 
-Row count should grow (one input row becomes `n` output rows for an
-activity with `n` codes), and the tagged share should be a fraction, not
-all, of the frame:
-
-```python
-len(sen_a), len(sdg)
-```
-
-```text
-(4802, 10640)
-```
+Check the tagged share directly:
 
 ```python
 round(sdg["usd_weighted"].sum() / sen_a["usd_disbursement"].sum() * 100, 1)
@@ -106,10 +86,10 @@ round(sdg["usd_weighted"].sum() / sen_a["usd_disbursement"].sum() * 100, 1)
 ## Troubleshooting
 
 **`ValueError` naming `sdg_code`, `sdg_goal`, `sdg_is_target`, or
-`sdg_weight`.** `explode_sdg` refuses a frame that already carries one of
-its own output columns, to avoid silently duplicating them on a second
-pass. Pass it the original `get_tossd` frame, not the output of an earlier
-`explode_sdg` call.
+`sdg_weight`.** `explode_sdg` refuses a frame that already carries one
+of its own output columns, so a second pass can't silently duplicate
+them. Pass it the original `get_tossd` frame, not an earlier
+`explode_sdg` result.
 
 ## See also
 

@@ -455,6 +455,21 @@ def test_get_structural_breaks_end_year_marks_the_reporters_drift() -> None:
     assert reporters_row["end_year"] == 2024
 
 
+def test_get_structural_breaks_reporters_row_states_its_counting_rule() -> None:
+    """The reporters figures are reproducible, so the row names the rule behind them.
+
+    97 (2019) and 130 (2024) are distinct `provider_code` values excluding the
+    aggregate pseudo-provider (code 0). A reader who runs that count on the
+    published files gets the same pair, which is the point of stating it.
+    """
+    result = helpers.get_structural_breaks()
+
+    description = result.loc[result["dimension"] == "reporters", "description"].iloc[0]
+    assert "97" in description
+    assert "130" in description
+    assert "provider_code != 0" in description
+
+
 def test_get_structural_breaks_no_mutation_across_calls() -> None:
     """Mutating the returned frame never poisons a later call (cache safety)."""
     first = helpers.get_structural_breaks()

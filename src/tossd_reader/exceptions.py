@@ -3,8 +3,7 @@
 One base, `TossdReaderError`, with a shallow tree of purpose-specific
 subclasses below it. `SchemaDriftError`, `UnknownCodeError` and
 `InvalidPillarError` are defined here so the whole hierarchy is importable
-from this module alone, but they are raised by the schema layer and the
-query layer respectively, not by anything in this one.
+from this module alone.
 """
 
 from __future__ import annotations
@@ -63,20 +62,24 @@ class VintageValidationError(TossdReaderError):
 class SchemaDriftError(TossdReaderError):
     """Raised when a published file's columns no longer match the packaged schema.
 
-    Raised by the schema layer, not by anything in this module.
+    Covers three cases: two published columns whose names normalise to the
+    same key, a schema-expected column absent from the file, and a value that
+    cannot be cast to its `schema.csv` `target_dtype`. The message names the
+    column, and the offending value where there is one.
     """
 
 
 class UnknownCodeError(TossdReaderError):
-    """Raised when a provider/recipient name or code cannot be resolved.
+    """Raised when a `providers=`/`recipients=` value cannot be resolved.
 
-    Raised by the query layer, which attaches ranked resolvekit
-    suggestions to the message. Left as a minimal placeholder here.
+    The message names up to five closest matches from the packaged codelist.
     """
 
 
 class InvalidPillarError(TossdReaderError):
     """Raised when a sub-pillar filter is requested for a year that cannot support it.
 
-    Raised by the query layer. Left as a minimal placeholder here.
+    A sub-pillar filter (`pillars=21/22/"II.A"/"II.B"`) combined with an
+    explicit year before 2023 raises this, naming the years that predate
+    sub-pillar tagging.
     """

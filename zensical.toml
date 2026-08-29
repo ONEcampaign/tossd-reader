@@ -6,21 +6,36 @@ repo_url = "https://github.com/ONEcampaign/tossd-reader"
 
 nav = [
   "index.md",
-  { "Tutorial" = "tutorial.md" },
+  { "Get started" = [
+    { "Your first analysis" = "tutorials/first-analysis.md" },
+    { "A reproducible extract" = "tutorials/reproducible-extract.md" },
+  ] },
   { "How-to guides" = [
+    { "Look up provider and recipient codes" = "how-to/look-up-codes.md" },
+    { "Filter by sector, purpose, or channel" = "how-to/filter-by-sector.md" },
+    { "Rank providers by disbursement" = "how-to/rank-providers.md" },
+    { "Compare totals across years" = "how-to/compare-years.md" },
+    { "Check a figure against the published total" = "how-to/reconcile-a-figure.md" },
+    { "Split disbursements across SDG goals" = "how-to/analyse-by-sdg.md" },
+    { "Measure climate and gender finance" = "how-to/analyse-by-keyword.md" },
+    { "Split Pillar II into sub-pillars" = "how-to/analyse-by-subpillar.md" },
+    { "Measure Pillar II own-country costs" = "how-to/own-country-costs.md" },
+    { "Join TOSSD to other country datasets" = "how-to/join-other-datasets.md" },
+    { "Read the published columns unchanged" = "how-to/read-published-columns.md" },
     { "Work offline and manage the cache" = "how-to/work-offline.md" },
-    { "Export a reproducible extract" = "how-to/export-an-extract.md" },
-    { "Analyse activities by SDG" = "how-to/analyse-by-sdg.md" },
   ] },
   { "Reference" = [
-    { "Query and export" = "reference/query.md" },
+    { "Query" = "reference/query.md" },
+    { "Export" = "reference/export.md" },
     { "Helpers" = "reference/helpers.md" },
     { "Columns, presets, and units" = "reference/columns.md" },
-    { "Configuration and errors" = "reference/configuration.md" },
+    { "Configuration, warnings, and errors" = "reference/configuration.md" },
   ] },
-  { "About" = [
-    { "The cache and provenance" = "about/caching.md" },
-    { "Pillars, aggregates, and breaks" = "about/data-model.md" },
+  { "Understanding the data" = [
+    { "Pillars and aggregate rows" = "about/pillars-and-aggregates.md" },
+    { "The amount columns" = "about/amounts.md" },
+    { "Why TOSSD totals rise" = "about/comparability.md" },
+    { "Reproducibility and vintages" = "about/reproducibility.md" },
   ] },
 ]
 

@@ -53,10 +53,10 @@ rows, together they measured 27,275 of 155,908 pillar-2 rows (17.5%), 35.6%
 of pillar-2 `USD_disbursements`, and 31.0% of pillar-2 `USD_Commitment` --
 consistent with the ~30% of Pillar II net disbursements the
 AidWatch/Oxfam/ActionAid critique attributes to non-recipient-country
-costs. A `sector_code == 720` ("Humanitarian Assistance") candidate
-considered during verification was rejected: those rows (UNHCR/UNICEF/US-run
-programmes, e.g. "USAID Travel and Transportation") are ordinary in-country
-humanitarian aid, not own-country costs."""
+costs. Sector `720` ("Humanitarian Assistance") sits outside the
+carve-out: those rows (UNHCR/UNICEF/US-run programmes, e.g. "USAID Travel
+and Transportation") are ordinary in-country humanitarian aid, not
+own-country costs."""
 
 
 def _require_columns(df: pd.DataFrame, *names: str, func_name: str) -> None:
@@ -175,15 +175,19 @@ def _iso3_resolver() -> resolvekit.Resolver:
 def add_iso3(df: pd.DataFrame) -> pd.DataFrame:
     """Add `provider_iso3`/`recipient_iso3` via resolvekit's OECD numeric-code link.
 
-    ISO3 is looked up by CODE, never by name: `provider_code` `913` and
-    `914` both display as "African Development Bank" in the packaged
-    codelist (as do `909` and `1019` for "Inter-American Development Bank"),
-    so a name-keyed join would silently collapse distinct providers. Codes
-    carry no such collision.
+    ISO3 is looked up by code. `provider_code` `913` and `914` both carry
+    `provider_name` "African Development Bank Group" in the published files,
+    as do `909` and `1019` for "Inter-American Development Bank Group", so a
+    name-keyed join would collapse distinct providers into one row. The
+    packaged codelist names them apart, so codes carry no such collision.
 
-    Uses `resolvekit`'s bundled `geo.countries` module (no download, no
-    network): see `_ISO3_GEO_MODULE`'s own comment for the verification
-    evidence behind that link.
+    Uses `resolvekit`'s bundled `geo.countries` module, which needs no
+    download and no network. That module carries the OECD DAC
+    provider/recipient numeric codelists as the `oecd:provider` and
+    `oecd:recipient` code systems, linked to `iso3`, and its link was
+    checked against all 159 packaged provider codes and all 177 recipient
+    codes with no mismatch against the packaged codelist's own `iso3`
+    column.
 
     Args:
         df: A `get_tossd()`-shaped frame carrying `provider_code` and/or
@@ -322,15 +326,25 @@ def get_structural_breaks() -> pd.DataFrame:
 def pillar2_own_country_costs(df: pd.DataFrame) -> pd.DataFrame:
     """Filter pillar-2 rows to the provider-country own-country-costs carve-out.
 
-    Isolates donor administrative overhead (a proxy that predominantly,
-    though not exclusively, stays inside the provider's own territory) and
-    refugee/asylum-seeker support provided inside the provider's own
-    territory -- the costs that AidWatch/Oxfam/ActionAid's critique of TOSSD
-    Pillar II flags as inflating headline totals relative to genuine
-    cross-border development finance. This is a heuristic pending an
-    official own-country-costs definition from TOSSD; see
-    `_OWN_COUNTRY_SECTOR_CODES`'s own comment for the verification evidence
-    and measured 2024 shares behind it.
+    Sector family 930 ("Domestic expenditures for refugees/asylum seekers")
+    records spending inside the provider's own territory by definition.
+    Sector family 910 ("Administrative Costs of Donors") is a proxy for
+    donor administrative overhead, which predominantly stays in the provider
+    country, though some administrative costs are incurred at the recipient
+    end. Together the two are the share that the AidWatch, Oxfam, and
+    ActionAid critique of TOSSD Pillar II identifies as staying at home
+    rather than funding cross-border development.
+
+    On the 2024 vintage the two families cover 27,275 of 155,908 pillar-2
+    rows (17.5%), 35.6% of pillar-2 gross disbursements, and 31.0% of
+    pillar-2 commitments, consistent with the roughly 30% share that
+    critique attributes to these costs. Sector family 720 ("Humanitarian
+    Assistance") sits outside the carve-out: those rows are in-country
+    humanitarian aid delivered by agencies such as UNHCR and UNICEF.
+
+    TOSSD publishes no official own-country-costs definition, so this is a
+    heuristic built from the two sector families that match that
+    description.
 
     Args:
         df: A `get_tossd()`-shaped frame carrying `tossd_pillar` and

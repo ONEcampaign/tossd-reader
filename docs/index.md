@@ -6,7 +6,7 @@
 import tossd_reader as tossd
 
 df = tossd.get_tossd(years=2024, columns="minimal", units="usd_million")
-df.groupby("tossd_pillar")["usd_disbursement"].sum()
+df.groupby("tossd_pillar")["usd_disbursement"].sum().round(1)
 ```
 
 ```text
@@ -16,16 +16,20 @@ tossd_pillar
 Name: usd_disbursement, dtype: float64
 ```
 
-Those are the publisher's own 2024 headline figures, reproduced from the raw
-activity-level files in one call. tossd-reader downloads the per-year TOSSD
-parquet files from [tossd.online](https://tossd.online), keeps them in a
-local cache, and returns typed pandas frames with snake_case column names
-and real nulls.
+Those are the TOSSD Secretariat's own 2024 headline figures, USD 364.1
+billion for Pillar I and 133.6 billion for Pillar II, reproduced from the raw
+activity-level files in one call.
 
 TOSSD, Total Official Support for Sustainable Development, is an
-activity-level record of official development finance, published by the
-TOSSD Secretariat. The published files run from 2019 to 2024, about 2.4
-million rows, with amounts reported in USD thousands.
+activity-level record of official development finance, one row per
+reported activity, published by the TOSSD Secretariat. The published files
+run six years, 2019 to 2024, about 2.4 million rows, with amounts reported
+in USD thousands.
+
+tossd-reader downloads the per-year parquet files from the publisher's
+site, caches each one locally keyed to its ETag, and returns typed pandas
+frames with snake_case column names, nullable integers for codes, and
+categoricals for names.
 
 ## Install
 
@@ -35,25 +39,32 @@ Python 3.12 or newer.
 pip install git+https://github.com/ONEcampaign/tossd-reader.git
 ```
 
-## Where to go next
+## What you get
 
-- [Tutorial](tutorial.md) builds a year-by-pillar disbursement table for
-  Senegal across all six published years, about ten minutes including
-  the one-time download.
-- [How to work offline and manage the cache](how-to/work-offline.md) covers
-  moving the cache directory, forcing a refresh, and what happens when the
-  publisher is unreachable.
-- [How to export a reproducible extract](how-to/export-an-extract.md) walks
-  through writing a full, unfiltered extract to parquet with a provenance manifest.
-- [How to analyse activities by SDG](how-to/analyse-by-sdg.md) shows how to
-  explode the packed SDG codes and sum weighted disbursements per goal.
-- [Query and export](reference/query.md) documents `get_tossd`,
-  `get_tossd_raw`, `export`, `get_available_filters`, and `get_codelists_version`.
-- [Helpers](reference/helpers.md), [Columns, presets, and units](reference/columns.md),
-  and [Configuration and errors](reference/configuration.md) cover the
-  post-query helper functions, the column presets, and `set_cache_dir` with
-  the exception hierarchy.
-- [About the cache and provenance](about/caching.md) explains the cache's
-  ETag-based provenance model.
-- [About the data model](about/data-model.md) explains the pillar,
-  aggregate, and structural-break concepts behind the data.
+- Typed columns and real nulls in place of the published empty strings.
+- Name-or-code filters for providers, recipients, and pillars, checked
+  against the packaged codelists, with suggestions on a misspelling.
+- Derived `is_aggregate` and pillar tags in every result.
+- A provenance record, URL, ETag, and retrieval time, for every cached
+  vintage.
+
+## Limits
+
+- The first call for a year downloads the whole published file, 55 to 91MB.
+  `columns="minimal"` reduces the memory the resulting frame uses. The
+  download is the full published file either way.
+- `get_tossd` filters on years, providers, recipients, and pillars. Sector,
+  purpose, and channel are post-query pandas work, covered in [How to filter
+  by sector, purpose, channel, or modality](how-to/filter-by-sector.md).
+- No CLI.
+- Installs from git. There is no package-index release.
+
+## Where to start
+
+- [Build a six-year Senegal disbursement trend](tutorials/first-analysis.md)
+  walks one query through a provider ranking, a multi-year trend, and a
+  switch to constant prices, about ten minutes.
+- [About the amount columns](about/amounts.md) explains current versus
+  deflated columns, a 20-point gap between them over 2019 to 2024.
+- [Query](reference/query.md) documents `get_tossd`, its filters, and how
+  to look up a provider or recipient name.

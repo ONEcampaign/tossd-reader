@@ -7,9 +7,11 @@ to snake_case and cast to the dtypes in `schema.csv`. The `columns=` argument
 to `get_tossd` selects a subset, a named preset (`"minimal"`, `"analysis"`,
 or `"all"`, the default) or an explicit `list[str]` of snake_case names.
 Four columns are forced into the result regardless of that selection:
-`tossd_pillar`, `tossd_subpillar`, `is_aggregate`, and `unit`. `is_aggregate`
-is derived as `provider_code == 0`. `parent_channel_name` is the one column
-decoded from a codelist rather than read directly off the published file.
+`tossd_pillar`, `tossd_subpillar`, `is_aggregate`, and `unit`. The first two
+are published columns. `is_aggregate`, derived as `provider_code == 0`, and
+`unit` are added by tossd_reader, so `columns="all"` returns 55 columns
+against the file's 53. `parent_channel_name` is the one column
+decoded from a codelist.
 
 ## Presets
 
@@ -19,11 +21,16 @@ decoded from a codelist rather than read directly off the published file.
 | `analysis` |   44    | Adds sectors, channels, SDG and keyword raw fields, modalities.            |
 | `all`      |   55    | Every packaged column, plus passthrough of any unexpected published extra. |
 
-## Units
+## Preset memory and timing
 
-Amounts are published in USD thousands. `units="usd_million"` divides the 8
-starred `usd_*` amount columns by 1000 (they're marked with `*` in the table
-below) and sets `unit` to `"usd_million"` (`"usd_thousand"` otherwise).
+| `columns=`        | Columns |  2024 alone | All six years |
+| ----------------- | :-----: | ----------: | ------------: |
+| `"minimal"`       |   19    | 55MB, 0.05s |   278MB, 0.2s |
+| `"analysis"`      |   44    | 102MB, 0.1s |   505MB, 0.6s |
+| `"all"` (default) |   55    | 377MB, 0.2s |   2.1GB, 1.1s |
+
+Memory is pandas `memory_usage(deep=True)` on the real 2026-04 vintage files.
+Timings are warm-cache.
 
 ## All columns
 
@@ -88,37 +95,61 @@ Generated from `schema.csv`, in publisher-file order.
 \* Reported in USD thousands. `units="usd_million"` divides these 8 columns
 by 1000.
 
-## Always present
+## Amount columns
 
-`tossd_pillar` and `tossd_subpillar` are `schema.csv` columns already carried
-by every preset above. `is_aggregate` and `unit` are computed after the
-schema read and aren't in `schema.csv` at all. All four are appended to the
-result regardless of an explicit `columns=` list.
+| Column                          | 2024 non-null rows |
+| ------------------------------- | -----------------: |
+| `usd_commitment`                |            390,190 |
+| `usd_commitment_deflated`       |            390,190 |
+| `usd_disbursement`              |            441,645 |
+| `usd_disbursement_deflated`     |            441,645 |
+| `usd_reflow`                    |            215,264 |
+| `usd_reflow_deflated`           |            215,264 |
+| `usd_amount_mobilised`          |              1,693 |
+| `usd_amount_mobilised_deflated` |              1,693 |
+
+Each nominal column and its `_deflated` twin have identical non-null counts
+in 2024. See [About the amount columns](../about/amounts.md) for what
+distinguishes commitments, disbursements, reflows, and mobilised amounts, and
+current from constant prices.
+
+## Always present
 
 | Column            | Dtype      | Meaning                                                                                                                 |
 | ----------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `tossd_pillar`    | `Int8`     | Pillar number, `1`, `2`, or `0` for the 2020-2023 placeholder rows (a publisher artefact, unrelated to `is_aggregate`). |
+| `tossd_pillar`    | `Int8`     | Pillar number, `1`, `2`, or `0` for the 2020-2023 placeholder rows (a publisher artefact). |
 | `tossd_subpillar` | `category` | Sub-pillar tag, `"21"` or `"22"`, where tagged.                                                                         |
 | `is_aggregate`    | `bool`     | `provider_code == 0`.                                                                                                   |
 | `unit`            | `category` | `"usd_thousand"` or `"usd_million"`, set by the `units=` argument to `get_tossd`.                                       |
+
+## Data quality notes
+
+- Empty strings in the published files become real nulls in `get_tossd`.
+  `get_tossd_raw` leaves them as published.
+- Modality code `c01` is normalised to `C01`. The published files carry both
+  cases across years.
+- `maturity`'s unit is undocumented by the publisher and is passed through
+  as published.
 
 ## Schema drift
 
 On every read, tossd_reader checks the published file's columns against
 `schema.csv`. A published file missing a column the packaged schema expects
-raises `SchemaDriftError`.
+raises `SchemaDriftError`. So does a value that cannot be cast to its
+`schema.csv` `target_dtype`, and a file carrying two columns whose names
+normalise to the same key. The message names the column, and the offending
+value where there is one.
 
 <!-- prettier-ignore -->
 !!! warning "Heads up"
 
-    A column the file carries that `schema.csv` doesn't recognize warns once
+    A column the file carries that `schema.csv` doesn't recognise warns once
     per process and passes through under its original name, visible only
     under `columns="all"`.
 
 ## Next
 
-- [Pillars, aggregates, and breaks](../about/data-model.md). Pillar and
-  sub-pillar semantics, the pillar-0 placeholder rows, and the reporter-base
-  structural break.
-- [Query and export](query.md). `columns=` and `units=` in context, on
-  `get_tossd` and `export`.
+- [Pillars, aggregates, and breaks](../about/pillars-and-aggregates.md).
+  Pillar and sub-pillar semantics, the pillar-0 placeholder rows, and the
+  reporter-base structural break.
+- [Query](query.md). `columns=` and `units=` in context, on `get_tossd`.
