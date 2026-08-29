@@ -8,7 +8,7 @@ matter for your question.
 
 1. **Filter with `pillars=`.** Pillar II.A takes `21`, `"21"`, or `"II.A"`;
    Pillar II.B takes `22`, `"22"`, or `"II.B"`. Matching is case-insensitive,
-   so `"ii.a"` works too. All three forms of II.A return the same rows:
+   so `"ii.a"` works too. All three forms of II.A return the same rows.
 
    ```python
    import tossd_reader as tossd
@@ -25,7 +25,7 @@ matter for your question.
    True True
    ```
 
-   Querying both sub-pillars for 2024 gives their disbursement split:
+   Querying both sub-pillars for 2024 gives their disbursement split.
 
    ```python
    b = tossd.get_tossd(years=2024, pillars="II.B", columns="minimal", units="usd_million")
@@ -61,14 +61,14 @@ matter for your question.
    ```
 
    <!-- prettier-ignore -->
-   !!! warning "Heads up"
+   !!! warning "Sub-pillar coverage gap in 2023"
        A cross-year sub-pillar comparison is only clean from 2024. 2023
        tags about half its pillar-2 rows, and the untagged half sits under
        `tossd_subpillar == "2"`.
 
 3. **Read the two warnings a default-years sub-pillar query emits.** With
    `years=None` (the default), a sub-pillar filter narrows silently to
-   2023 onward, and a second warning names the 2023 coverage gap:
+   2023 onward, and a second warning names the 2023 coverage gap.
 
    ```python
    ii_a = tossd.get_tossd(pillars=21, columns="minimal")
@@ -76,13 +76,13 @@ matter for your question.
 
    ```text
    UserWarning: Sub-pillar filters are only meaningful from 2023 onward; narrowing the default years [2019, 2020, 2021, 2022, 2023, 2024] to [2023, 2024]. Pass years= explicitly to request years before 2023 (raises InvalidPillarError for a sub-pillar filter).
-   UserWarning: 2023 sub-pillar tagging is incomplete: roughly 49% of 2023 pillar-2 rows carry no sub-pillar tag (the rollout wasn't yet complete that year). Treat 2023 sub-pillar splits as indicative, not reliable; 2024 onward is complete.
+   UserWarning: 2023 sub-pillar tagging is incomplete: roughly 49% of 2023 pillar-2 rows carry no sub-pillar tag (the rollout wasn't yet complete that year). Treat 2023 sub-pillar splits as indicative; 2024 onward is complete.
    ```
 
 4. **Name an explicit pre-2023 year with a sub-pillar filter and it raises
    instead of narrowing.** The silent narrowing applies only to the
    default `years=None`. An explicit year before 2023 combined with a
-   sub-pillar filter is an error:
+   sub-pillar filter is an error.
 
    ```python
    tossd.get_tossd(years=2021, pillars="II.A", columns="minimal")
@@ -94,7 +94,7 @@ matter for your question.
 
 5. **Get every pillar-2 row regardless of tagging with `pillars=2`.** This
    is the only way to reach 2022's 24-row trace and every untagged 2023
-   row alongside the tagged ones, with no year narrowing and no warning:
+   row alongside the tagged ones, with no year narrowing and no warning.
 
    ```python
    p2 = tossd.get_tossd(years=2024, pillars=2, columns="minimal", units="usd_million")
@@ -112,7 +112,7 @@ matter for your question.
 ## Verify it worked
 
 The three `tossd_subpillar` groups partition every pillar-2 row, so the
-tagged and untagged counts add up to the frame's length:
+tagged and untagged counts add up to the frame's length.
 
 ```python
 tagged = p2["tossd_subpillar"].isin(["21", "22"]).sum()

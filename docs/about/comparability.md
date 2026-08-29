@@ -30,8 +30,7 @@ year
 Name: provider_code, dtype: int64
 ```
 
-97 providers in 2019, 130 in 2024. Part of any year-over-year growth is the
-wider reporter base. Code `0`, the publisher-computed aggregate
+Part of the year-over-year growth comes from the widening reporter base. Code `0`, the publisher-computed aggregate
 pseudo-provider, is out of this count. See [About pillars and aggregate
 rows](pillars-and-aggregates.md) for what that row is and when to keep it.
 
@@ -67,10 +66,7 @@ table and cite it alongside a figure.
 methodology        2026      2026                                              RDRM (revised debt-relief reporting methodology) takes effect May 2026 -- applies to vintages published from that date                TOSSD Secretariat announcement
 ```
 
-The `reporters` row names its own counting rule, so the figure above and a
-reader's own count agree. The four other rows each mark one discrete event.
-On the `reporters` row, `end_year` (2024) marks where its continuous 2019 to
-2024 drift ends.
+The reporters row tracks continuous reporter-base growth through 2024, while the other rows mark discrete structural events.
 
 ## Related
 

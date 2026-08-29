@@ -56,7 +56,7 @@ pip install git+https://github.com/ONEcampaign/tossd-reader.git
 - `get_tossd` filters on years, providers, recipients, and pillars. Sector,
   purpose, and channel are post-query pandas work, covered in [How to filter
   by sector, purpose, channel, or modality](how-to/filter-by-sector.md).
-- No CLI.
+- There is no CLI.
 - Installs from git. There is no package-index release.
 
 ## Where to start

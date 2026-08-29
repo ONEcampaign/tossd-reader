@@ -13,8 +13,7 @@ and the two-code provider names kept apart.
    h = tossd.get_tossd(years=2024, columns="minimal", units="usd_million")
    ```
 
-2. **Exclude `is_aggregate` before you group.** Left in, provider code `0`,
-   the aggregate pseudo-provider, outranks every real provider:
+2. **Exclude `is_aggregate` before you group.**
 
    ```python
    # ❌ aggregate row included, ranks first at 99379.6
@@ -32,9 +31,7 @@ and the two-code provider names kept apart.
    ```
 
 3. **Group by `["provider_code", "provider_name"]`, sum, and sort.**
-   Grouping by `provider_name` alone merges two provider codes together for
-   "African Development Bank Group" and "Inter-American Development Bank
-   Group". Keying on `provider_code` too keeps them apart:
+   Keying on `provider_code` alongside `provider_name` separates distinct provider codes with the same name:
 
    ```python
    # ✅ aggregate excluded, codes kept apart

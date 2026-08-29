@@ -5,7 +5,7 @@ known discontinuities fall inside the years you're comparing.
 
 ## Steps
 
-1. **Pull the years you want to compare.** Use `range` for a span:
+1. **Pull the years you want to compare.** Use `range` for a span.
 
    ```python
    import tossd_reader as tossd
@@ -18,12 +18,12 @@ known discontinuities fall inside the years you're comparing.
    ```
 
    An explicit `columns=` list only forces in `tossd_pillar`,
-   `tossd_subpillar`, `is_aggregate`, and `unit`, so `"year"` has to be
-   named explicitly or the `groupby` below raises `KeyError`.
+   `tossd_subpillar`, `is_aggregate`, and `unit`. Name `"year"`
+   explicitly to avoid a `KeyError` during groupby.
 
 2. **Group by year and sum both the current-price and the `_deflated`
    column.** Every amount column has a `_deflated` twin, holding the same
-   amount restated in constant prices:
+   amount restated in constant prices.
 
    ```python
    df.groupby("year", observed=True)[
@@ -47,7 +47,7 @@ known discontinuities fall inside the years you're comparing.
 
 3. **Check `get_structural_breaks()` for rows that intersect the window.**
    It is a curated reference table. You read it and cite it alongside a
-   figure:
+   figure.
 
    ```python
    breaks = tossd.get_structural_breaks()
@@ -66,7 +66,7 @@ known discontinuities fall inside the years you're comparing.
 ## Verify it worked
 
 Count distinct `provider_code` values per year, excluding the aggregate
-pseudo-provider:
+pseudo-provider.
 
 ```python
 counts = tossd.get_tossd(years=range(2019, 2025), columns=["year", "provider_code"])

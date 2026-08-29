@@ -5,8 +5,7 @@ serve those years with no network.
 
 ## Prime the cache before you go offline
 
-1. While you still have network access, call `get_tossd` (or
-   `get_tossd_raw`) naming every year you'll need. One call can cover
+1. **Call `get_tossd` with network access.** Name every year you'll need. One call can cover
    all of them:
 
    ```python
@@ -18,9 +17,8 @@ serve those years with no network.
    Each requested year downloads and caches on its own. All six
    published years (2019 to 2024) take about 0.45 GB on disk.
 
-2. Turn off the network and make the same call again. A `UserWarning`
-   naming a cached vintage means that year is there. `TossdNetworkError`
-   means that year is missing.
+2. **Make the same call offline.** A `UserWarning`
+   naming a cached vintage confirms that year is available.
 
 ## What happens when you go offline
 

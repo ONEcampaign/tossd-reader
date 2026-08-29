@@ -29,7 +29,7 @@ the base year. Every 2024 row's nominal and deflated value are identical,
 and earlier years are adjusted relative to it.
 
 A multi-year comparison in current prices measures inflation as well as
-finance. Global disbursements, 2019 to 2024, in USD million:
+finance. Global disbursements from 2019 to 2024 are measured in USD million.
 
 ```python
 import tossd_reader as tossd
@@ -57,8 +57,7 @@ year
 
 2019 to 2024 growth is 66.0% in current prices and 46.3% in constant prices.
 The gap between the two is inflation over that period, priced into the
-current-price column and stripped out of the constant-price one. Say which
-basis a figure uses.
+current-price column and stripped out of the constant-price one.
 
 ## Reflows and mobilised amounts
 

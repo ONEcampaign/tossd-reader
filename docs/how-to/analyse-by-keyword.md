@@ -26,7 +26,7 @@ double-counting.
    kw = tossd.extract_keywords(sen_a)
    ```
 
-3. **Select rows with a boolean mask.** A single marker is one column:
+3. **Select rows with a boolean mask.** A single marker is one column.
 
    ```python
    gender = kw[kw.kw_gender]
@@ -38,7 +38,7 @@ double-counting.
    ```
 
    556.3 USD million of Senegal's 2,648.0 total (21.0%), across 1,308
-   activities. Climate finance is the union of the two markers:
+   activities. Climate finance is the union of the two markers.
 
    ```python
    # ✅ union of the two masks, dual-tagged activities counted once
@@ -54,16 +54,16 @@ double-counting.
    ```
 
 <!-- prettier-ignore -->
-!!! warning "Heads up"
+!!! warning "Overlapping marker totals"
     The twelve markers are independent booleans with no weight column
-    and no partition. Marker totals overlap, so never sum them across
-    markers or present them as shares of a whole. The vocabulary is a
-    fixed twelve. An absent marker means the activity is untagged.
+    and no partition. Marker totals overlap. Present each marker total
+    independently. The vocabulary is a fixed twelve. An absent marker
+    means the activity is untagged.
 
 ## Verify it worked
 
 Sum the twelve marker counts and compare against the number of
-activities carrying at least one marker:
+activities carrying at least one marker.
 
 ```python
 kw_cols = [c for c in kw.columns if c.startswith("kw_")]
@@ -98,4 +98,4 @@ list.
 - [Helpers reference](../reference/helpers.md) for `extract_keywords`'s
   full contract, including the fixed marker vocabulary.
 - [Columns, presets, and units](../reference/columns.md) for what
-  `"analysis"` carries.
+  `"analysis"` carries, including `keywords_raw`.

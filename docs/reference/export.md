@@ -27,7 +27,7 @@ exports/tossd_2019.parquet
 `tossd_<years>.parquet` inside it. `path` given as an explicit filename ending
 in `.parquet` is used verbatim, creating its parent directories if needed.
 
-`<years>` is built from the resolved, sorted year list:
+`<years>` is built from the resolved, sorted year list.
 
 - A single year is that year alone, e.g. `tossd_2019.parquet`.
 - A contiguous run is `<first>-<last>`, e.g. `tossd_2019-2024.parquet`.
@@ -64,7 +64,7 @@ file.
 | `years`                | list of `int` | Exported years, sorted.                                                                                                                      |
 | `row_count`            | int           | Total rows across all exported years.                                                                                                        |
 | `created_at`           | string        | Export write time, ISO 8601, UTC.                                                                                                            |
-| `vintages`             | object        | One entry per exported year: `{"etag": ..., "retrieved_at": ...}`, both `null` when that year's provenance sidecar is missing or unreadable. |
+| `vintages`             | object        | One entry per exported year. Both `etag` and `retrieved_at` are `null` when that year's provenance sidecar is missing or unreadable. |
 
 ## Next
 

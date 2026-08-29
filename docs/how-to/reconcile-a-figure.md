@@ -1,8 +1,6 @@
 # How to check a figure against the published total
 
-Work through six reasons a computed TOSSD figure can differ from the
-publisher's portal, or from a colleague's spreadsheet, before assuming
-either number is wrong.
+Check these six properties to reconcile a computed figure against the publisher's portal or a spreadsheet.
 
 Every check below runs against one six-year frame:
 
@@ -102,8 +100,7 @@ df = tossd.get_tossd(years=range(2019, 2025), columns="minimal")
 ## Verify it worked
 
 Two figures agree once units, aggregate rows, price basis, `pillars=`,
-vintage, and year coverage all match. If a gap survives all six checks, the
-difference is in how one of the figures was computed.
+vintage, and year coverage all match.
 
 ## See also
 

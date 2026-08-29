@@ -74,7 +74,7 @@ print(breaks.drop(columns=["source"]).to_string(index=False))
 ```
   dimension  break_year  end_year                                                                                                                                                         description
  sub_pillar        2022      2022                                                                                Sub-pillar tagging (Tossdpillar2 21/22) first appears as trace data: 24 rows in 2022
- sub_pillar        2023      2023                                           Sub-pillar coverage ~51% of pillar-2 rows in 2023; ~99% in 2024 -- cross-year sub-pillar analysis is only clean from 2024
+ sub_pillar        2023      2023                                           Sub-pillar coverage ~51% of pillar-2 rows in 2023; ~99% in 2024. Cross-year sub-pillar analysis is only clean from 2024
    modality        2021      2021                                                                                                                             Modality code K02 first appears in 2021
   reporters        2019      2024 Reporter base grows from 97 (2019) to 130 (2024) distinct provider codes, counting provider_code != 0; apparent growth in totals partly reflects reporting coverage
 methodology        2026      2026                                              RDRM (revised debt-relief reporting methodology) takes effect May 2026 -- applies to vintages published from that date

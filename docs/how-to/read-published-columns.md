@@ -18,8 +18,7 @@ every row.
 
 ## Steps
 
-1. **Query the year with `get_tossd_raw`.** It takes `years` and `refresh`
-   only, no filters:
+1. **Query the year with `get_tossd_raw`.** It takes `years` and `refresh` only:
 
    ```python
    import tossd_reader as tossd
@@ -167,8 +166,7 @@ int(h["project_number"].isna().sum())
 
 <!-- prettier-ignore -->
 !!! warning "Heads up"
-    A frame from `get_tossd_raw` has no `is_aggregate` column, no `unit`
-    column, and no filtering by provider, recipient, or pillar. Filter and
+    A frame from `get_tossd_raw` provides only the raw published columns. Filter and
     convert units yourself with pandas, or query `get_tossd` instead for
     typed columns, the derived `is_aggregate` flag, and built-in filters.
 

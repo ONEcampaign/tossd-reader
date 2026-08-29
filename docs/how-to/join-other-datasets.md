@@ -6,10 +6,9 @@ Bank, IMF, or in-house country data keyed on ISO3.
 ## Steps
 
 1. **Add ISO3 codes.** `add_iso3` looks up `provider_code` and
-   `recipient_code` against the OECD DAC codelist. Provider names collide in the published files ("African
-   Development Bank Group" and "Inter-American Development Bank Group"
-   each cover two provider codes), so a name-keyed join would merge
-   them.
+   `recipient_code` against the OECD DAC codelist. Provider names collide
+   in the published files. Use the ISO3 codes for joining to avoid merging
+   distinct entities like the African Development Bank Group.
 
    ```python
    import tossd_reader as tossd
@@ -46,8 +45,7 @@ Bank, IMF, or in-house country data keyed on ISO3.
 
 ## Verify it worked
 
-Count the nulls before you join, so you know what an inner join would
-drop:
+Count the nulls before joining to identify rows an inner join drops.
 
 ```python
 iso["provider_iso3"].isna().sum()
@@ -63,8 +61,8 @@ iso["provider_iso3"].isna().sum()
 ## Troubleshooting
 
 **`ValueError` naming `provider_code`/`recipient_code`.** `add_iso3`
-needs at least one of them present. Both ship in every column preset,
-so this only happens with an explicit `columns=` list that drops them.
+needs at least one of them present. Both ship in every column preset.
+This happens with an explicit `columns=` list that drops them.
 
 ## See also
 

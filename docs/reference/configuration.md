@@ -19,8 +19,8 @@ The default cache directory is platform-specific.
 - Windows: `%LOCALAPPDATA%\readerkit\Cache\v1\tossd-reader\1`
 
 `TOSSD_READER_CACHE_DIR` overrides the
-default and is re-read on every call, so a change to the environment between
-calls takes effect with no reset step. Precedence, highest first:
+default and is re-read on every call. Changes to the environment take effect
+without a reset step. Precedence, highest first:
 `set_cache_dir(path)`, then `TOSSD_READER_CACHE_DIR`, then
 `BBLOCKS_CACHE_DIR` (shared across the reader family), then the platform
 default.

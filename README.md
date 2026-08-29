@@ -32,8 +32,7 @@ pip install git+https://github.com/ONEcampaign/tossd-reader.git
 
 ## Quickstart
 
-Filter by year, provider, recipient, or pillar, with a code or an exact
-name:
+Filter by year, provider, recipient, or pillar with a code or an exact name.
 
 ```python
 sen = tossd.get_tossd(

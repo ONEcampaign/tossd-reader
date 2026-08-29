@@ -18,7 +18,7 @@ embeds it directly: `tossd_{year}_{etag}`. Two downloads of
 different cached files, and two different provenance records.
 
 Every downloaded vintage gets a sidecar, `<stem>.provenance.json`, written
-once and never overwritten on a later cache hit:
+once and preserved on later cache hits.
 
 ```json
 {
@@ -60,11 +60,9 @@ schema hash, and the total row count:
 
 When the publisher is unreachable, or a requested year is no longer listed,
 tossd_reader serves the newest cached vintage for that year and warns,
-naming the vintage's retrieval date and `ETag`. A year the publisher has
-stopped listing behaves the same way, served from cache with a warning.
+naming the vintage's retrieval date and `ETag`.
 
-The warning is the only signal marking a result as built from a stale
-vintage.
+The warning marks the result as built from a stale vintage.
 
 ## Related
 

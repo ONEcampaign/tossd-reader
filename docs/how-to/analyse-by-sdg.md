@@ -20,7 +20,7 @@ each activity's original disbursement.
 2. **Explode the SDG codes.** `sdg_codes_raw` packs one or more
    `;`-delimited codes per activity, goals (`4`) and targets (`4.1`)
    mixed together. `explode_sdg` gives each code its own row and adds a
-   `sdg_weight` of `1/n` for the `n` codes that row carried:
+   `sdg_weight` of `1/n` for the `n` codes that row carried.
 
    ```python
    sdg = tossd.explode_sdg(sen_a)
@@ -64,16 +64,16 @@ each activity's original disbursement.
    ```
 
 <!-- prettier-ignore -->
-!!! warning "Heads up"
+!!! warning "SDG goal totals do not sum to recipient total"
     Activities with no SDG tag (`sdg_codes_raw` empty or null) are
     dropped from `sdg`, so the goal totals above sum to the SDG-tagged
-    subset of `sen_a`, not to `sen_a["usd_disbursement"].sum()`. On this
+    subset of `sen_a`. On this
     Senegal 2024 slice the tagged subset is 65.4% of the frame's
     disbursements.
 
 ## Verify it worked
 
-Check the tagged share directly:
+Check the tagged share directly.
 
 ```python
 round(sdg["usd_weighted"].sum() / sen_a["usd_disbursement"].sum() * 100, 1)

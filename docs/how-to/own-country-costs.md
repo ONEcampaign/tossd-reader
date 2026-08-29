@@ -69,7 +69,7 @@ share of Pillar II disbursements.
    ```
 
 <!-- prettier-ignore -->
-!!! warning "Heads up"
+!!! warning "Sector 720 humanitarian aid is excluded"
     `pillar2_own_country_costs` applies a sector-family heuristic.
     TOSSD publishes no official own-country-costs definition, so 35.6%
     is an estimate on a sector-family heuristic. Sector `910` is a proxy

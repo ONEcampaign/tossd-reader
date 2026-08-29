@@ -141,7 +141,7 @@ normalise to the same key. The message names the column, and the offending
 value where there is one.
 
 <!-- prettier-ignore -->
-!!! warning "Heads up"
+!!! warning "Unrecognised schema columns"
 
     A column the file carries that `schema.csv` doesn't recognise warns once
     per process and passes through under its original name, visible only

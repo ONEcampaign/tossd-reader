@@ -29,7 +29,7 @@ then filter a `get_tossd` frame on that code in pandas.
 
 2. **Query with a preset that carries the code column.** `sector_code` ships
    with `columns="analysis"` and `columns="all"`. `columns="minimal"` omits
-   it:
+   it.
 
    ```python
    sen = tossd.get_tossd(
@@ -44,7 +44,7 @@ then filter a `get_tossd` frame on that code in pandas.
 
 3. **Filter the returned frame on the code, with aggregate rows excluded.**
    `sector_code` is a nullable `Int16`, so a filter is a plain integer
-   comparison:
+   comparison.
 
    ```python
    edu = sen[(sen["sector_code"] == 110) & ~sen["is_aggregate"]]
@@ -71,7 +71,7 @@ then filter a `get_tossd` frame on that code in pandas.
    ```
 
 4. **The same shape works for purpose, channel, and modality.** Look up the
-   code, then filter on it the same way:
+   code, then filter on it the same way.
 
    ```python
    purpose_hits = tossd.get_available_filters()["purpose"]
@@ -98,7 +98,7 @@ then filter a `get_tossd` frame on that code in pandas.
 
    `modality_code` is a `category`, so its codes are short strings such as
    `"B01"`. Filter and total all three the same way `edu` was filtered
-   above:
+   above.
 
    ```python
    purpose = sen[(sen["purpose_code"] == 12220) & ~sen["is_aggregate"]]
@@ -127,7 +127,7 @@ then filter a `get_tossd` frame on that code in pandas.
 5. **Name `"year"` yourself if you filter across years with an explicit
    `columns=` list.** Only `tossd_pillar`, `tossd_subpillar`, `is_aggregate`,
    and `unit` are forced into an explicit list. `"year"` is not, so grouping
-   by it without naming it raises `KeyError`:
+   by it without naming it raises `KeyError`.
 
    ```python
    df = tossd.get_tossd(
@@ -143,7 +143,7 @@ then filter a `get_tossd` frame on that code in pandas.
    KeyError: 'year'
    ```
 
-   Add `"year"` to the list and the same groupby works:
+   Add `"year"` to the list and the same groupby works.
 
    ```python
    df = tossd.get_tossd(
@@ -170,7 +170,7 @@ then filter a `get_tossd` frame on that code in pandas.
 ## Verify it worked
 
 The 2024 row of the multi-year, explicit-`columns=` total should match the
-single-year, `"analysis"`-preset total from step 3:
+single-year, `"analysis"`-preset total from step 3.
 
 ```python
 by_year = edu_by_year.groupby("year", observed=True)["usd_disbursement"].sum().round(1)
@@ -198,5 +198,5 @@ does not force `"year"` in. Add `"year"` to the list.
   full list of filterable dimensions and how code and name resolution work
   for `providers=` and `recipients=`.
 - [Columns, presets, and units](../reference/columns.md) for the full
-  column-to-preset table, including which columns are forced into every
-  result.
+  column-to-preset table, and data quality notes like modality code
+  normalization (e.g., `c01` to `C01`).

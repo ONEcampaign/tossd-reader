@@ -3,8 +3,8 @@
 _As of v0.1._
 
 TOSSD splits activities into Pillar I (support delivered to recipient
-countries) and Pillar II (expenditure with no specific recipient: global
-public goods, in-donor costs, regional programmes). Pillar II further splits
+countries) and Pillar II (expenditure with no specific recipient, such as global
+public goods, in-donor costs, and regional programmes). Pillar II further splits
 into II.A and II.B, recorded in `tossd_pillar`/`tossd_subpillar`. Every
 published file also mixes real provider rows with publisher-computed
 aggregate rows, and a handful of older rows carry no pillar at all.
@@ -45,7 +45,7 @@ into every result, regardless of `columns=`.
 Aggregate rows carry about 20% of 2024 disbursements. Group by provider
 without excluding them and a ranking gains an "Aggregate" row larger than
 every real provider. A total that keeps them matches the publisher's headline
-figure, and dropping them cuts about 20% of 2024 disbursements.
+figure, and dropping them removes those aggregate disbursements.
 
 ```python
 import tossd_reader as tossd
@@ -59,8 +59,7 @@ df.loc[~df["is_aggregate"]].groupby("provider_name")["usd_disbursement"].sum()
 df.groupby("provider_name")["usd_disbursement"].sum()
 ```
 
-Publisher-level totals, matching the headline Pillar I/II figures, want
-aggregate rows included. Provider-level rankings want them excluded. The full
+Keep aggregate rows to match publisher-level headline figures. Exclude them when ranking individual providers. The full
 recipe, with the 2024 figures, is on [How to rank providers by
 disbursement](../how-to/rank-providers.md).
 
@@ -70,7 +69,7 @@ The 2020 to 2023 files carry a few hundred rows tagged pillar `0`, a
 publisher artefact from before the current two-pillar structure. `pillars=None`
 (the default) keeps them, so an unfiltered `get_tossd()` reproduces the row
 count of the published file exactly. Any other `pillars=` value excludes
-them, because `tossd_pillar in {1, 2}` never matches `0`.
+them, because `tossd_pillar in {1, 2}` only matches pillars 1 and 2.
 
 ## Own-country costs
 

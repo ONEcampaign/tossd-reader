@@ -48,7 +48,7 @@ Resolve a provider or recipient name or code before passing it to
    UnknownCodeError: 'Germny' did not match any providers code or name in the packaged codelist. Closest matches: Germany.
    ```
 
-   A string is checked against the codelist. An in-range integer is not:
+   A string is checked against the codelist. An in-range integer passes without codelist lookup:
 
    ```python
    tossd.get_tossd(years=2024, providers=500, columns="minimal").shape
@@ -72,7 +72,7 @@ Resolve a provider or recipient name or code before passing it to
    UnknownCodeError: 'Japan' did not match any recipients code or name in the packaged codelist. Closest matches: Azerbaijan, Panama.
    ```
 
-   Japan is a provider, not a TOSSD recipient.
+   Japan is a provider.
 
 ## Verify it worked
 

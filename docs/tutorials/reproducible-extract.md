@@ -127,7 +127,7 @@ Three things travel with a reproducible extract:
   handling, unit, and price basis that analysis used.
 
 <!-- prettier-ignore -->
-!!! warning "Heads up"
+!!! warning "Memory footprint for multi-year exports"
     `export()` with `years=None`, the default, materialises every packaged
     year in memory before writing any of it to disk, measured at roughly
     2.1GB resident for the full six-year set. Pass an explicit `years=` to
