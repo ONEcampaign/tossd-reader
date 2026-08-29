@@ -8,7 +8,6 @@ testable in the default (offline) pytest suite.
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import subprocess
 import sys
@@ -16,16 +15,14 @@ from pathlib import Path
 
 import pandas as pd
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+from tests.script_loading import REPO_ROOT, import_script
+
 SCRIPT = REPO_ROOT / "scripts" / "refresh_codelists.py"
 
 
 def _import_script():
     """Import `refresh_codelists.py` by path (`scripts/` is not a package)."""
-    spec = importlib.util.spec_from_file_location("refresh_codelists", SCRIPT)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    return import_script("refresh_codelists.py")
 
 
 def _write_snapshot(

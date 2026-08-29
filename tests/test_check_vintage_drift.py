@@ -7,7 +7,6 @@ logic, exercised against hand-written temp JSON files, same convention as
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import subprocess
 import sys
@@ -15,18 +14,15 @@ from pathlib import Path
 
 import pytest
 
+from tests.script_loading import REPO_ROOT, import_script
 from tossd_reader.exceptions import TossdNetworkError
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "check_vintage_drift.py"
 
 
 def _import_script():
     """Import `check_vintage_drift.py` by path (`scripts/` is not a package)."""
-    spec = importlib.util.spec_from_file_location("check_vintage_drift", SCRIPT)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    return import_script("check_vintage_drift.py")
 
 
 def _write_records(path: Path, records: dict[int, dict[str, object]]) -> None:

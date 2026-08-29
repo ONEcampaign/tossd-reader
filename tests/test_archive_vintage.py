@@ -20,12 +20,13 @@ from pathlib import Path
 
 import pytest
 
+from tests.script_loading import REPO_ROOT
+
 pytestmark = pytest.mark.skipif(
     sys.platform == "win32",
     reason="archive_vintage.sh is a unix operator script (bash + curl + shasum)",
 )
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "archive_vintage.sh"
 
 _YEAR_RE = re.compile(r"tossddata_(\d+)\.parquet$")

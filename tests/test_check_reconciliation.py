@@ -7,24 +7,16 @@ convention as `tests/test_check_vintage_drift.py`.
 
 from __future__ import annotations
 
-import importlib.util
-from pathlib import Path
-
 import pyarrow as pa
 import pytest
 
+from tests.script_loading import import_script
 from tossd_reader.exceptions import TossdNetworkError
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
-SCRIPT = REPO_ROOT / "scripts" / "check_reconciliation.py"
 
 
 def _import_script():
     """Import `check_reconciliation.py` by path (`scripts/` is not a package)."""
-    spec = importlib.util.spec_from_file_location("check_reconciliation", SCRIPT)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    return import_script("check_reconciliation.py")
 
 
 def _synthetic_table(
