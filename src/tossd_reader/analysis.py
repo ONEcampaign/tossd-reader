@@ -10,7 +10,7 @@ frame at all: it returns the packaged structural-breaks reference table.
 `add_iso3` is the one helper here that touches `resolvekit`: `import
 resolvekit` happens lazily, inside `_iso3_resolver`'s own body, never at
 module scope -- a package-level import stays banned project-wide (see
-`query.py`'s `_suggest_with_resolvekit`), so a bare `import tossd_reader`,
+`_matching.py`'s `_suggest_with_resolvekit`), so a bare `import tossd_reader`,
 or calling any of this module's other four helpers, never pulls resolvekit
 into `sys.modules`.
 """

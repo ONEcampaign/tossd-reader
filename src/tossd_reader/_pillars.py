@@ -104,7 +104,7 @@ def _warn_subpillar_narrowed(
         "years= explicitly to request years before 2023 (raises "
         "InvalidPillarError for a sub-pillar filter).",
         # 5 frames up from here: _warn_subpillar_narrowed ->
-        # _resolve_subpillar_years -> _build_table -> get_tossd -> the
+        # _resolve_subpillar_years -> build_table -> get_tossd -> the
         # caller (only get_tossd reaches this path; export() forces
         # pillars=None).
         stacklevel=5,

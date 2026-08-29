@@ -1,6 +1,6 @@
 """The typed, filtered `get_tossd` query layer.
 
-Per requested year: `fetch._resolve_year` → a column-projected pyarrow read
+Per requested year: `fetch.resolve_year` → a column-projected pyarrow read
 (only the output columns plus internal-only needs -- `is_aggregate`'s
 `provider_code`, a row filter's `recipient_code`, the decode join's
 `parent_channel_code` -- unless `columns="all"`, which reads every column) →
@@ -15,9 +15,9 @@ projection, units conversion, and exactly one `.to_pandas()` call at the very
 end.
 
 Discovery is swept once per `get_tossd` call (not once per requested year),
-the same `_sweep_or_none` pattern `fetch.get_tossd_raw` already uses. A
+the same `sweep_or_none` pattern `fetch.get_tossd_raw` already uses. A
 year outside the packaged known-years set is honoured or rejected by
-`fetch._resolve_year` itself — this module never duplicates that logic.
+`fetch.resolve_year` itself — this module never duplicates that logic.
 
 Pillar/sub-pillar token resolution lives in `_pillars.py`; `providers=`/
 `recipients=` code resolution lives in `_matching.py`.
@@ -137,7 +137,7 @@ def get_tossd(
         SchemaDriftError: A requested year's published file no longer
             matches the packaged schema.
     """
-    combined, _paths = _build_table(
+    combined, _paths = build_table(
         years=years,
         providers=providers,
         recipients=recipients,
@@ -150,7 +150,7 @@ def get_tossd(
     return combined.to_pandas(types_mapper=_ARROW_TO_PANDAS_INT.get)
 
 
-def _build_table(
+def build_table(
     *,
     years: int | Iterable[int] | None,
     providers: int | str | Iterable[int | str] | None,
@@ -183,7 +183,7 @@ def _build_table(
         raise ValueError(f"Unknown units {units!r}; expected one of {_VALID_UNITS}.")
 
     years_was_none = years is None
-    resolved_years = fetch._normalise_years(years)
+    resolved_years = fetch.normalise_years(years)
 
     pillar_main, pillar_sub = (
         (None, None) if pillars is None else _pillars.normalise_pillar_token(pillars)
@@ -211,12 +211,12 @@ def _build_table(
     # Resolved once for the whole call, not once per requested year: see
     # fetch.get_tossd_raw's own docstring for why.
     effective = effective_refresh(op_name, explicit=refresh)
-    vintages = fetch._sweep_or_none(effective)
+    vintages = fetch.sweep_or_none(effective)
 
     tables = []
     paths: dict[int, Path] = {}
     for year in resolved_years:
-        path = fetch._resolve_year(year, vintages=vintages, refresh=effective)
+        path = fetch.resolve_year(year, vintages=vintages, refresh=effective)
         paths[year] = path
         file_column_names = list(pq.read_schema(path).names)
         if read_all:
@@ -446,8 +446,8 @@ def _warn_unknown_decode_codes(column_name: str, missing_values: list[object]) -
         "codelists (vintage newer than snapshot?): "
         f"{column_name} has {', '.join(new_missing)}.",
         # 5 frames up from here: _warn_unknown_decode_codes ->
-        # _decode_parent_channel -> _add_derived_columns -> _build_table ->
-        # get_tossd (or export()) -> the caller. Both wrap `_build_table` at
+        # _decode_parent_channel -> _add_derived_columns -> build_table ->
+        # get_tossd (or export()) -> the caller. Both wrap `build_table` at
         # the same depth, so this stacklevel is correct either way.
         stacklevel=6,
     )

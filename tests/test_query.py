@@ -134,7 +134,7 @@ def test_multi_year_concat_unifies_divergent_categorical_dictionaries(
     }
     _setup_years(monkeypatch, tmp_path, tables)
 
-    combined, _paths = query._build_table(
+    combined, _paths = query.build_table(
         years=[2019, 2020, 2021],
         providers=None,
         recipients=None,

@@ -53,21 +53,21 @@ def get_tossd_raw(
     Raises:
         ValueError: `years` resolves to an empty set of years.
     """
-    resolved_years = _normalise_years(years)
+    resolved_years = normalise_years(years)
     # Resolved once for every requested year, rather than once per year: a
     # per-year `discover()` call would re-run the whole HEAD sweep N times
     # under `refresh=True` (or an enclosing `refresh_scope()`).
     effective = effective_refresh("tossd_reader:get_tossd_raw", explicit=refresh)
-    vintages = _sweep_or_none(effective)
+    vintages = sweep_or_none(effective)
     tables = [
-        pq.read_table(_resolve_year(year, vintages=vintages, refresh=effective))
+        pq.read_table(resolve_year(year, vintages=vintages, refresh=effective))
         for year in resolved_years
     ]
     combined = pa.concat_tables(tables)
     return combined.to_pandas()
 
 
-def _normalise_years(years: int | Iterable[int] | None) -> tuple[int, ...]:
+def normalise_years(years: int | Iterable[int] | None) -> tuple[int, ...]:
     """Normalise `years` (scalar / iterable / range) to a sorted tuple immediately.
 
     Raises:
@@ -118,11 +118,11 @@ def fetch_year(year: int, *, refresh: bool = False) -> Path:
             nothing is cached for it.
     """
     effective = effective_refresh(f"tossd_reader:fetch_year:{year}", explicit=refresh)
-    vintages = _sweep_or_none(effective)
-    return _resolve_year(year, vintages=vintages, refresh=effective)
+    vintages = sweep_or_none(effective)
+    return resolve_year(year, vintages=vintages, refresh=effective)
 
 
-def _sweep_or_none(refresh: bool) -> dict[int, _discovery.VintageInfo] | None:
+def sweep_or_none(refresh: bool) -> dict[int, _discovery.VintageInfo] | None:
     """Run discovery's HEAD sweep, or `None` when the publisher host is unreachable."""
     try:
         return _discovery.discover(refresh=refresh)
@@ -130,7 +130,7 @@ def _sweep_or_none(refresh: bool) -> dict[int, _discovery.VintageInfo] | None:
         return None
 
 
-def _resolve_year(
+def resolve_year(
     year: int, *, vintages: dict[int, _discovery.VintageInfo] | None, refresh: bool
 ) -> Path:
     """Resolve one year against an already-swept `vintages` mapping (or `None`).
@@ -236,7 +236,7 @@ def _warn_serving_stale(year: int, cached: _CachedVintage, *, reason: str) -> No
         f"{reason.capitalize()}; serving the cached {year} vintage retrieved "
         f"{vintage_date}{etag_note}.",
         # 5 frames up from here: _warn_serving_stale -> _serve_offline/
-        # _serve_missing -> _resolve_year -> fetch_year/get_tossd_raw ->
+        # _serve_missing -> resolve_year -> fetch_year/get_tossd_raw ->
         # the caller.
         stacklevel=5,
     )
@@ -261,7 +261,7 @@ class _FetcherNetworkError(TossdNetworkError):
     """Internal signal: the GET connection failed or truncated mid-transfer.
 
     A `TossdNetworkError` subclass (so it satisfies that public contract on
-    its own), but kept distinct so `_resolve_year` can route only *this*
+    its own), but kept distinct so `resolve_year` can route only *this*
     failure into the cached-vintage fallback. A retry-exhaustion
     `TossdNetworkError` (mismatching ETags on every attempt) is raised as the
     plain base class instead, so it propagates directly rather than being
@@ -283,7 +283,7 @@ def _download_and_cache(
 
     Raises:
         TossdNetworkError: The GET connection dropped or truncated
-            mid-transfer (a `_FetcherNetworkError`, so `_resolve_year` can
+            mid-transfer (a `_FetcherNetworkError`, so `resolve_year` can
             route it into the offline fallback); or the GET response's ETag
             kept changing across every retry attempt.
         VintageValidationError: The downloaded vintage failed structural

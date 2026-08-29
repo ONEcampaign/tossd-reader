@@ -1,6 +1,6 @@
 """Arrow-level parquet export of the full `get_tossd` pipeline output.
 
-`export()` reuses `query._build_table` — the same per-year fetch/schema/
+`export()` reuses `query.build_table` — the same per-year fetch/schema/
 concat/derived-columns/units pipeline `get_tossd` runs — but stops one call
 short of `to_pandas()`, so the written parquet is exactly what `get_tossd`
 would return, without a pandas round-trip. Always `columns="all"`, units left
@@ -69,7 +69,7 @@ def export(
             layer's own failure modes apply in practice.
         SchemaDriftError: Same conditions as `get_tossd`.
     """
-    table, paths = query._build_table(
+    table, paths = query.build_table(
         years=years,
         providers=None,
         recipients=None,
