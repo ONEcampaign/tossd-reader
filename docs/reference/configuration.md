@@ -2,8 +2,7 @@
 
 _As of v0.1._
 
-tossd_reader exposes one configuration function, `set_cache_dir`, and one
-environment variable, `TOSSD_READER_CACHE_DIR`.
+tossd_reader exposes one configuration function, `set_cache_dir`, and one environment variable, `TOSSD_READER_CACHE_DIR`.
 
 <!-- prettier-ignore -->
 ::: tossd_reader.config.set_cache_dir
@@ -18,29 +17,16 @@ The default cache directory is platform-specific.
 - Linux: `~/.cache/readerkit/v1/tossd-reader/1`
 - Windows: `%LOCALAPPDATA%\readerkit\Cache\v1\tossd-reader\1`
 
-`TOSSD_READER_CACHE_DIR` overrides the
-default and is re-read on every call. Changes to the environment take effect
-without a reset step. Precedence, highest first:
-`set_cache_dir(path)`, then `TOSSD_READER_CACHE_DIR`, then
-`BBLOCKS_CACHE_DIR` (shared across the reader family), then the platform
-default.
+`TOSSD_READER_CACHE_DIR` overrides the default and is re-read on every call. Changes to the environment take effect without a reset step. Precedence, highest first: `set_cache_dir(path)`, then `TOSSD_READER_CACHE_DIR`, then `BBLOCKS_CACHE_DIR` (shared across the reader family), then the platform default.
 
-The cache keeps the newest 24 artefacts and 4 GB, whichever bound is reached
-first. Both are hardcoded.
+The cache keeps the newest 24 artefacts and 4 GB, whichever bound is reached first. Both are hardcoded.
 
 <!-- prettier-ignore -->
 ??? abstract "Under the hood"
 
-    Discovery's HEAD sweep gives a candidate `ETag` for each requested year.
-    The GET response's own `ETag` is authoritative. If it differs from the
-    candidate, the download retries under the corrected key, up to two
-    attempts total. If the `ETag` keeps changing across both attempts, the
-    fetch raises `TossdNetworkError` naming every `ETag` it saw.
+    Discovery's HEAD sweep gives a candidate `ETag` for each requested year. The GET response's own `ETag` is authoritative. If it differs from the candidate, the download retries under the corrected key, up to two attempts total. If the `ETag` keeps changing across both attempts, the fetch raises `TossdNetworkError` naming every `ETag` it saw.
 
-    When neither the HEAD nor the GET response ever carries an `ETag` for a
-    year, that vintage is cached under an `unknown` key instead, with a
-    warning. Only `refresh=True` (or an enclosing
-    `readerkit.refresh_scope()`) forces a fresh download for it.
+    When neither the HEAD nor the GET response ever carries an `ETag` for a year, that vintage is cached under an `unknown` key instead, with a warning. Only `refresh=True` (or an enclosing `readerkit.refresh_scope()`) forces a fresh download for it.
 
 ## Warnings
 
@@ -58,8 +44,7 @@ first. Both are hardcoded.
 
 ## Errors
 
-One base class. Catch `TossdReaderError` to catch everything tossd_reader
-raises.
+One base class. Catch `TossdReaderError` to catch everything tossd_reader raises.
 
 <!-- prettier-ignore -->
 ::: tossd_reader.exceptions.TossdReaderError
@@ -93,7 +78,5 @@ raises.
 
 ## Next
 
-- [Work offline and manage the cache](../how-to/work-offline.md). Recipes for
-  forcing a refresh and running with no network.
-- [Export](export.md). Where `etag` and `retrieved_at` land in a manifest,
-  and what those fields hold when a sidecar is corrupt.
+- [Work offline and manage the cache](../how-to/work-offline.md). Recipes for forcing a refresh and running with no network.
+- [Export](export.md). Where `etag` and `retrieved_at` land in a manifest, and what those fields hold when a sidecar is corrupt.

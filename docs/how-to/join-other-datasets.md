@@ -1,14 +1,10 @@
 # How to join TOSSD to other country datasets
 
-Add ISO3 country codes to a `get_tossd` frame, then join it to World
-Bank, IMF, or in-house country data keyed on ISO3.
+Add ISO3 country codes to a `get_tossd` frame, then join it to World Bank, IMF, or in-house country data keyed on ISO3.
 
 ## Steps
 
-1. **Add ISO3 codes.** `add_iso3` looks up `provider_code` and
-   `recipient_code` against the OECD DAC codelist. Provider names collide
-   in the published files. Use the ISO3 codes for joining to avoid merging
-   distinct entities like the African Development Bank Group.
+1. **Add ISO3 codes.** `add_iso3` looks up `provider_code` and `recipient_code` against the OECD DAC codelist. Provider names collide in the published files. Use the ISO3 codes for joining to avoid merging distinct entities like the African Development Bank Group.
 
    ```python
    import tossd_reader as tossd
@@ -38,10 +34,7 @@ Bank, IMF, or in-house country data keyed on ISO3.
    merged = iso.merge(wdi, left_on="provider_iso3", right_on="iso3", how="left")
    ```
 
-   Aggregates (provider code `0`), multilaterals such as the African
-   Development Bank Group, and TOSSD-only entities all resolve to `NA`
-   for `provider_iso3`. A `how="inner"` join drops those rows silently.
-   `how="left"` keeps them, with `NA` in every joined column.
+Aggregates (provider code `0`), multilaterals such as the African Development Bank Group, and TOSSD-only entities all resolve to `NA` for `provider_iso3`. A `how="inner"` join drops those rows silently. `how="left"` keeps them, with `NA` in every joined column.
 
 ## Verify it worked
 
@@ -55,18 +48,13 @@ iso["provider_iso3"].isna().sum()
 1864
 ```
 
-1,864 of 4,802 rows carry no `provider_iso3`. The same check applies to
-`recipient_iso3` before joining on the recipient side.
+1,864 of 4,802 rows carry no `provider_iso3`. The same check applies to `recipient_iso3` before joining on the recipient side.
 
 ## Troubleshooting
 
-**`ValueError` naming `provider_code`/`recipient_code`.** `add_iso3`
-needs at least one of them present. Both ship in every column preset.
-This happens with an explicit `columns=` list that drops them.
+**`ValueError` naming `provider_code`/`recipient_code`.** `add_iso3` needs at least one of them present. Both ship in every column preset. This happens with an explicit `columns=` list that drops them.
 
 ## See also
 
-- [Helpers reference](../reference/helpers.md) for `add_iso3`'s full
-  contract.
-- [Pillars and aggregates](../about/pillars-and-aggregates.md) for what
-  aggregate and TOSSD-only rows are.
+- [Helpers reference](../reference/helpers.md) for `add_iso3`'s full contract.
+- [Pillars and aggregates](../about/pillars-and-aggregates.md) for what aggregate and TOSSD-only rows are.

@@ -1,7 +1,6 @@
 # How to rank providers by disbursement
 
-Rank providers by disbursement with the aggregate pseudo-provider excluded
-and the two-code provider names kept apart.
+Rank providers by disbursement with the aggregate pseudo-provider excluded and the two-code provider names kept apart.
 
 ## Steps
 
@@ -30,8 +29,7 @@ and the two-code provider names kept apart.
    Name: usd_disbursement, dtype: float64
    ```
 
-3. **Group by `["provider_code", "provider_name"]`, sum, and sort.**
-   Keying on `provider_code` alongside `provider_name` separates distinct provider codes with the same name:
+3. **Group by `["provider_code", "provider_name"]`, sum, and sort.** Keying on `provider_code` alongside `provider_name` separates distinct provider codes with the same name:
 
    ```python
    # ✅ aggregate excluded, codes kept apart
@@ -52,8 +50,7 @@ and the two-code provider names kept apart.
 
 ## Verify it worked
 
-Check what excluding `is_aggregate` dropped, the aggregate rows' share of
-the unfiltered total:
+Check what excluding `is_aggregate` dropped, the aggregate rows' share of the unfiltered total:
 
 ```python
 agg = h[h["is_aggregate"]]["usd_disbursement"].sum()
@@ -67,7 +64,5 @@ round(agg / total * 100, 1)
 
 ## See also
 
-- [Pillars and aggregate rows](../about/pillars-and-aggregates.md) for what
-  the aggregate provider is and when to include it.
-- [Query reference](../reference/query.md) for `get_tossd`'s full argument
-  and preset contract.
+- [Pillars and aggregate rows](../about/pillars-and-aggregates.md) for what the aggregate provider is and when to include it.
+- [Query reference](../reference/query.md) for `get_tossd`'s full argument and preset contract.

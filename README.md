@@ -16,11 +16,7 @@ tossd_pillar
 Name: usd_disbursement, dtype: float64
 ```
 
-Those are the TOSSD Secretariat's own 2024 headline figures, USD 364.1
-billion for Pillar I and 133.6 billion for Pillar II, reproduced from the
-raw activity-level files in one call. tossd-reader downloads the per-year
-parquet files from the publisher's site, caches each one locally keyed to
-its ETag, and returns typed pandas frames with snake_case column names.
+Those are the TOSSD Secretariat's own 2024 headline figures, USD 364.1 billion for Pillar I and 133.6 billion for Pillar II, reproduced from the raw activity-level files in one call. tossd-reader downloads the per-year parquet files from the publisher's site, caches each one locally keyed to its ETag, and returns typed pandas frames with snake_case column names.
 
 ## Install
 
@@ -53,30 +49,16 @@ provider_code  provider_name
 Name: usd_disbursement, dtype: float64
 ```
 
-`is_aggregate` marks rows reported by the publisher's own aggregate
-pseudo-providers. Provider-level rankings exclude them. `provider_name`
-collides too, with two provider codes sharing "African Development Bank
-Group", so group by code and name together. A misspelled provider or
-recipient name raises `UnknownCodeError` with close matches.
+`is_aggregate` marks rows reported by the publisher's own aggregate pseudo-providers. Provider-level rankings exclude them. `provider_name` collides too, with two provider codes sharing "African Development Bank Group", so group by code and name together. A misspelled provider or recipient name raises `UnknownCodeError` with close matches.
 
 ## What it does
 
-TOSSD, Total Official Support for Sustainable Development, is an
-activity-level record of official development finance published by the
-TOSSD Secretariat. Six years, 2019 to 2024, about 2.4 million rows, amounts
-in USD thousands. tossd-reader normalises the published files into typed
-pandas frames, checks provider and recipient filters against packaged
-codelists, and adds helpers for SDG splits, keyword markers, and country
-lookups. `export()` writes a normalised extract to parquet with a manifest
-recording the package version and each year's vintage.
+TOSSD, Total Official Support for Sustainable Development, is an activity-level record of official development finance published by the TOSSD Secretariat. Six years, 2019 to 2024, about 2.4 million rows, amounts in USD thousands. tossd-reader normalises the published files into typed pandas frames, checks provider and recipient filters against packaged codelists, and adds helpers for SDG splits, keyword markers, and country lookups. `export()` writes a normalised extract to parquet with a manifest recording the package version and each year's vintage.
 
 ## Documentation
 
-The [docs site](https://onecampaign.github.io/tossd-reader/) covers a full
-tutorial, task-oriented how-to guides, the API reference, and the concepts
-behind pillars, aggregate rows, and comparability across years.
+The [docs site](https://onecampaign.github.io/tossd-reader/) covers a full tutorial, task-oriented how-to guides, the API reference, and the concepts behind pillars, aggregate rows, and comparability across years.
 
 ---
 
-MIT licence, see [LICENSE](LICENSE). Data from the TOSSD Secretariat,
-published at [tossd.online](https://tossd.online).
+MIT licence, see [LICENSE](LICENSE). Data from the TOSSD Secretariat, published at [tossd.online](https://tossd.online).

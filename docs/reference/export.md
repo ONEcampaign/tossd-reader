@@ -2,9 +2,7 @@
 
 _As of v0.1._
 
-`export()` runs the same fetch, schema, and derived-column pipeline as
-`get_tossd`, then writes the result to parquet. `columns` is fixed at `"all"` and `units` at `"usd_thousand"`, as published.
-`export` writes every row of every requested year. The parquet file is written with `zstd` compression.
+`export()` runs the same fetch, schema, and derived-column pipeline as `get_tossd`, then writes the result to parquet. `columns` is fixed at `"all"` and `units` at `"usd_thousand"`, as published. `export` writes every row of every requested year. The parquet file is written with `zstd` compression.
 
 ```python
 import tossd_reader as tossd
@@ -23,21 +21,17 @@ exports/tossd_2019.parquet
 
 ## Generated filenames
 
-`path` given as a directory (created if it doesn't exist) writes
-`tossd_<years>.parquet` inside it. `path` given as an explicit filename ending
-in `.parquet` is used verbatim, creating its parent directories if needed.
+`path` given as a directory (created if it doesn't exist) writes `tossd_<years>.parquet` inside it. `path` given as an explicit filename ending in `.parquet` is used verbatim, creating its parent directories if needed.
 
 `<years>` is built from the resolved, sorted year list.
 
 - A single year is that year alone, e.g. `tossd_2019.parquet`.
 - A contiguous run is `<first>-<last>`, e.g. `tossd_2019-2024.parquet`.
-- A non-contiguous set is every year joined by `_`, e.g.
-  `tossd_2019_2021_2024.parquet`.
+- A non-contiguous set is every year joined by `_`, e.g. `tossd_2019_2021_2024.parquet`.
 
 ## Manifest fields
 
-Every export writes a `<stem>.manifest.json` sidecar alongside the parquet
-file.
+Every export writes a `<stem>.manifest.json` sidecar alongside the parquet file.
 
 ```json
 {
@@ -68,6 +62,5 @@ file.
 
 ## Next
 
-- [Configuration, warnings, and errors](configuration.md). What a corrupt
-  provenance sidecar does to the `vintages` fields above.
+- [Configuration, warnings, and errors](configuration.md). What a corrupt provenance sidecar does to the `vintages` fields above.
 - [Query](query.md). `get_tossd`'s full filter and column arguments.

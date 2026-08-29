@@ -2,15 +2,9 @@
 
 _As of v0.1._
 
-`tossd_reader.helpers` ships five functions that run on `get_tossd()`
-output. Four take a `pandas.DataFrame` and return a new one, leaving the
-input frame untouched. `get_structural_breaks` takes no argument and returns
-the packaged reference table. All five run offline. `add_iso3` resolves
-codes through a `resolvekit` module bundled with the package, so it needs no
-network.
+`tossd_reader.helpers` ships five functions that run on `get_tossd()` output. Four take a `pandas.DataFrame` and return a new one, leaving the input frame untouched. `get_structural_breaks` takes no argument and returns the packaged reference table. All five run offline. `add_iso3` resolves codes through a `resolvekit` module bundled with the package, so it needs no network.
 
-Each helper checks its required columns up front and raises `ValueError`
-naming the column it's missing.
+Each helper checks its required columns up front and raises `ValueError` naming the column it's missing.
 
 | Helper                      | Requires                                | Smallest preset |
 | --------------------------- | --------------------------------------- | --------------- |
@@ -80,16 +74,11 @@ print(breaks.drop(columns=["source"]).to_string(index=False))
 methodology        2026      2026                                              RDRM (revised debt-relief reporting methodology) takes effect May 2026 -- applies to vintages published from that date
 ```
 
-The frame's fifth column, `source`, names the audit each row is verified
-against. It's dropped from the block above for width.
+The frame's fifth column, `source`, names the audit each row is verified against. It's dropped from the block above for width.
 
 ## Next
 
-- [Analyse activities by SDG](../how-to/analyse-by-sdg.md). `explode_sdg`
-  end to end, from a query through the per-goal totals.
-- [Measure climate and gender finance with keyword markers](../how-to/analyse-by-keyword.md).
-  `extract_keywords` end to end, including how the twelve markers combine.
-- [Measure how much Pillar II stays in donor countries](../how-to/own-country-costs.md).
-  `pillar2_own_country_costs` end to end, with the sector split.
-- [Join TOSSD to other country datasets](../how-to/join-other-datasets.md).
-  `add_iso3` end to end, joined against another dataset's own ISO3 column.
+- [Analyse activities by SDG](../how-to/analyse-by-sdg.md). `explode_sdg` end to end, from a query through the per-goal totals.
+- [Measure climate and gender finance with keyword markers](../how-to/analyse-by-keyword.md). `extract_keywords` end to end, including how the twelve markers combine.
+- [Measure how much Pillar II stays in donor countries](../how-to/own-country-costs.md). `pillar2_own_country_costs` end to end, with the sector split.
+- [Join TOSSD to other country datasets](../how-to/join-other-datasets.md). `add_iso3` end to end, joined against another dataset's own ISO3 column.

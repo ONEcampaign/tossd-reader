@@ -1,14 +1,10 @@
 # How to measure how much Pillar II stays in donor countries
 
-Filter a Pillar II frame to the sector-code carve-out that isolates
-spending recorded inside the provider's own country, then take its
-share of Pillar II disbursements.
+Filter a Pillar II frame to the sector-code carve-out that isolates spending recorded inside the provider's own country, then take its share of Pillar II disbursements.
 
 ## Steps
 
-1. **Query Pillar II with the `"analysis"` column preset.**
-   `pillar2_own_country_costs` reads `sector_code`, which ships in
-   `"analysis"` but not `"minimal"`.
+1. **Query Pillar II with the `"analysis"` column preset.** `pillar2_own_country_costs` reads `sector_code`, which ships in `"analysis"` but not `"minimal"`.
 
    ```python
    import tossd_reader as tossd
@@ -21,9 +17,7 @@ share of Pillar II disbursements.
    (155908, 44)
    ```
 
-2. **Filter to the own-country-costs carve-out.** It holds two sectors:
-   `910` ("Administrative Costs of Donors") and `930` ("Domestic
-   expenditures for refugees/asylum seekers").
+2. **Filter to the own-country-costs carve-out.** It holds two sectors: `910` ("Administrative Costs of Donors") and `930` ("Domestic expenditures for refugees/asylum seekers").
 
    ```python
    occ = tossd.pillar2_own_country_costs(p2)
@@ -49,8 +43,7 @@ share of Pillar II disbursements.
    35.6
    ```
 
-   47,503.8 of 133,561.8 USD million. The largest providers, aggregate
-   rows excluded:
+47,503.8 of 133,561.8 USD million. The largest providers, aggregate rows excluded:
 
    ```python
    occ[~occ["is_aggregate"]].groupby("provider_name", observed=True)[
@@ -70,14 +63,7 @@ share of Pillar II disbursements.
 
 <!-- prettier-ignore -->
 !!! warning "Sector 720 humanitarian aid is excluded"
-    `pillar2_own_country_costs` applies a sector-family heuristic.
-    TOSSD publishes no official own-country-costs definition, so 35.6%
-    is an estimate on a sector-family heuristic. Sector `910` is a proxy
-    for donor administrative overhead. Most of that spending stays inside
-    the provider's own territory, and some is incurred in-country at the
-    recipient end. Sector `720` ("Humanitarian Assistance") rows are
-    in-country humanitarian aid delivered by agencies such as UNHCR and
-    UNICEF, so they fall outside the carve-out.
+    `pillar2_own_country_costs` applies a sector-family heuristic. TOSSD publishes no official own-country-costs definition, so 35.6% is an estimate on a sector-family heuristic. Sector `910` is a proxy for donor administrative overhead. Most of that spending stays inside the provider's own territory, and some is incurred in-country at the recipient end. Sector `720` ("Humanitarian Assistance") rows are in-country humanitarian aid delivered by agencies such as UNHCR and UNICEF, so they fall outside the carve-out.
 
 ## Verify it worked
 
@@ -93,16 +79,9 @@ len(occ) < len(p2), [int(c) for c in occ["sector_code"].unique()]
 
 ## Troubleshooting
 
-**`ValueError` naming `sector_code`.** `pillar2_own_country_costs`
-needs `sector_code` on the frame it's given. That column ships in
-`"analysis"` and `"all"`, not `"minimal"`. Re-query with
-`columns="analysis"`, or add `"sector_code"` to an explicit `columns=`
-list.
+**`ValueError` naming `sector_code`.** `pillar2_own_country_costs` needs `sector_code` on the frame it's given. That column ships in `"analysis"` and `"all"`, not `"minimal"`. Re-query with `columns="analysis"`, or add `"sector_code"` to an explicit `columns=` list.
 
 ## See also
 
-- [Helpers reference](../reference/helpers.md) for
-  `pillar2_own_country_costs`'s full contract.
-- [Pillars and aggregates](../about/pillars-and-aggregates.md) for the
-  own-country-cost carve-out as a concept, and why aggregate rows are
-  excluded from the provider ranking above.
+- [Helpers reference](../reference/helpers.md) for `pillar2_own_country_costs`'s full contract.
+- [Pillars and aggregates](../about/pillars-and-aggregates.md) for the own-country-cost carve-out as a concept, and why aggregate rows are excluded from the provider ranking above.

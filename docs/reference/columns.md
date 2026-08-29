@@ -2,16 +2,7 @@
 
 _As of v0.1._
 
-tossd_reader publishes 53 columns from each TOSSD activity-level file, renamed
-to snake_case and cast to the dtypes in `schema.csv`. The `columns=` argument
-to `get_tossd` selects a subset, a named preset (`"minimal"`, `"analysis"`,
-or `"all"`, the default) or an explicit `list[str]` of snake_case names.
-Four columns are forced into the result regardless of that selection:
-`tossd_pillar`, `tossd_subpillar`, `is_aggregate`, and `unit`. The first two
-are published columns. `is_aggregate`, derived as `provider_code == 0`, and
-`unit` are added by tossd_reader, so `columns="all"` returns 55 columns
-against the file's 53. `parent_channel_name` is the one column
-decoded from a codelist.
+tossd_reader publishes 53 columns from each TOSSD activity-level file, renamed to snake_case and cast to the dtypes in `schema.csv`. The `columns=` argument to `get_tossd` selects a subset, a named preset (`"minimal"`, `"analysis"`, or `"all"`, the default) or an explicit `list[str]` of snake_case names. Four columns are forced into the result regardless of that selection: `tossd_pillar`, `tossd_subpillar`, `is_aggregate`, and `unit`. The first two are published columns. `is_aggregate`, derived as `provider_code == 0`, and `unit` are added by tossd_reader, so `columns="all"` returns 55 columns against the file's 53. `parent_channel_name` is the one column decoded from a codelist.
 
 ## Presets
 
@@ -29,8 +20,7 @@ decoded from a codelist.
 | `"analysis"`      |   44    | 102MB, 0.1s |   505MB, 0.6s |
 | `"all"` (default) |   55    | 377MB, 0.2s |   2.1GB, 1.1s |
 
-Memory is pandas `memory_usage(deep=True)` on the real 2026-04 vintage files.
-Timings are warm-cache.
+Memory is pandas `memory_usage(deep=True)` on the real 2026-04 vintage files. Timings are warm-cache.
 
 ## All columns
 
@@ -92,8 +82,7 @@ Generated from `schema.csv`, in publisher-file order.
 | `mobilisation_origin`             | `string`   |         |          |                       |
 | `source_name`                     | `category` |         |    ✓     |                       |
 
-\* Reported in USD thousands. `units="usd_million"` divides these 8 columns
-by 1000.
+\* Reported in USD thousands. `units="usd_million"` divides these 8 columns by 1000.
 
 ## Amount columns
 
@@ -108,10 +97,7 @@ by 1000.
 | `usd_amount_mobilised`          |              1,693 |
 | `usd_amount_mobilised_deflated` |              1,693 |
 
-Each nominal column and its `_deflated` twin have identical non-null counts
-in 2024. See [About the amount columns](../about/amounts.md) for what
-distinguishes commitments, disbursements, reflows, and mobilised amounts, and
-current from constant prices.
+Each nominal column and its `_deflated` twin have identical non-null counts in 2024. See [About the amount columns](../about/amounts.md) for what distinguishes commitments, disbursements, reflows, and mobilised amounts, and current from constant prices.
 
 ## Always present
 
@@ -124,32 +110,20 @@ current from constant prices.
 
 ## Data quality notes
 
-- Empty strings in the published files become real nulls in `get_tossd`.
-  `get_tossd_raw` leaves them as published.
-- Modality code `c01` is normalised to `C01`. The published files carry both
-  cases across years.
-- `maturity`'s unit is undocumented by the publisher and is passed through
-  as published.
+- Empty strings in the published files become real nulls in `get_tossd`. `get_tossd_raw` leaves them as published.
+- Modality code `c01` is normalised to `C01`. The published files carry both cases across years.
+- `maturity`'s unit is undocumented by the publisher and is passed through as published.
 
 ## Schema drift
 
-On every read, tossd_reader checks the published file's columns against
-`schema.csv`. A published file missing a column the packaged schema expects
-raises `SchemaDriftError`. So does a value that cannot be cast to its
-`schema.csv` `target_dtype`, and a file carrying two columns whose names
-normalise to the same key. The message names the column, and the offending
-value where there is one.
+On every read, tossd_reader checks the published file's columns against `schema.csv`. A published file missing a column the packaged schema expects raises `SchemaDriftError`. So does a value that cannot be cast to its `schema.csv` `target_dtype`, and a file carrying two columns whose names normalise to the same key. The message names the column, and the offending value where there is one.
 
 <!-- prettier-ignore -->
 !!! warning "Unrecognised schema columns"
 
-    A column the file carries that `schema.csv` doesn't recognise warns once
-    per process and passes through under its original name, visible only
-    under `columns="all"`.
+    A column the file carries that `schema.csv` doesn't recognise warns once per process and passes through under its original name, visible only under `columns="all"`.
 
 ## Next
 
-- [Pillars, aggregates, and breaks](../about/pillars-and-aggregates.md).
-  Pillar and sub-pillar semantics, the pillar-0 placeholder rows, and the
-  reporter-base structural break.
+- [Pillars, aggregates, and breaks](../about/pillars-and-aggregates.md). Pillar and sub-pillar semantics, the pillar-0 placeholder rows, and the reporter-base structural break.
 - [Query](query.md). `columns=` and `units=` in context, on `get_tossd`.

@@ -1,15 +1,10 @@
 # How to filter by sector, purpose, channel, or modality
 
-Look up a sector, purpose, channel, or modality code from its codelist,
-then filter a `get_tossd` frame on that code in pandas.
+Look up a sector, purpose, channel, or modality code from its codelist, then filter a `get_tossd` frame on that code in pandas.
 
 ## Steps
 
-1. **Look up the code from the relevant codelist.** `get_available_filters()`
-   returns eleven dimensions, but `get_tossd` only takes `providers=`,
-   `recipients=`, and `pillars=` as filter arguments. The packaged
-   codelists for sector, purpose, channel, and modality exist so you can
-   find a code to filter on in pandas after the query.
+1. **Look up the code from the relevant codelist.** `get_available_filters()` returns eleven dimensions, but `get_tossd` only takes `providers=`, `recipients=`, and `pillars=` as filter arguments. The packaged codelists for sector, purpose, channel, and modality exist so you can find a code to filter on in pandas after the query.
 
    ```python
    import tossd_reader as tossd
@@ -27,9 +22,7 @@ then filter a `get_tossd` frame on that code in pandas.
    4  114      I.1.d. Post-secondary education       False
    ```
 
-2. **Query with a preset that carries the code column.** `sector_code` ships
-   with `columns="analysis"` and `columns="all"`. `columns="minimal"` omits
-   it.
+2. **Query with a preset that carries the code column.** `sector_code` ships with `columns="analysis"` and `columns="all"`. `columns="minimal"` omits it.
 
    ```python
    sen = tossd.get_tossd(
@@ -42,9 +35,7 @@ then filter a `get_tossd` frame on that code in pandas.
    (4802, 44)
    ```
 
-3. **Filter the returned frame on the code, with aggregate rows excluded.**
-   `sector_code` is a nullable `Int16`, so a filter is a plain integer
-   comparison.
+3. **Filter the returned frame on the code, with aggregate rows excluded.** `sector_code` is a nullable `Int16`, so a filter is a plain integer comparison.
 
    ```python
    edu = sen[(sen["sector_code"] == 110) & ~sen["is_aggregate"]]
@@ -70,8 +61,7 @@ then filter a `get_tossd` frame on that code in pandas.
    213.2
    ```
 
-4. **The same shape works for purpose, channel, and modality.** Look up the
-   code, then filter on it the same way.
+4. **The same shape works for purpose, channel, and modality.** Look up the code, then filter on it the same way.
 
    ```python
    purpose_hits = tossd.get_available_filters()["purpose"]
@@ -96,9 +86,7 @@ then filter a `get_tossd` frame on that code in pandas.
    139  41122           United Nations Children’s Fund         True
    ```
 
-   `modality_code` is a `category`, so its codes are short strings such as
-   `"B01"`. Filter and total all three the same way `edu` was filtered
-   above.
+`modality_code` is a `category`, so its codes are short strings such as `"B01"`. Filter and total all three the same way `edu` was filtered above.
 
    ```python
    purpose = sen[(sen["purpose_code"] == 12220) & ~sen["is_aggregate"]]
@@ -116,18 +104,9 @@ then filter a `get_tossd` frame on that code in pandas.
    122 17.7
    ```
 
-   `sector_code`, `purpose_code`, `channel_code`, and `modality_code` (and
-   their paired `_name` columns) all ship with `columns="analysis"`.
-   `channel_raw_text`, `parent_channel_code`, and `parent_channel_name`
-   appear only under `columns="all"`. Check
-   [Columns, presets, and units](../reference/columns.md) for any column;
-   a raw or parent column does not always follow its dimension's main
-   code column.
+`sector_code`, `purpose_code`, `channel_code`, and `modality_code` (and their paired `_name` columns) all ship with `columns="analysis"`. `channel_raw_text`, `parent_channel_code`, and `parent_channel_name` appear only under `columns="all"`. Check [Columns, presets, and units](../reference/columns.md) for any column; a raw or parent column does not always follow its dimension's main code column.
 
-5. **Name `"year"` yourself if you filter across years with an explicit
-   `columns=` list.** Only `tossd_pillar`, `tossd_subpillar`, `is_aggregate`,
-   and `unit` are forced into an explicit list. `"year"` is not, so grouping
-   by it without naming it raises `KeyError`.
+5. **Name `"year"` yourself if you filter across years with an explicit `columns=` list.** Only `tossd_pillar`, `tossd_subpillar`, `is_aggregate`, and `unit` are forced into an explicit list. `"year"` is not, so grouping by it without naming it raises `KeyError`.
 
    ```python
    df = tossd.get_tossd(
@@ -143,7 +122,7 @@ then filter a `get_tossd` frame on that code in pandas.
    KeyError: 'year'
    ```
 
-   Add `"year"` to the list and the same groupby works.
+Add `"year"` to the list and the same groupby works.
 
    ```python
    df = tossd.get_tossd(
@@ -169,8 +148,7 @@ then filter a `get_tossd` frame on that code in pandas.
 
 ## Verify it worked
 
-The 2024 row of the multi-year, explicit-`columns=` total should match the
-single-year, `"analysis"`-preset total from step 3.
+The 2024 row of the multi-year, explicit-`columns=` total should match the single-year, `"analysis"`-preset total from step 3.
 
 ```python
 by_year = edu_by_year.groupby("year", observed=True)["usd_disbursement"].sum().round(1)
@@ -183,20 +161,11 @@ True
 
 ## Troubleshooting
 
-**`KeyError` naming a dimension's code column** (`sector_code`,
-`purpose_code`, `channel_code`, `modality_code`). The frame was queried with
-`columns="minimal"`, which drops all four. Re-query with
-`columns="analysis"` or `columns="all"`, or add the column to an explicit
-`columns=` list.
+**`KeyError` naming a dimension's code column** (`sector_code`, `purpose_code`, `channel_code`, `modality_code`). The frame was queried with `columns="minimal"`, which drops all four. Re-query with `columns="analysis"` or `columns="all"`, or add the column to an explicit `columns=` list.
 
-**`KeyError: 'year'`** on a `groupby("year")`. An explicit `columns=` list
-does not force `"year"` in. Add `"year"` to the list.
+**`KeyError: 'year'`** on a `groupby("year")`. An explicit `columns=` list does not force `"year"` in. Add `"year"` to the list.
 
 ## See also
 
-- [How to look up provider and recipient codes](look-up-codes.md) for the
-  full list of filterable dimensions and how code and name resolution work
-  for `providers=` and `recipients=`.
-- [Columns, presets, and units](../reference/columns.md) for the full
-  column-to-preset table, and data quality notes like modality code
-  normalization (e.g., `c01` to `C01`).
+- [How to look up provider and recipient codes](look-up-codes.md) for the full list of filterable dimensions and how code and name resolution work for `providers=` and `recipients=`.
+- [Columns, presets, and units](../reference/columns.md) for the full column-to-preset table, and data quality notes like modality code normalization (e.g., `c01` to `C01`).
