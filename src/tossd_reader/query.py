@@ -758,7 +758,7 @@ def _reset_for_tests() -> None:
     """Clear this module's warn-once state.
 
     Test-only. Wired into `tests/conftest.py`'s shared autouse fixture
-    (alongside discovery's and config's own resets), rather than a local
+    (alongside _discovery's and config's own resets), rather than a local
     per-file fixture.
     """
     _state.warned_subpillar_narrow = False

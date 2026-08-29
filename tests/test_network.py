@@ -20,7 +20,7 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 import pytest
 
-from tossd_reader import _schema, discovery, fetch, query
+from tossd_reader import _discovery, _schema, fetch, query
 
 pytestmark = [
     pytest.mark.network,
@@ -47,10 +47,10 @@ _TOLERANCE_USD_K = 1.0
 
 def test_head_sweep_finds_known_years() -> None:
     """The HEAD sweep finds exactly the packaged known-years set, with ETags/sizes."""
-    discovery._reset_for_tests()
-    vintages = discovery.discover()
+    _discovery._reset_for_tests()
+    vintages = _discovery.discover()
 
-    assert set(vintages) == set(discovery.known_years())
+    assert set(vintages) == set(_discovery.known_years())
     for year, info in vintages.items():
         assert info.etag, f"{year}: missing ETag"
         assert info.size_bytes is not None and info.size_bytes > 0, (

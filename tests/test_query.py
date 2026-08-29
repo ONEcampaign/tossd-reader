@@ -14,8 +14,8 @@ import requests
 
 import tossd_reader
 from tests.fixtures import _load_schema, build_tossd_table
-from tossd_reader import discovery, fetch, query
-from tossd_reader.discovery import VintageInfo
+from tossd_reader import _discovery, fetch, query
+from tossd_reader._discovery import VintageInfo
 from tossd_reader.exceptions import (
     InvalidPillarError,
     SchemaDriftError,
@@ -35,7 +35,7 @@ def _patch_discovery(
     def _head_one(_session: requests.Session, year: int) -> VintageInfo | None:
         return vintages.get(year)
 
-    monkeypatch.setattr(discovery, "_head_one", _head_one)
+    monkeypatch.setattr(_discovery, "_head_one", _head_one)
 
 
 def _patch_fetcher_by_url(
@@ -175,13 +175,13 @@ def test_get_tossd_multi_year_refresh_sweeps_discovery_exactly_once(
     _setup_default_years(monkeypatch, tmp_path, years, n_rows=5)
 
     calls: list[bool] = []
-    real_discover = discovery.discover
+    real_discover = _discovery.discover
 
     def _spy(*, refresh: bool = False) -> dict:
         calls.append(refresh)
         return real_discover(refresh=refresh)
 
-    monkeypatch.setattr(discovery, "discover", _spy)
+    monkeypatch.setattr(_discovery, "discover", _spy)
 
     query.get_tossd(years=years, refresh=True)
 
@@ -196,13 +196,13 @@ def test_export_multi_year_refresh_sweeps_discovery_exactly_once(
     _setup_default_years(monkeypatch, tmp_path, years, n_rows=5)
 
     calls: list[bool] = []
-    real_discover = discovery.discover
+    real_discover = _discovery.discover
 
     def _spy(*, refresh: bool = False) -> dict:
         calls.append(refresh)
         return real_discover(refresh=refresh)
 
-    monkeypatch.setattr(discovery, "discover", _spy)
+    monkeypatch.setattr(_discovery, "discover", _spy)
 
     tossd_reader.export(tmp_path / "out", years=years, refresh=True)
 

@@ -3,7 +3,7 @@
 Used by `.github/workflows/canary.yml`'s weekly vintage-drift job. The
 comparison itself (`diff_vintages`) is pure and offline-testable via this
 module's `--check` mode; the default mode needs the network, via
-`tossd_reader.discovery.discover` (imported lazily so this module stays
+`tossd_reader._discovery.discover` (imported lazily so this module stays
 importable, and its diff logic testable, without ever opening a socket).
 
 Run manually:
@@ -56,7 +56,7 @@ def diff_vintages(
         reference: `{year: {"etag": ..., "size_bytes": ...}}`, as recorded in
             `known_vintages.json`.
         live: Same shape, freshly swept (e.g. from
-            `tossd_reader.discovery.discover()`).
+            `tossd_reader._discovery.discover()`).
 
     Returns:
         Human-readable descriptions of every difference found: a year
@@ -94,9 +94,9 @@ def diff_vintages(
 
 def _run_live_sweep() -> dict[int, _VintageRecord]:
     """Sweep every currently published vintage, live (needs the network)."""
-    from tossd_reader import discovery  # noqa: PLC0415 -- deliberately lazy, see above
+    from tossd_reader import _discovery  # noqa: PLC0415 -- deliberately lazy, see above
 
-    vintages = discovery.discover(refresh=True)
+    vintages = _discovery.discover(refresh=True)
     return {
         year: {"etag": info.etag, "size_bytes": info.size_bytes}
         for year, info in vintages.items()

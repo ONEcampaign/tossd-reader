@@ -21,7 +21,7 @@ import requests
 from readerkit import ArtifactCorruptError, FetchContext, Fetcher
 from readerkit.refresh import effective_refresh
 
-from tossd_reader import _provenance, config, discovery
+from tossd_reader import _discovery, _provenance, config
 from tossd_reader.exceptions import TossdNetworkError, VintageValidationError
 
 _KEY_PREFIX = "tossd_"
@@ -75,7 +75,7 @@ def _normalise_years(years: int | Iterable[int] | None) -> tuple[int, ...]:
             call raises an opaque pyarrow error, so this is caught early).
     """
     if years is None:
-        return discovery.known_years()
+        return _discovery.known_years()
     if isinstance(years, int):
         return (years,)
     resolved = tuple(sorted({int(year) for year in years}))
@@ -122,16 +122,16 @@ def fetch_year(year: int, *, refresh: bool = False) -> Path:
     return _resolve_year(year, vintages=vintages, refresh=effective)
 
 
-def _sweep_or_none(refresh: bool) -> dict[int, discovery.VintageInfo] | None:
+def _sweep_or_none(refresh: bool) -> dict[int, _discovery.VintageInfo] | None:
     """Run discovery's HEAD sweep, or `None` when the publisher host is unreachable."""
     try:
-        return discovery.discover(refresh=refresh)
+        return _discovery.discover(refresh=refresh)
     except TossdNetworkError:
         return None
 
 
 def _resolve_year(
-    year: int, *, vintages: dict[int, discovery.VintageInfo] | None, refresh: bool
+    year: int, *, vintages: dict[int, _discovery.VintageInfo] | None, refresh: bool
 ) -> Path:
     """Resolve one year against an already-swept `vintages` mapping (or `None`).
 
@@ -273,7 +273,7 @@ _MAX_ETAG_ATTEMPTS = 2
 
 
 def _download_and_cache(
-    year: int, info: discovery.VintageInfo, *, refresh: bool
+    year: int, info: _discovery.VintageInfo, *, refresh: bool
 ) -> Path:
     """Download (or reuse) the cached artifact for `year`.
 
@@ -290,7 +290,7 @@ def _download_and_cache(
             validation.
     """
     cache = config.get_cache()
-    session = discovery.get_session()
+    session = _discovery.get_session()
     etag = info.etag
     etag_history = [etag]
 
@@ -350,7 +350,7 @@ def _make_fetcher(
 
     Raises `_FetcherNetworkError` (a `TossdNetworkError`) instead of a raw
     `requests` exception when the connection fails or the transfer
-    truncates, mirroring `discovery._head_one`'s own conversion.
+    truncates, mirroring `_discovery._head_one`'s own conversion.
     """
     captured: dict[str, str | int | None] = {"etag": None, "size_bytes": None}
 
@@ -449,8 +449,8 @@ def _validate_new_vintage(path: Path) -> None:
 def _reset_for_tests() -> None:
     """Clear the degraded-revalidation warn-once state.
 
-    Test-only. `tests/conftest.py` resets discovery's and config's
+    Test-only. `tests/conftest.py` resets _discovery's and config's
     per-module state, but this module's own warn-once state is reset locally
-    instead, same as discovery.py's and _schema.py's own `_reset_for_tests`.
+    instead, same as _discovery.py's and _schema.py's own `_reset_for_tests`.
     """
     _state.warned_degraded_years.clear()

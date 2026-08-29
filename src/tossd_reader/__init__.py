@@ -77,7 +77,7 @@ def __getattr__(name: str) -> object:
     """Lazily resolve public attributes (PEP 562).
 
     Keeps `import tossd_reader` itself free of network access and of any
-    module (`fetch`, `discovery`, `config`) that could open a socket, since
+    module (`fetch`, `_discovery`, `config`) that could open a socket, since
     none of those are imported until one of their exported names is actually
     accessed.
     """

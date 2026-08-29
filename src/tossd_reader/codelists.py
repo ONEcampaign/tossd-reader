@@ -19,7 +19,7 @@ from functools import lru_cache
 import pandas as pd
 
 from tossd_reader import _resources
-from tossd_reader.discovery import known_years
+from tossd_reader._discovery import known_years
 
 _YEARS_KEY = "years"
 
@@ -77,7 +77,7 @@ def get_available_filters() -> dict[str, pd.DataFrame]:
     Returns:
         `{dimension: frame}`, one entry per packaged codelist dimension plus
         a `"years"` entry (a single-column `year` frame built from
-        `discovery.known_years()`).
+        `_discovery.known_years()`).
     """
     filters = {
         dimension: load_codelist(dimension) for dimension in _available_dimensions()

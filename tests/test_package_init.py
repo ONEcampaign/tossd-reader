@@ -53,7 +53,7 @@ def test_dir_reports_public_surface() -> None:
 
 
 def test_import_opens_no_socket_and_stays_light() -> None:
-    """`import tossd_reader` alone must not open a socket or import fetch/discovery/config.
+    """`import tossd_reader` alone must not open a socket or import fetch/_discovery/config.
 
     Run in a fresh interpreter with socket connections monkeypatched to raise,
     mirroring `tests/conftest.py`'s own network-blocking fixture but for a
@@ -74,7 +74,7 @@ def test_import_opens_no_socket_and_stays_light() -> None:
         "import tossd_reader\n"
         "lazy_submodules = [\n"
         "    'tossd_reader.fetch',\n"
-        "    'tossd_reader.discovery',\n"
+        "    'tossd_reader._discovery',\n"
         "    'tossd_reader.config',\n"
         "    'tossd_reader.codelists',\n"
         "    'tossd_reader.query',\n"

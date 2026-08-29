@@ -17,8 +17,8 @@ from readerkit import FetchContext, refresh_scope
 
 import tossd_reader
 from tests.fixtures import write_tossd_fixture
-from tossd_reader import config, discovery, fetch
-from tossd_reader.discovery import VintageInfo
+from tossd_reader import _discovery, config, fetch
+from tossd_reader._discovery import VintageInfo
 from tossd_reader.exceptions import TossdNetworkError, VintageValidationError
 
 
@@ -26,7 +26,7 @@ from tossd_reader.exceptions import TossdNetworkError, VintageValidationError
 def _reset_state() -> None:
     """Reset fetch's own warn-once state before each test.
 
-    `tests/conftest.py` resets discovery's and config's per-module state; the
+    `tests/conftest.py` resets _discovery's and config's per-module state; the
     degraded-revalidation warn-once state added to this module is reset here
     instead, same as _schema.py's own local fixture.
     """
@@ -42,12 +42,12 @@ def _read_schema() -> pd.DataFrame:
 def _patch_discovery(
     monkeypatch: pytest.MonkeyPatch, vintages: dict[int, VintageInfo]
 ) -> None:
-    """Patch `discovery._head_one` so the sweep sees exactly `vintages`."""
+    """Patch `_discovery._head_one` so the sweep sees exactly `vintages`."""
 
     def _head_one(_session: requests.Session, year: int) -> VintageInfo | None:
         return vintages.get(year)
 
-    monkeypatch.setattr(discovery, "_head_one", _head_one)
+    monkeypatch.setattr(_discovery, "_head_one", _head_one)
 
 
 def _patch_fetcher_by_url(
@@ -97,7 +97,7 @@ def test_get_tossd_raw_years_none_uses_known_years_set(
     """`years=None` fetches the packaged known-years set, not just one year."""
     published: dict[int, VintageInfo] = {}
     sources: dict[str, tuple[bytes, str | None]] = {}
-    for year in discovery.known_years():
+    for year in _discovery.known_years():
         url = _url_for(year)
         fixture = write_tossd_fixture(
             tmp_path / f"fixture_{year}.parquet", year, n_rows=2
@@ -109,7 +109,7 @@ def test_get_tossd_raw_years_none_uses_known_years_set(
 
     df = fetch.get_tossd_raw()
 
-    assert len(df) == 2 * len(discovery.known_years())
+    assert len(df) == 2 * len(_discovery.known_years())
 
 
 def test_get_tossd_raw_single_year_roundtrip(
@@ -347,7 +347,7 @@ def test_fetch_year_keeps_unknown_key_and_warns_once_with_no_etag_anywhere(
     session = _FakeGetSession(
         _FakeGetResponse(headers={}, chunks=(fixture.read_bytes(),))
     )
-    monkeypatch.setattr(discovery, "get_session", lambda: session)
+    monkeypatch.setattr(_discovery, "get_session", lambda: session)
 
     with pytest.warns(UserWarning, match=str(year)):
         path = fetch.fetch_year(year)
@@ -471,12 +471,12 @@ def test_offline_rule_a_network_down_serves_cached_with_warning(
     _patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e"')})
     cached_path = fetch.fetch_year(year)
 
-    discovery._reset_for_tests()
+    _discovery._reset_for_tests()
 
     def _offline_head_one(_session: requests.Session, _year: int) -> VintageInfo | None:
         raise TossdNetworkError("simulated outage")
 
-    monkeypatch.setattr(discovery, "_head_one", _offline_head_one)
+    monkeypatch.setattr(_discovery, "_head_one", _offline_head_one)
 
     with pytest.warns(UserWarning, match=str(year)):
         served_path = fetch.fetch_year(year)
@@ -496,12 +496,12 @@ def test_offline_rule_a_falls_back_to_mtime_without_a_provenance_sidecar(
     cached_path = fetch.fetch_year(year)
     cached_path.with_suffix(".provenance.json").unlink()
 
-    discovery._reset_for_tests()
+    _discovery._reset_for_tests()
 
     def _offline_head_one(_session: requests.Session, _year: int) -> VintageInfo | None:
         raise TossdNetworkError("simulated outage")
 
-    monkeypatch.setattr(discovery, "_head_one", _offline_head_one)
+    monkeypatch.setattr(_discovery, "_head_one", _offline_head_one)
 
     with pytest.warns(UserWarning, match=str(year)):
         served_path = fetch.fetch_year(year)
@@ -541,12 +541,12 @@ def test_offline_rule_a_tolerates_corrupt_provenance_sidecar(
     cached_path = fetch.fetch_year(year)
     cached_path.with_suffix(".provenance.json").write_bytes(corrupt_content)
 
-    discovery._reset_for_tests()
+    _discovery._reset_for_tests()
 
     def _offline_head_one(_session: requests.Session, _year: int) -> VintageInfo | None:
         raise TossdNetworkError("simulated outage")
 
-    monkeypatch.setattr(discovery, "_head_one", _offline_head_one)
+    monkeypatch.setattr(_discovery, "_head_one", _offline_head_one)
 
     # The corrupt cases emit two warnings, one per concern. A
     # `pytest.warns(match=...)` re-emits whichever one it did not match,
@@ -572,7 +572,7 @@ def test_offline_rule_b_network_down_nothing_cached_raises(
     def _offline_head_one(_session: requests.Session, _year: int) -> VintageInfo | None:
         raise TossdNetworkError("simulated outage")
 
-    monkeypatch.setattr(discovery, "_head_one", _offline_head_one)
+    monkeypatch.setattr(_discovery, "_head_one", _offline_head_one)
 
     with pytest.raises(TossdNetworkError, match="2019") as excinfo:
         fetch.fetch_year(2019)
@@ -590,14 +590,14 @@ def test_offline_rule_c_known_year_unpublished_serves_cached_then_refresh_raises
     _patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e"')})
     cached_path = fetch.fetch_year(year)
 
-    discovery._reset_for_tests()
+    _discovery._reset_for_tests()
     _patch_discovery(monkeypatch, {})  # the sweep now succeeds, but 2020 404s
 
     with pytest.warns(UserWarning, match=str(year)):
         served_path = fetch.fetch_year(year)
     assert served_path == cached_path
 
-    discovery._reset_for_tests()
+    _discovery._reset_for_tests()
     _patch_discovery(monkeypatch, {})
     with pytest.raises(TossdNetworkError, match=str(year)):
         fetch.fetch_year(year, refresh=True)
@@ -608,7 +608,7 @@ def test_offline_rule_d_unknown_year_honoured_when_discovered(
 ) -> None:
     """A year outside `known_years()` is honoured once discovery finds it."""
     year = 2025
-    assert year not in discovery.known_years()
+    assert year not in _discovery.known_years()
     url = _url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=3)
     _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
@@ -652,13 +652,13 @@ def test_get_mid_stream_drop_serves_cached_vintage_with_warning(
             ),
         ]
     )
-    monkeypatch.setattr(discovery, "get_session", lambda: session)
+    monkeypatch.setattr(_discovery, "get_session", lambda: session)
     _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e1"')})
     cached_path = fetch.fetch_year(year)
 
     # Simulate a republish (a new ETag, so a fresh download is attempted this
     # time) whose GET connection then drops mid-transfer.
-    discovery._reset_for_tests()
+    _discovery._reset_for_tests()
     _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e2"')})
 
     with pytest.warns(UserWarning, match=str(year)):
@@ -681,7 +681,7 @@ def test_get_mid_stream_drop_with_nothing_cached_raises_tossd_network_error(
             )
         ]
     )
-    monkeypatch.setattr(discovery, "get_session", lambda: session)
+    monkeypatch.setattr(_discovery, "get_session", lambda: session)
 
     with pytest.raises(TossdNetworkError) as excinfo:
         fetch.fetch_year(year)
@@ -701,7 +701,7 @@ def test_truncated_content_length_raises_named_error_not_cached(
             headers={"ETag": '"e"', "Content-Length": "1000"}, chunks=(b"short-body",)
         )
     )
-    monkeypatch.setattr(discovery, "get_session", lambda: session)
+    monkeypatch.setattr(_discovery, "get_session", lambda: session)
 
     with pytest.raises(TossdNetworkError, match="1000") as excinfo:
         fetch.fetch_year(year)
@@ -771,14 +771,14 @@ def test_get_tossd_raw_refresh_sweeps_discovery_once_for_multiple_years(
     _patch_fetcher_by_url(monkeypatch, sources)
 
     discover_calls = 0
-    real_discover = discovery.discover
+    real_discover = _discovery.discover
 
     def _counting_discover(*, refresh: bool = False) -> dict[int, VintageInfo]:
         nonlocal discover_calls
         discover_calls += 1
         return real_discover(refresh=refresh)
 
-    monkeypatch.setattr(discovery, "discover", _counting_discover)
+    monkeypatch.setattr(_discovery, "discover", _counting_discover)
 
     fetch.get_tossd_raw(years=list(years), refresh=True)
 
@@ -799,12 +799,12 @@ def test_serving_stale_warning_points_at_the_caller(
     _patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e"')})
     fetch.fetch_year(year)
 
-    discovery._reset_for_tests()
+    _discovery._reset_for_tests()
 
     def _offline_head_one(_session: requests.Session, _year: int) -> VintageInfo | None:
         raise TossdNetworkError("simulated outage")
 
-    monkeypatch.setattr(discovery, "_head_one", _offline_head_one)
+    monkeypatch.setattr(_discovery, "_head_one", _offline_head_one)
 
     with pytest.warns(UserWarning, match=str(year)) as record:
         fetch.fetch_year(year)

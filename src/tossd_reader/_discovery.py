@@ -1,5 +1,7 @@
 """HEAD-sweep discovery of published TOSSD vintages.
 
+Private module. Consumed by fetch.py and codelists.py.
+
 One HEAD request per year, from 2019 through the current calendar year, swept
 once per process and memoised in-process — there is no persisted TTL map.
 `fetch.py` owns what happens when the sweep can't run at all (offline) or a
