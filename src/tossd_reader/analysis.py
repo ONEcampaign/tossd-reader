@@ -1,9 +1,11 @@
-"""Post-query analytical helpers for `get_tossd()` output.
+"""Post-query analysis toolkit for `get_tossd()` output.
 
-Every helper here operates on a `pandas.DataFrame` already shaped like
-`get_tossd()`'s output (snake_case columns) and raises a `ValueError` naming
-any column it needs but doesn't find, rather than a bare `KeyError`. None of
-these mutate the caller's frame -- each returns a new one.
+`explode_sdg`, `add_iso3`, `extract_keywords`, and `pillar2_own_country_costs`
+each operate on a `pandas.DataFrame` already shaped like `get_tossd()`'s
+output (snake_case columns) and raise a `ValueError` naming any column they
+need but don't find, rather than a bare `KeyError`. None of these mutate the
+caller's frame -- each returns a new one. `get_structural_breaks` takes no
+frame at all: it returns the packaged structural-breaks reference table.
 
 `add_iso3` is the one helper here that touches `resolvekit`: `import
 resolvekit` happens lazily, inside `_iso3_resolver`'s own body, never at

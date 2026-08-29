@@ -2,7 +2,7 @@
 
 _As of v0.1._
 
-`tossd_reader.helpers` ships five functions that run on `get_tossd()` output. Four take a `pandas.DataFrame` and return a new one, leaving the input frame untouched. `get_structural_breaks` takes no argument and returns the packaged reference table. All five run offline. `add_iso3` resolves codes through a `resolvekit` module bundled with the package, so it needs no network.
+`tossd_reader.analysis` ships five functions that run on `get_tossd()` output. Four take a `pandas.DataFrame` and return a new one, leaving the input frame untouched. `get_structural_breaks` takes no argument and returns the packaged reference table. All five run offline. `add_iso3` resolves codes through a `resolvekit` module bundled with the package, so it needs no network.
 
 Each helper checks its required columns up front and raises `ValueError` naming the column it's missing.
 
@@ -15,12 +15,12 @@ Each helper checks its required columns up front and raises `ValueError` naming 
 | `get_structural_breaks`     | none, takes no frame                    | n/a             |
 
 <!-- prettier-ignore -->
-::: tossd_reader.helpers.explode_sdg
+::: tossd_reader.analysis.explode_sdg
     options:
       heading_level: 2
 
 <!-- prettier-ignore -->
-::: tossd_reader.helpers.extract_keywords
+::: tossd_reader.analysis.extract_keywords
     options:
       heading_level: 2
 
@@ -44,17 +44,17 @@ dtype: int64
 ```
 
 <!-- prettier-ignore -->
-::: tossd_reader.helpers.add_iso3
+::: tossd_reader.analysis.add_iso3
     options:
       heading_level: 2
 
 <!-- prettier-ignore -->
-::: tossd_reader.helpers.pillar2_own_country_costs
+::: tossd_reader.analysis.pillar2_own_country_costs
     options:
       heading_level: 2
 
 <!-- prettier-ignore -->
-::: tossd_reader.helpers.get_structural_breaks
+::: tossd_reader.analysis.get_structural_breaks
     options:
       heading_level: 2
 

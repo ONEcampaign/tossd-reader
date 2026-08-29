@@ -12,6 +12,13 @@ except PackageNotFoundError:
 
 if TYPE_CHECKING:
     from tossd_reader._export import export as export
+    from tossd_reader.analysis import add_iso3 as add_iso3
+    from tossd_reader.analysis import explode_sdg as explode_sdg
+    from tossd_reader.analysis import extract_keywords as extract_keywords
+    from tossd_reader.analysis import get_structural_breaks as get_structural_breaks
+    from tossd_reader.analysis import (
+        pillar2_own_country_costs as pillar2_own_country_costs,
+    )
     from tossd_reader.codelists import get_available_filters as get_available_filters
     from tossd_reader.codelists import get_codelists_version as get_codelists_version
     from tossd_reader.config import set_cache_dir as set_cache_dir
@@ -22,13 +29,6 @@ if TYPE_CHECKING:
     from tossd_reader.exceptions import UnknownCodeError as UnknownCodeError
     from tossd_reader.exceptions import VintageValidationError as VintageValidationError
     from tossd_reader.fetch import get_tossd_raw as get_tossd_raw
-    from tossd_reader.helpers import add_iso3 as add_iso3
-    from tossd_reader.helpers import explode_sdg as explode_sdg
-    from tossd_reader.helpers import extract_keywords as extract_keywords
-    from tossd_reader.helpers import get_structural_breaks as get_structural_breaks
-    from tossd_reader.helpers import (
-        pillar2_own_country_costs as pillar2_own_country_costs,
-    )
     from tossd_reader.query import get_tossd as get_tossd
 
 __all__ = [
@@ -65,11 +65,11 @@ _LAZY_ATTRS: dict[str, tuple[str, str]] = {
     "SchemaDriftError": ("tossd_reader.exceptions", "SchemaDriftError"),
     "UnknownCodeError": ("tossd_reader.exceptions", "UnknownCodeError"),
     "InvalidPillarError": ("tossd_reader.exceptions", "InvalidPillarError"),
-    "explode_sdg": ("tossd_reader.helpers", "explode_sdg"),
-    "add_iso3": ("tossd_reader.helpers", "add_iso3"),
-    "extract_keywords": ("tossd_reader.helpers", "extract_keywords"),
-    "get_structural_breaks": ("tossd_reader.helpers", "get_structural_breaks"),
-    "pillar2_own_country_costs": ("tossd_reader.helpers", "pillar2_own_country_costs"),
+    "explode_sdg": ("tossd_reader.analysis", "explode_sdg"),
+    "add_iso3": ("tossd_reader.analysis", "add_iso3"),
+    "extract_keywords": ("tossd_reader.analysis", "extract_keywords"),
+    "get_structural_breaks": ("tossd_reader.analysis", "get_structural_breaks"),
+    "pillar2_own_country_costs": ("tossd_reader.analysis", "pillar2_own_country_costs"),
 }
 
 

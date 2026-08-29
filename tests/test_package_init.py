@@ -19,11 +19,11 @@ from tossd_reader import exceptions
         ("set_cache_dir", "tossd_reader.config"),
         ("get_available_filters", "tossd_reader.codelists"),
         ("get_codelists_version", "tossd_reader.codelists"),
-        ("explode_sdg", "tossd_reader.helpers"),
-        ("add_iso3", "tossd_reader.helpers"),
-        ("extract_keywords", "tossd_reader.helpers"),
-        ("get_structural_breaks", "tossd_reader.helpers"),
-        ("pillar2_own_country_costs", "tossd_reader.helpers"),
+        ("explode_sdg", "tossd_reader.analysis"),
+        ("add_iso3", "tossd_reader.analysis"),
+        ("extract_keywords", "tossd_reader.analysis"),
+        ("get_structural_breaks", "tossd_reader.analysis"),
+        ("pillar2_own_country_costs", "tossd_reader.analysis"),
         ("TossdReaderError", exceptions.TossdReaderError),
         ("TossdNetworkError", exceptions.TossdNetworkError),
         ("VintageValidationError", exceptions.VintageValidationError),
@@ -79,7 +79,7 @@ def test_import_opens_no_socket_and_stays_light() -> None:
         "    'tossd_reader.codelists',\n"
         "    'tossd_reader.query',\n"
         "    'tossd_reader._export',\n"
-        "    'tossd_reader.helpers',\n"
+        "    'tossd_reader.analysis',\n"
         "]\n"
         "for name in lazy_submodules:\n"
         "    assert importlib.util.find_spec(name) is not None, f'{name} does not exist'\n"

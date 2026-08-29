@@ -3,7 +3,7 @@
 Every module that reads a file under `_data/` -- `schema.csv` (`schema.py`,
 `_export.py`), the codelist CSVs and `_version.json` (`codelists.py`),
 `known_years.json` (`discovery.py`), and `keyword_markers.csv`/
-`structural_breaks.csv` (`helpers.py`) -- resolves it through
+`structural_breaks.csv` (`analysis.py`) -- resolves it through
 `importlib.resources` the same way. Centralised here so that resolution
 detail lives in exactly one place.
 """
