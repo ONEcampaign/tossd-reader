@@ -58,6 +58,10 @@ def test_import_opens_no_socket_and_stays_light() -> None:
     Run in a fresh interpreter with socket connections monkeypatched to raise,
     mirroring `tests/conftest.py`'s own network-blocking fixture but for a
     bare import with no test harness involved.
+
+    Each checked submodule is first confirmed to exist via `find_spec`, so a
+    future rename fails loudly instead of the "not in sys.modules" assertion
+    passing vacuously for a name that no longer refers to anything.
     """
     script = (
         "import socket\n"
@@ -66,14 +70,21 @@ def test_import_opens_no_socket_and_stays_light() -> None:
         "socket.socket.connect = _blocked\n"
         "socket.socket.connect_ex = _blocked\n"
         "import sys\n"
+        "import importlib.util\n"
         "import tossd_reader\n"
-        "assert 'tossd_reader.fetch' not in sys.modules\n"
-        "assert 'tossd_reader.discovery' not in sys.modules\n"
-        "assert 'tossd_reader.config' not in sys.modules\n"
-        "assert 'tossd_reader.codelists' not in sys.modules\n"
-        "assert 'tossd_reader.query' not in sys.modules\n"
-        "assert 'tossd_reader._export' not in sys.modules\n"
-        "assert 'tossd_reader.helpers' not in sys.modules\n"
+        "lazy_submodules = [\n"
+        "    'tossd_reader.fetch',\n"
+        "    'tossd_reader.discovery',\n"
+        "    'tossd_reader.config',\n"
+        "    'tossd_reader.codelists',\n"
+        "    'tossd_reader.query',\n"
+        "    'tossd_reader._export',\n"
+        "    'tossd_reader.helpers',\n"
+        "]\n"
+        "for name in lazy_submodules:\n"
+        "    assert importlib.util.find_spec(name) is not None, f'{name} does not exist'\n"
+        "for name in lazy_submodules:\n"
+        "    assert name not in sys.modules\n"
         "assert 'resolvekit' not in sys.modules\n"
         "assert 'oda_reader' not in sys.modules\n"
         "print('OK')\n"
