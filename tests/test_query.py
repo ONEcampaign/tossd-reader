@@ -434,7 +434,7 @@ def test_minimal_preset_still_carries_always_present_columns(
 
     df = query.get_tossd(years=2019, columns="minimal")
 
-    for name in ("tossd_pillar", "tossd_subpillar", "is_aggregate", "unit"):
+    for name in ("year", "tossd_pillar", "tossd_subpillar", "is_aggregate", "unit"):
         assert name in df.columns
     assert "project_description" not in df.columns  # analysis/all-only column
 
@@ -442,14 +442,38 @@ def test_minimal_preset_still_carries_always_present_columns(
 def test_user_column_list_forces_always_present_columns(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """An explicit columns= list still gets the four always-present columns appended."""
+    """An explicit columns= list still gets FORCED_COLUMNS appended, year included."""
     _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=10)
 
     df = query.get_tossd(years=2019, columns=["provider_code"])
 
     assert next(iter(df.columns)) == "provider_code"
-    for name in ("tossd_pillar", "tossd_subpillar", "is_aggregate", "unit"):
+    for name in ("year", "tossd_pillar", "tossd_subpillar", "is_aggregate", "unit"):
         assert name in df.columns
+
+
+def test_forced_columns_is_public_and_exported() -> None:
+    """`FORCED_COLUMNS` is the public tuple `tossd_reader.FORCED_COLUMNS` resolves to."""
+    assert query.FORCED_COLUMNS == (
+        "year",
+        "tossd_pillar",
+        "tossd_subpillar",
+        "is_aggregate",
+        "unit",
+    )
+    assert tossd_reader.FORCED_COLUMNS is query.FORCED_COLUMNS
+
+
+def test_year_survives_explicit_columns_list_on_a_multi_year_query(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`year` is forced onto an explicit columns= list -- the documented multi-year KeyError is gone."""
+    _setup_default_years(monkeypatch, tmp_path, [2019, 2020], n_rows=10)
+
+    df = query.get_tossd(years=[2019, 2020], columns=["provider_code"])
+
+    assert "year" in df.columns
+    assert set(df["year"]) == {2019, 2020}
 
 
 # --- read-time column projection ------------------------------------------------
@@ -707,6 +731,63 @@ def test_is_aggregate_matches_provider_zero(
 
     assert (df.loc[df["provider_code"] == 0, "is_aggregate"]).all()
     assert not (df.loc[df["provider_code"] != 0, "is_aggregate"]).any()
+
+
+# --- categorical strip: unused categories dropped only when a row filter ran ----
+
+
+def _spy_on_strip_unused_categories(monkeypatch: pytest.MonkeyPatch) -> list[int]:
+    """Wrap `query._strip_unused_categories`, recording one entry per call, real behavior intact."""
+    calls: list[int] = []
+    real_strip = query._strip_unused_categories
+
+    def _spy(table: pa.Table) -> pa.Table:
+        calls.append(table.num_rows)
+        return real_strip(table)
+
+    monkeypatch.setattr(query, "_strip_unused_categories", _spy)
+    return calls
+
+
+def test_unfiltered_query_never_strips_categories(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """No providers=/recipients=/pillars= filter: the categorical strip never runs."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=20)
+    calls = _spy_on_strip_unused_categories(monkeypatch)
+
+    query.get_tossd(years=2019)
+
+    assert calls == []
+
+
+def test_provider_filter_runs_the_categorical_strip_exactly_once(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A providers= filter runs the categorical strip exactly once, after concat -- not per year."""
+    _setup_default_years(monkeypatch, tmp_path, [2019, 2020], n_rows=20)
+    calls = _spy_on_strip_unused_categories(monkeypatch)
+
+    query.get_tossd(years=[2019, 2020], providers=1)
+
+    assert len(calls) == 1
+
+
+def test_provider_filter_strips_unused_categories_from_provider_name(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A providers= filter leaves provider_name's dictionary carrying only the filtered value."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    unfiltered = query.get_tossd(years=2019)
+    assert len(set(unfiltered["provider_name"])) > 1, (
+        "fixture must carry more than one distinct provider_name for this test to mean anything"
+    )
+
+    df = query.get_tossd(years=2019, providers=1)
+
+    assert set(df["provider_name"]) == {"Provider Alpha"}
+    assert list(df["provider_name"].cat.categories) == ["Provider Alpha"]
 
 
 # --- empty result --------------------------------------------------------------

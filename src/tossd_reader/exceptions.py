@@ -1,9 +1,9 @@
 """tossd_reader's public exception hierarchy.
 
 One base, `TossdReaderError`, with a shallow tree of purpose-specific
-subclasses below it. `SchemaDriftError`, `UnknownCodeError` and
-`InvalidPillarError` are defined here so the whole hierarchy is importable
-from this module alone.
+subclasses below it. `SchemaDriftError`, `UnknownCodeError`,
+`InvalidPillarError`, and `ExportIntegrityError` are defined here so the
+whole hierarchy is importable from this module alone.
 """
 
 from __future__ import annotations
@@ -82,4 +82,16 @@ class InvalidPillarError(TossdReaderError):
     A sub-pillar filter (`pillars=21/22/"II.A"/"II.B"`) combined with an
     explicit year before 2023 raises this, naming the years that predate
     sub-pillar tagging.
+    """
+
+
+class ExportIntegrityError(TossdReaderError):
+    """Raised when a previously exported parquet file fails `verify_export`'s checks.
+
+    Covers a missing or unreadable manifest sidecar, a payload whose sha256
+    hash no longer matches the manifest's `payload_sha256`, and a payload
+    whose row count no longer matches the manifest's `row_count`. A
+    `schema_hash` difference (an export written by a different package
+    version) is deliberately not one of these checks -- it doesn't mean the
+    file was modified.
     """

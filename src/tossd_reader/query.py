@@ -9,10 +9,11 @@ data-free `pq.read_schema`, so the projection never masquerades as publisher
 drift) → arrow-level row filters (provider/recipient/pillar). Then, once
 across every year: `pa.concat_tables(...).unify_dictionaries()` (a
 categorical column stays dictionary-encoded across a multi-year query),
-derived columns (`is_aggregate`, `unit`, the `parent_channel_code` decode --
-skipped entirely when `parent_channel_name` isn't requested), preset/column
-projection, units conversion, and exactly one `.to_pandas()` call at the very
-end.
+a categorical strip (only when at least one row filter ran -- see
+`_strip_unused_categories`), derived columns (`is_aggregate`, `unit`, the
+`parent_channel_code` decode -- skipped entirely when `parent_channel_name`
+isn't requested), preset/column projection, units conversion, and exactly one
+`.to_pandas()` call at the very end.
 
 Discovery is swept once per `get_tossd` call (not once per requested year),
 the same `sweep_or_none` pattern `fetch.get_tossd_raw` already uses. A
@@ -43,15 +44,22 @@ from tossd_reader.exceptions import UnknownCodeError
 # A bare `to_pandas()` widens any Arrow integer column holding nulls to
 # `float64`, so `sector_code` would read `910.0` and `schema.csv`'s declared
 # `Int16` would not survive the round-trip. Passing this as `types_mapper`
-# keeps the delivered frame matching the packaged schema.
-_ARROW_TO_PANDAS_INT: dict[pa.DataType, pd.api.extensions.ExtensionDtype] = {
+# keeps the delivered frame matching the packaged schema. Plain name:
+# consumed by `_export.load_export` as well as `get_tossd`.
+ARROW_TO_PANDAS_INT: dict[pa.DataType, pd.api.extensions.ExtensionDtype] = {
     pa.int8(): pd.Int8Dtype(),
     pa.int16(): pd.Int16Dtype(),
     pa.int32(): pd.Int32Dtype(),
 }
 
 _VALID_UNITS = ("usd_thousand", "usd_million")
-_FORCED_COLUMNS = ("tossd_pillar", "tossd_subpillar", "is_aggregate", "unit")
+
+# Columns `get_tossd` (and `export`) always include, regardless of `columns=`.
+# Public (re-exported from `tossd_reader` via `__init__.py`'s lazy-attr map)
+# so a caller can check membership before building an explicit `columns=`
+# list, rather than rediscovering by trial that e.g. `year` survives any
+# selection.
+FORCED_COLUMNS = ("year", "tossd_pillar", "tossd_subpillar", "is_aggregate", "unit")
 
 _DECODE_CHANNEL_DIMENSION = "channel"
 _DECODE_CODE_COLUMN = "parent_channel_code"
@@ -101,9 +109,10 @@ def get_tossd(
             instead silently narrows to years >= 2023, with one warning.
         columns: `"all"` (default, every packaged column), `"minimal"`,
             `"analysis"` (see `_schema.preset_columns`), or an explicit
-            `list[str]` of snake_case column names. `tossd_pillar`,
-            `tossd_subpillar`, `is_aggregate`, and `unit` are always present
-            in the result regardless of this selection.
+            `list[str]` of snake_case column names. `FORCED_COLUMNS`
+            (`year`, `tossd_pillar`, `tossd_subpillar`, `is_aggregate`, and
+            `unit`) are always present in the result regardless of this
+            selection.
         units: `"usd_thousand"` (default, as published) or `"usd_million"`,
             which divides every `schema.csv` `is_usd_thousand_amount`
             column by 1000.
@@ -140,7 +149,7 @@ def get_tossd(
         refresh=refresh,
         op_name="tossd_reader:get_tossd",
     )
-    return combined.to_pandas(types_mapper=_ARROW_TO_PANDAS_INT.get)
+    return combined.to_pandas(types_mapper=ARROW_TO_PANDAS_INT.get)
 
 
 def build_table(
@@ -230,6 +239,13 @@ def build_table(
         tables.append(filtered)
 
     combined = pa.concat_tables(tables).unify_dictionaries()
+    row_filter_ran = (
+        provider_codes is not None
+        or recipient_codes is not None
+        or pillar_main is not None
+    )
+    if row_filter_ran:
+        combined = _strip_unused_categories(combined)
     combined = _add_derived_columns(
         combined, units=units, decode_parent_channel=decode_parent_channel
     )
@@ -326,6 +342,28 @@ def _filter_pillar(
     return table.filter(mask)
 
 
+def _strip_unused_categories(table: pa.Table) -> pa.Table:
+    """Re-encode every dictionary-typed column so its dictionary holds only values actually present.
+
+    Only called when a `providers=`/`recipients=`/`pillars=` row filter ran:
+    a categorical column's dictionary otherwise keeps every value from the
+    unfiltered file even after row filtering has dropped every row carrying
+    most of them, so a caller's `observed=False` groupby (pandas' own
+    default) crosses filtered-out categories back in. Decoding to the plain
+    value type and re-encoding collapses each dictionary to the filtered
+    data's actual vocabulary; called once, right after the per-year tables
+    are concatenated and their dictionaries unified, before column
+    projection.
+    """
+    for index, field in enumerate(table.schema):
+        if not pa.types.is_dictionary(field.type):
+            continue
+        column = table.column(index)
+        decoded = pc.cast(column, field.type.value_type)
+        table = table.set_column(index, field.name, pc.dictionary_encode(decoded))  # ty: ignore[unresolved-attribute]
+    return table
+
+
 # --- column projection (read-time pushdown) -----------------------------------
 
 
@@ -343,9 +381,10 @@ def _needed_read_columns(
     always reads it, regardless of any `providers=` filter or column
     selection), `recipient_code` when a `recipients=` filter is set, and
     `parent_channel_code` when the channel-codelist decode join is going to
-    run (i.e. `parent_channel_name` is requested). `tossd_pillar` and
-    `tossd_subpillar` need no separate entry here: both are always-forced
-    output columns, already in `column_names`.
+    run (i.e. `parent_channel_name` is requested). `year`, `tossd_pillar`,
+    and `tossd_subpillar` need no separate entry here: all three are
+    always-forced output columns (`FORCED_COLUMNS`), already in
+    `column_names`.
     """
     schema_snake_names = {field.snake_name for field in _schema.load_schema()}
     needed = [name for name in column_names if name in schema_snake_names]
@@ -460,7 +499,7 @@ def _resolve_columns(
                 raise ValueError(_unknown_column_message(name, valid_names))
             if name not in selected:
                 selected.append(name)
-    for forced in _FORCED_COLUMNS:
+    for forced in FORCED_COLUMNS:
         if forced not in selected:
             selected.append(forced)
     return selected
@@ -501,7 +540,7 @@ def _with_passthrough_extras(
 
 def _valid_column_names() -> set[str]:
     """Every column name `get_tossd` can produce: schema columns + derived ones."""
-    return {field.snake_name for field in _schema.load_schema()} | set(_FORCED_COLUMNS)
+    return {field.snake_name for field in _schema.load_schema()} | set(FORCED_COLUMNS)
 
 
 def _unknown_column_message(name: str, valid_names: set[str]) -> str:

@@ -10,6 +10,42 @@ import pytest
 
 from tossd_reader import analysis, codelists
 
+# --- _require_columns hint (missing analysis-preset column names the fix) -----
+
+
+def test_require_columns_hints_when_missing_column_is_analysis_preset_only() -> None:
+    """A missing column that's only in the 'analysis' preset gets a re-query hint."""
+    df = pd.DataFrame({"other": [1]})
+
+    with pytest.raises(ValueError) as excinfo:
+        analysis._require_columns(df, "sector_code", func_name="some_func")
+
+    message = str(excinfo.value)
+    assert "sector_code" in message
+    assert "columns='analysis'" in message
+    assert "columns= list" in message
+
+
+def test_require_columns_no_hint_when_missing_column_is_not_analysis_preset() -> None:
+    """A missing column outside the 'analysis' preset gets the generic message, no hint."""
+    df = pd.DataFrame({"other": [1]})
+
+    with pytest.raises(ValueError) as excinfo:
+        analysis._require_columns(df, "not_a_real_column", func_name="some_func")
+
+    assert str(excinfo.value) == (
+        "some_func() needs column(s) not_a_real_column, not present in df."
+    )
+
+
+def test_explode_sdg_missing_column_message_includes_analysis_hint() -> None:
+    """explode_sdg's own missing-column error carries the analysis-preset hint end to end."""
+    df = pd.DataFrame({"other": [1]})
+
+    with pytest.raises(ValueError, match="columns='analysis'"):
+        analysis.explode_sdg(df)
+
+
 # --- explode_sdg -----------------------------------------------------------------
 
 
@@ -478,6 +514,64 @@ def test_get_structural_breaks_no_mutation_across_calls() -> None:
     second = analysis.get_structural_breaks()
 
     assert "corrupted" not in second["dimension"].tolist()
+
+
+def test_get_structural_breaks_years_none_returns_every_row() -> None:
+    """years=None (the default) is unchanged: every packaged row, still."""
+    result = analysis.get_structural_breaks(years=None)
+
+    assert len(result) == len(analysis.get_structural_breaks())
+
+
+def test_get_structural_breaks_single_discrete_year_keeps_only_intersecting_rows() -> (
+    None
+):
+    """A single year keeps only rows whose [break_year, end_year] covers it."""
+    all_breaks = analysis.get_structural_breaks()
+    modality_row = all_breaks.loc[all_breaks["dimension"] == "modality"].iloc[0]
+
+    result = analysis.get_structural_breaks(years=int(modality_row["break_year"]))
+
+    assert "modality" in result["dimension"].tolist()
+    assert len(result) < len(all_breaks)
+
+
+def test_get_structural_breaks_reporters_row_spans_its_whole_range() -> None:
+    """The reporters row (2019-2024) matches every year across that continuous span."""
+    for year in (2019, 2021, 2024):
+        result = analysis.get_structural_breaks(years=year)
+        assert "reporters" in result["dimension"].tolist()
+
+
+def test_get_structural_breaks_iterable_years_unions_the_matches() -> None:
+    """An iterable of years keeps a row if it intersects any one of them."""
+    all_breaks = analysis.get_structural_breaks()
+    modality_row = all_breaks.loc[all_breaks["dimension"] == "modality"].iloc[0]
+    methodology_row = all_breaks.loc[all_breaks["dimension"] == "methodology"].iloc[0]
+
+    result = analysis.get_structural_breaks(
+        years=[int(modality_row["break_year"]), int(methodology_row["break_year"])]
+    )
+
+    assert {"modality", "methodology"} <= set(result["dimension"])
+
+
+def test_get_structural_breaks_year_matching_nothing_returns_empty_frame() -> None:
+    """A year outside every row's range returns an empty, still correctly-columned frame."""
+    result = analysis.get_structural_breaks(years=1900)
+
+    assert result.empty
+    assert list(result.columns) == list(analysis.get_structural_breaks().columns)
+
+
+def test_get_structural_breaks_years_filter_does_not_mutate_the_cache() -> None:
+    """Filtering by years still returns rows independent of the cached table."""
+    result = analysis.get_structural_breaks(years=2024)
+    result.loc[result.index[0], "dimension"] = "corrupted"
+
+    fresh = analysis.get_structural_breaks(years=2024)
+
+    assert "corrupted" not in fresh["dimension"].tolist()
 
 
 # --- pillar2_provider_costs -------------------------------------------------------

@@ -8,7 +8,7 @@ import sys
 import pytest
 
 import tossd_reader
-from tossd_reader import exceptions
+from tossd_reader import exceptions, query
 
 
 @pytest.mark.parametrize(
@@ -16,6 +16,9 @@ from tossd_reader import exceptions
     [
         ("get_tossd_raw", "tossd_reader.fetch"),
         ("export", "tossd_reader._export"),
+        ("verify_export", "tossd_reader._export"),
+        ("load_export", "tossd_reader._export"),
+        ("FORCED_COLUMNS", query.FORCED_COLUMNS),
         ("set_cache_dir", "tossd_reader.config"),
         ("get_available_filters", "tossd_reader.codelists"),
         ("get_codelists_version", "tossd_reader.codelists"),
@@ -30,6 +33,7 @@ from tossd_reader import exceptions
         ("SchemaDriftError", exceptions.SchemaDriftError),
         ("UnknownCodeError", exceptions.UnknownCodeError),
         ("InvalidPillarError", exceptions.InvalidPillarError),
+        ("ExportIntegrityError", exceptions.ExportIntegrityError),
     ],
 )
 def test_lazy_attribute_resolves(name: str, expected: object) -> None:

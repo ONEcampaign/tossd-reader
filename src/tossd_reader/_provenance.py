@@ -48,7 +48,7 @@ def write_provenance_if_absent(
         "url": url,
         "etag": captured.get("etag") or etag_fallback,
         "size_bytes": path.stat().st_size,
-        "sha256": _sha256_file(path),
+        "sha256": sha256_file(path),
         "row_count": parquet_file.metadata.num_rows,
         "retrieved_at": datetime.now(UTC).isoformat(),
         "tossd_reader_version": __version__,
@@ -107,7 +107,13 @@ def _warn_corrupt_provenance(provenance_path: Path, *, reason: str) -> None:
     )
 
 
-def _sha256_file(path: Path) -> str:
-    """Hash `path`'s full contents."""
+def sha256_file(path: Path) -> str:
+    """Hash `path`'s full contents.
+
+    Not underscore-prefixed: `_export.py` (a sibling private module) reuses
+    it to hash the written parquet payload for the export manifest's
+    `payload_sha256` field, alongside this module's own use for the cached
+    vintage's provenance sidecar.
+    """
     with path.open("rb") as handle:
         return hashlib.file_digest(handle, "sha256").hexdigest()

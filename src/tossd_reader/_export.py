@@ -7,6 +7,14 @@ would return, without a pandas round-trip. Always `columns="all"`, units left
 as published (`"usd_thousand"`): the point of `export()` is a normalised,
 typed, but otherwise unfiltered snapshot, not a query result.
 
+`verify_export()` and `load_export()` are this module's read side: the
+manifest sidecar `export()` writes carries a `payload_sha256` of the written
+parquet bytes plus the row count, both checked against the file on disk;
+`load_export()` verifies by default, then reads the parquet straight back
+(no `_schema.apply_schema` re-application -- the file already carries
+snake_case names and final arrow types) and attaches the manifest's
+provenance to `df.attrs["tossd_reader"]`.
+
 Module named `_export.py` (leading underscore), not `export.py`: the public
 function is also named `export`, and `from tossd_reader import export`
 (exactly how a caller reaches the public function) would otherwise resolve
@@ -25,9 +33,11 @@ from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pandas as pd
 import pyarrow.parquet as pq
 
 from tossd_reader import __version__, _provenance, _resources, query
+from tossd_reader.exceptions import ExportIntegrityError
 
 _OP_NAME = "tossd_reader:export"
 _COMPRESSION = "zstd"
@@ -54,9 +64,10 @@ def export(
     Returns:
         The path the parquet file was written to. A sidecar
         `<stem>.manifest.json` is written alongside it, carrying the
-        package version, a schema hash, the exported years, per-year
-        vintage provenance (etag/retrieved_at), the total row count, and
-        the export's creation timestamp.
+        package version, a schema hash, a sha256 of the written parquet's
+        own bytes (`payload_sha256`, checked by `verify_export`), the
+        exported years, per-year vintage provenance (etag/retrieved_at),
+        the total row count, and the export's creation timestamp.
 
     Note:
         `years=None` (the default) materialises the full packaged
@@ -126,6 +137,7 @@ def _write_manifest(
     manifest = {
         "tossd_reader_version": __version__,
         "schema_hash": _schema_hash(),
+        "payload_sha256": _provenance.sha256_file(destination),
         "years": list(years),
         "row_count": row_count,
         "created_at": datetime.now(UTC).isoformat(),
@@ -161,3 +173,133 @@ def _schema_hash() -> str:
     with _resources.data_path("schema.csv") as schema_path:
         data = schema_path.read_bytes()
     return hashlib.sha256(data.replace(b"\r\n", b"\n")).hexdigest()
+
+
+# --- verify / load a previously written export ---------------------------------
+
+
+def verify_export(path: str | Path) -> None:
+    """Verify a parquet file previously written by `export()` against its manifest sidecar.
+
+    Two checks, both against `<stem>.manifest.json` beside `path`: the
+    payload's sha256 hash (`payload_sha256`) and its row count (`row_count`).
+    A `schema_hash` mismatch is deliberately not checked here -- an export
+    written by an older or newer package version is not a corrupted file.
+
+    Args:
+        path: Path to a `.parquet` file previously written by `export()`.
+
+    Returns:
+        `None`. Only ever returns after every check passes.
+
+    Raises:
+        ExportIntegrityError: The manifest sidecar is missing or cannot be
+            parsed as a JSON object; the payload's sha256 hash doesn't match
+            the manifest's `payload_sha256`; or the payload's row count
+            doesn't match the manifest's `row_count`.
+    """
+    payload_path = Path(path)
+    manifest = _read_manifest(_manifest_path(payload_path))
+    _verify_payload_hash(payload_path, manifest)
+    _verify_row_count(payload_path, manifest)
+
+
+def load_export(path: str | Path, *, verify: bool = True) -> pd.DataFrame:
+    """Load a parquet file previously written by `export()`, with its provenance attached.
+
+    Reads the file directly (`pq.read_table` + `to_pandas`, reusing
+    `query`'s own `types_mapper`) rather than through `get_tossd`'s pipeline:
+    an exported parquet already carries snake_case column names and final
+    arrow types (`export()` wrote it that way), so re-running
+    `_schema.apply_schema` would be redundant at best and wrong if the
+    installed package's schema has since drifted from the one that produced
+    the file.
+
+    Args:
+        path: Path to a `.parquet` file previously written by `export()`.
+        verify: Run `verify_export(path)` first (the default). Pass `False`
+            to skip the payload-hash/row-count checks -- `df.attrs`
+            provenance is still read from the manifest either way, so a
+            missing or unparseable manifest still raises regardless of this
+            flag.
+
+    Returns:
+        A `pandas.DataFrame` read straight from the parquet file, with
+        `df.attrs["tossd_reader"]` set to `{"package_version", "created_at",
+        "years"}`: the manifest's `tossd_reader_version`, `created_at`, and
+        `vintages` fields respectively.
+
+    Raises:
+        ExportIntegrityError: `verify=True` (the default) and the payload
+            fails `verify_export`'s checks; or, regardless of `verify=`, the
+            manifest sidecar is missing or cannot be parsed as a JSON
+            object.
+    """
+    payload_path = Path(path)
+    if verify:
+        verify_export(payload_path)
+    manifest = _read_manifest(_manifest_path(payload_path))
+
+    table = pq.read_table(payload_path)
+    df = table.to_pandas(types_mapper=query.ARROW_TO_PANDAS_INT.get)
+    df.attrs["tossd_reader"] = {
+        "package_version": manifest.get("tossd_reader_version"),
+        "created_at": manifest.get("created_at"),
+        "years": manifest.get("vintages"),
+    }
+    return df
+
+
+def _manifest_path(payload_path: Path) -> Path:
+    """The `<stem>.manifest.json` sidecar path `export()` writes beside `payload_path`."""
+    return payload_path.parent / f"{payload_path.stem}.manifest.json"
+
+
+def _read_manifest(manifest_path: Path) -> dict[str, object]:
+    """Read and parse `manifest_path`, raising `ExportIntegrityError` on any failure."""
+    try:
+        text = manifest_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ExportIntegrityError(
+            f"Cannot read manifest {manifest_path}: {exc}."
+        ) from exc
+    try:
+        manifest = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ExportIntegrityError(
+            f"Manifest {manifest_path} is not valid JSON: {exc}."
+        ) from exc
+    if not isinstance(manifest, dict):
+        raise ExportIntegrityError(f"Manifest {manifest_path} is not a JSON object.")
+    return manifest
+
+
+def _verify_payload_hash(payload_path: Path, manifest: dict[str, object]) -> None:
+    """Raise `ExportIntegrityError` unless `payload_path`'s sha256 matches the manifest's."""
+    expected = manifest.get("payload_sha256")
+    if not isinstance(expected, str):
+        raise ExportIntegrityError(
+            f"Manifest for {payload_path} has no payload_sha256 to verify against "
+            "(written by an older tossd_reader version?)."
+        )
+    actual = _provenance.sha256_file(payload_path)
+    if actual != expected:
+        raise ExportIntegrityError(
+            f"{payload_path} does not match its manifest: sha256 {actual} but the "
+            f"manifest recorded {expected}. The file may have been modified or "
+            "corrupted since export."
+        )
+
+
+def _verify_row_count(payload_path: Path, manifest: dict[str, object]) -> None:
+    """Raise `ExportIntegrityError` unless `payload_path`'s row count matches the manifest's."""
+    expected = manifest.get("row_count")
+    if not isinstance(expected, int):
+        raise ExportIntegrityError(
+            f"Manifest for {payload_path} has no row_count to verify against."
+        )
+    actual = pq.read_metadata(payload_path).num_rows
+    if actual != expected:
+        raise ExportIntegrityError(
+            f"{payload_path} has {actual} row(s); the manifest recorded {expected}."
+        )

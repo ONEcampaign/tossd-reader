@@ -32,7 +32,10 @@ layer (whether a *new* ETag exists upstream), not by this TTL."""
 
 
 def get_tossd_raw(
-    *, years: int | Iterable[int] | None = None, refresh: bool = False
+    *,
+    years: int | Iterable[int] | None = None,
+    refresh: bool = False,
+    **unexpected: object,
 ) -> pd.DataFrame:
     """Return raw TOSSD activity-level data, exactly as published.
 
@@ -45,6 +48,10 @@ def get_tossd_raw(
         refresh: Re-run discovery's HEAD sweep and force a readerkit
             conditional GET for every requested year. An enclosing
             `readerkit.refresh_scope()` has the same effect.
+        **unexpected: Not a real parameter -- captures any other keyword
+            argument only to raise a teaching `TypeError` naming it, since
+            `get_tossd_raw` has no filtering, column selection, or units
+            options for a caller to reach for by mistake.
 
     Returns:
         A `pandas.DataFrame`, one row per activity, across every requested
@@ -52,7 +59,18 @@ def get_tossd_raw(
 
     Raises:
         ValueError: `years` resolves to an empty set of years.
+        TypeError: An unrecognised keyword argument was passed. Filtering
+            (`providers=`/`recipients=`/`pillars=`), column selection
+            (`columns=`), and unit conversion (`units=`) all live on
+            `get_tossd()`, not here.
     """
+    if unexpected:
+        offending = ", ".join(sorted(unexpected))
+        raise TypeError(
+            f"get_tossd_raw() got unexpected keyword argument(s): {offending}. "
+            "get_tossd_raw() only accepts years=/refresh=; for filtering, "
+            "column selection, or unit conversion, use get_tossd() instead."
+        )
     resolved_years = normalise_years(years)
     # Resolved once for every requested year, rather than once per year: a
     # per-year `discover()` call would re-run the whole HEAD sweep N times

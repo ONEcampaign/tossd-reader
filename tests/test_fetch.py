@@ -772,6 +772,26 @@ def test_get_tossd_raw_empty_years_raises_value_error() -> None:
         fetch.get_tossd_raw(years=[])
 
 
+# --- teaching TypeError on an unexpected keyword argument ----------------------
+
+
+def test_get_tossd_raw_unexpected_kwarg_names_it_and_points_at_get_tossd() -> None:
+    """An unrecognised kwarg raises TypeError naming it and pointing at get_tossd()."""
+    with pytest.raises(TypeError, match="columns") as excinfo:
+        fetch.get_tossd_raw(columns="minimal")  # type: ignore[call-arg]
+
+    assert "get_tossd()" in str(excinfo.value)
+
+
+def test_get_tossd_raw_multiple_unexpected_kwargs_names_all_of_them() -> None:
+    """Several unrecognised kwargs at once are all named, not just the first."""
+    with pytest.raises(TypeError) as excinfo:
+        fetch.get_tossd_raw(providers=1, units="usd_million")  # type: ignore[call-arg]
+
+    assert "providers" in str(excinfo.value)
+    assert "units" in str(excinfo.value)
+
+
 # --- refresh_scope equivalence -------------------------------------------------
 
 

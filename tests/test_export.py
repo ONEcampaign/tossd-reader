@@ -15,6 +15,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
@@ -23,6 +24,7 @@ from tests.factories import build_tossd_table
 from tests.fakes import patch_discovery, patch_fetcher_by_url, url_for
 from tossd_reader import _discovery, fetch, query
 from tossd_reader._discovery import VintageInfo
+from tossd_reader.exceptions import ExportIntegrityError
 
 # --- shared fetch/discovery patching (see tests/fakes.py) ---------------------
 
@@ -73,7 +75,7 @@ def test_export_roundtrip_matches_pipeline_output(
 
     destination = tossd_reader.export(tmp_path / "out", years=years)
     written = pq.read_table(destination).to_pandas(
-        types_mapper=query._ARROW_TO_PANDAS_INT.get
+        types_mapper=query.ARROW_TO_PANDAS_INT.get
     )
     expected = query.get_tossd(years=years, columns="all")
 
@@ -242,3 +244,221 @@ def test_export_multi_year_refresh_sweeps_discovery_exactly_once(
     tossd_reader.export(tmp_path / "out", years=years, refresh=True)
 
     assert len(calls) == 1
+
+
+# --- verify_export / load_export -------------------------------------------------
+
+
+def _manifest_path(destination: Path) -> Path:
+    return destination.parent / f"{destination.stem}.manifest.json"
+
+
+def test_export_manifest_carries_payload_sha256_matching_the_written_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The manifest's payload_sha256 is a real sha256 of the written parquet's own bytes."""
+    _setup_default_years(monkeypatch, tmp_path, [2019])
+
+    destination = tossd_reader.export(tmp_path / "out", years=2019)
+    manifest = json.loads(_manifest_path(destination).read_text())
+
+    assert (
+        manifest["payload_sha256"]
+        == hashlib.sha256(destination.read_bytes()).hexdigest()
+    )
+
+
+def test_verify_export_succeeds_silently_on_a_fresh_export(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A freshly written export passes verify_export -- and returns None."""
+    _setup_default_years(monkeypatch, tmp_path, [2019])
+    destination = tossd_reader.export(tmp_path / "out", years=2019)
+
+    assert tossd_reader.verify_export(destination) is None
+
+
+def test_verify_export_raises_on_missing_manifest(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """No manifest sidecar at all raises ExportIntegrityError."""
+    _setup_default_years(monkeypatch, tmp_path, [2019])
+    destination = tossd_reader.export(tmp_path / "out", years=2019)
+    _manifest_path(destination).unlink()
+
+    with pytest.raises(ExportIntegrityError, match="manifest"):
+        tossd_reader.verify_export(destination)
+
+
+def test_verify_export_raises_on_unparseable_manifest(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A manifest sidecar that isn't valid JSON raises ExportIntegrityError."""
+    _setup_default_years(monkeypatch, tmp_path, [2019])
+    destination = tossd_reader.export(tmp_path / "out", years=2019)
+    _manifest_path(destination).write_text("{not json")
+
+    with pytest.raises(ExportIntegrityError, match="JSON"):
+        tossd_reader.verify_export(destination)
+
+
+def test_verify_export_raises_when_manifest_is_not_a_json_object(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Valid JSON that isn't an object (e.g. a bare list) still raises ExportIntegrityError."""
+    _setup_default_years(monkeypatch, tmp_path, [2019])
+    destination = tossd_reader.export(tmp_path / "out", years=2019)
+    _manifest_path(destination).write_text("[1, 2, 3]")
+
+    with pytest.raises(ExportIntegrityError, match="JSON object"):
+        tossd_reader.verify_export(destination)
+
+
+def test_verify_export_raises_when_manifest_predates_payload_sha256(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A manifest written before payload_sha256 existed can't be hash-verified, and says so."""
+    _setup_default_years(monkeypatch, tmp_path, [2019])
+    destination = tossd_reader.export(tmp_path / "out", years=2019)
+    manifest_path = _manifest_path(destination)
+    manifest = json.loads(manifest_path.read_text())
+    del manifest["payload_sha256"]
+    manifest_path.write_text(json.dumps(manifest))
+
+    with pytest.raises(ExportIntegrityError, match="payload_sha256"):
+        tossd_reader.verify_export(destination)
+
+
+def test_verify_export_raises_when_manifest_has_no_row_count(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A manifest missing row_count entirely can't be row-count-verified, and says so."""
+    _setup_default_years(monkeypatch, tmp_path, [2019])
+    destination = tossd_reader.export(tmp_path / "out", years=2019)
+    manifest_path = _manifest_path(destination)
+    manifest = json.loads(manifest_path.read_text())
+    del manifest["row_count"]
+    manifest_path.write_text(json.dumps(manifest))
+
+    with pytest.raises(ExportIntegrityError, match="row_count"):
+        tossd_reader.verify_export(destination)
+
+
+def test_verify_export_raises_on_payload_hash_mismatch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A payload modified after export fails the sha256 check."""
+    _setup_default_years(monkeypatch, tmp_path, [2019])
+    destination = tossd_reader.export(tmp_path / "out", years=2019)
+    with destination.open("ab") as handle:
+        handle.write(b"tampered-bytes")
+
+    with pytest.raises(ExportIntegrityError, match="sha256"):
+        tossd_reader.verify_export(destination)
+
+
+def test_verify_export_raises_on_row_count_mismatch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A manifest row_count that no longer matches the payload fails, independent of the hash."""
+    _setup_default_years(monkeypatch, tmp_path, [2019])
+    destination = tossd_reader.export(tmp_path / "out", years=2019)
+    manifest_path = _manifest_path(destination)
+    manifest = json.loads(manifest_path.read_text())
+    manifest["row_count"] = manifest["row_count"] + 1
+    manifest_path.write_text(json.dumps(manifest))
+
+    with pytest.raises(ExportIntegrityError, match="row"):
+        tossd_reader.verify_export(destination)
+
+
+def test_verify_export_does_not_raise_on_schema_hash_difference(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A schema_hash mismatch (an export from a different package version) is not an integrity failure."""
+    _setup_default_years(monkeypatch, tmp_path, [2019])
+    destination = tossd_reader.export(tmp_path / "out", years=2019)
+    manifest_path = _manifest_path(destination)
+    manifest = json.loads(manifest_path.read_text())
+    manifest["schema_hash"] = "not-the-real-hash"
+    manifest_path.write_text(json.dumps(manifest))
+
+    assert tossd_reader.verify_export(destination) is None
+
+
+def test_load_export_matches_get_tossd_columns_all(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """load_export reads back exactly what get_tossd(columns="all") would produce."""
+    years = [2019, 2020]
+    _setup_default_years(monkeypatch, tmp_path, years)
+    destination = tossd_reader.export(tmp_path / "out", years=years)
+
+    loaded = tossd_reader.load_export(destination)
+    expected = query.get_tossd(years=years, columns="all")
+
+    assert list(loaded.columns) == list(expected.columns)
+    assert loaded.dtypes.equals(expected.dtypes)
+    assert len(loaded) == len(expected)
+
+
+def test_load_export_attaches_manifest_provenance_to_attrs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`df.attrs["tossd_reader"]` carries package_version/created_at/years from the manifest."""
+    _setup_default_years(monkeypatch, tmp_path, [2019])
+    destination = tossd_reader.export(tmp_path / "out", years=2019)
+    manifest = json.loads(_manifest_path(destination).read_text())
+
+    loaded = tossd_reader.load_export(destination)
+
+    assert loaded.attrs["tossd_reader"] == {
+        "package_version": manifest["tossd_reader_version"],
+        "created_at": manifest["created_at"],
+        "years": manifest["vintages"],
+    }
+
+
+def test_load_export_verify_true_by_default_raises_on_tampered_payload(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """load_export verifies by default: a tampered payload raises before reading it back."""
+    _setup_default_years(monkeypatch, tmp_path, [2019])
+    destination = tossd_reader.export(tmp_path / "out", years=2019)
+    with destination.open("ab") as handle:
+        handle.write(b"tampered-bytes")
+
+    with pytest.raises(ExportIntegrityError, match="sha256"):
+        tossd_reader.load_export(destination)
+
+
+def test_load_export_verify_false_skips_integrity_checks(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """verify=False loads a payload that no longer matches its manifest hash anyway.
+
+    The replacement table is still structurally valid parquet (unlike the
+    byte-appending tamper used by the hash-mismatch tests above) -- this
+    test is about `verify=False` skipping the *manifest* check, not about
+    surviving a corrupted file, so the payload itself must stay readable.
+    """
+    _setup_default_years(monkeypatch, tmp_path, [2019])
+    destination = tossd_reader.export(tmp_path / "out", years=2019)
+    pq.write_table(pa.table({"x": [1, 2, 3]}), destination)
+
+    loaded = tossd_reader.load_export(destination, verify=False)
+
+    assert "tossd_reader" in loaded.attrs
+    assert list(loaded.columns) == ["x"]
+
+
+def test_load_export_verify_false_still_raises_on_missing_manifest(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Even with verify=False, a missing manifest still raises: attrs can't be built without it."""
+    _setup_default_years(monkeypatch, tmp_path, [2019])
+    destination = tossd_reader.export(tmp_path / "out", years=2019)
+    _manifest_path(destination).unlink()
+
+    with pytest.raises(ExportIntegrityError, match="manifest"):
+        tossd_reader.load_export(destination, verify=False)

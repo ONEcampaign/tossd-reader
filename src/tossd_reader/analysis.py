@@ -17,12 +17,13 @@ into `sys.modules`.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from functools import lru_cache
 from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from tossd_reader import _resources
+from tossd_reader import _resources, _schema
 
 if TYPE_CHECKING:
     import resolvekit
@@ -49,12 +50,27 @@ for what this carve-out measures and why sector 720 is excluded."""
 
 
 def _require_columns(df: pd.DataFrame, *names: str, func_name: str) -> None:
-    """Raise `ValueError` naming any of `names` missing from `df`."""
+    """Raise `ValueError` naming any of `names` missing from `df`.
+
+    When at least one missing column belongs to the `"analysis"` column
+    preset, the message adds a hint naming the fix -- the common case is a
+    caller who queried with `columns="minimal"` (or a narrow explicit list)
+    and then ran an analysis helper that needs an analysis-preset-only
+    column.
+    """
     missing = [name for name in names if name not in df.columns]
-    if missing:
-        raise ValueError(
-            f"{func_name}() needs column(s) {', '.join(missing)}, not present in df."
+    if not missing:
+        return
+    message = f"{func_name}() needs column(s) {', '.join(missing)}, not present in df."
+    in_analysis_preset = [
+        name for name in missing if name in _schema.preset_columns("analysis")
+    ]
+    if in_analysis_preset:
+        message += (
+            f" Re-query with columns='analysis', or add "
+            f"{', '.join(in_analysis_preset)} to your columns= list."
         )
+    raise ValueError(message)
 
 
 # --- explode_sdg ---------------------------------------------------------------
@@ -287,7 +303,7 @@ def _load_structural_breaks() -> pd.DataFrame:
         return pd.read_csv(path)
 
 
-def get_structural_breaks() -> pd.DataFrame:
+def get_structural_breaks(*, years: int | Iterable[int] | None = None) -> pd.DataFrame:
     """Return the packaged structural-breaks reference table.
 
     Documents five verified TOSSD-vintage discontinuities relevant to
@@ -297,16 +313,35 @@ def get_structural_breaks() -> pd.DataFrame:
     This is reference data for a caller to consult -- it does not validate
     or warn against any particular query.
 
+    Args:
+        years: A single year, an iterable of years, or `None` (the
+            default) for every row. When given, keeps only the rows whose
+            `[break_year, end_year]` interval intersects at least one
+            requested year -- so `get_structural_breaks(years=query_years)`
+            names only the breaks relevant to a `get_tossd(years=query_years)`
+            call.
+
     Returns:
         A new `pandas.DataFrame` (a copy of the cached table, so editing it
-        leaves later calls unaffected) with exactly 5 rows and columns
-        `dimension`, `break_year`, `end_year`, `description`, `source`. For
-        the four discrete breaks `end_year` equals `break_year`; the
+        leaves later calls unaffected) with columns `dimension`,
+        `break_year`, `end_year`, `description`, `source` -- all 5 rows with
+        `years=None`, fewer (or none) once `years=` narrows them. For the
+        four discrete breaks `end_year` equals `break_year`; the
         `reporters` row's `end_year` (2024) marks the end of that row's
         continuous 2019-2024 drift, so every year from `break_year` through
         `end_year` counts as affected.
     """
-    return _load_structural_breaks().copy()
+    breaks = _load_structural_breaks().copy()
+    if years is None:
+        return breaks
+    requested = {years} if isinstance(years, int) else {int(year) for year in years}
+    mask = breaks.apply(
+        lambda row: (
+            not requested.isdisjoint(range(row["break_year"], row["end_year"] + 1))
+        ),
+        axis=1,
+    )
+    return breaks.loc[mask].reset_index(drop=True)
 
 
 # --- pillar2_provider_costs -------------------------------------------------------
