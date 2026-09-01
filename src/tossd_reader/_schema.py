@@ -51,9 +51,6 @@ class SchemaField:
         target_dtype: The dtype `apply_schema` casts the column to:
             `"Int8"`/`"Int16"`/`"Int32"` (nullable arrow ints), `"category"`
             (dictionary-encoded), `"float64"`, or `"string"` (left as-is).
-        nullable: Whether the publisher has ever shipped a real null/empty
-            value for this column. Informational only; not consumed
-            anywhere in this package.
         preset_minimal: Whether the column is included in the `"minimal"`
             preset.
         preset_analysis: Whether the column is included in the `"analysis"`
@@ -67,7 +64,6 @@ class SchemaField:
     snake_name: str
     arrow_type: str
     target_dtype: str
-    nullable: bool
     preset_minimal: bool
     preset_analysis: bool
     is_usd_thousand_amount: bool
@@ -94,7 +90,6 @@ def _parse_row(row: dict[str, str]) -> SchemaField:
         snake_name=row["snake_name"],
         arrow_type=row["arrow_type"],
         target_dtype=row["target_dtype"],
-        nullable=row["nullable"] == "true",
         preset_minimal=row["preset_minimal"] == "true",
         preset_analysis=row["preset_analysis"] == "true",
         is_usd_thousand_amount=row["is_usd_thousand_amount"] == "true",
