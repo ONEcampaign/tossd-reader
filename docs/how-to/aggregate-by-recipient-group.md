@@ -19,12 +19,54 @@ df = tossd.add_iso3(df)
 
 # 3. Define the recipient classification list (e.g. UN LDC ISO3 codes)
 LDC_ISO3 = {
-    "AFG", "AGO", "BDI", "BEN", "BFA", "BGD", "CAF", "COD", "COM", "DJI",
-    "ERI", "ETH", "GIN", "GMB", "GNB", "HTI", "KHM", "KIR", "LAO", "LBR",
-    "LSO", "MDG", "MLI", "MMR", "MOZ", "MRT", "MWI", "NER", "NPL", "RWA",
-    "SDN", "SEN", "SLB", "SLE", "SOM", "SSD", "STP", "SYR", "TCD", "TGO",
-    "TLS", "TUV", "TZA", "UGA", "YEM", "ZMB"
+    "AFG",
+    "AGO",
+    "BDI",
+    "BEN",
+    "BFA",
+    "BGD",
+    "CAF",
+    "COD",
+    "COM",
+    "DJI",
+    "ERI",
+    "ETH",
+    "GIN",
+    "GMB",
+    "GNB",
+    "HTI",
+    "KHM",
+    "KIR",
+    "LAO",
+    "LBR",
+    "LSO",
+    "MDG",
+    "MLI",
+    "MMR",
+    "MOZ",
+    "MRT",
+    "MWI",
+    "NER",
+    "NPL",
+    "RWA",
+    "SDN",
+    "SEN",
+    "SLB",
+    "SLE",
+    "SOM",
+    "SSD",
+    "STP",
+    "SYR",
+    "TCD",
+    "TGO",
+    "TLS",
+    "TUV",
+    "TZA",
+    "UGA",
+    "YEM",
+    "ZMB",
 }
+
 
 # 4. Classify recipient countries into analytical groups
 def classify_recipient(row: pd.Series) -> str:
@@ -34,6 +76,7 @@ def classify_recipient(row: pd.Series) -> str:
     if iso in LDC_ISO3:
         return "Least Developed Countries (LDCs)"
     return "Other Developing Countries"
+
 
 df["recipient_group"] = df.apply(classify_recipient, axis=1)
 

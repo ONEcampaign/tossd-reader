@@ -26,6 +26,7 @@ df = tossd.get_tossd(
 )
 df = df[~df["is_aggregate"]]
 
+
 # 2. Classify instruments into policy categories
 def classify_instrument(row: pd.Series) -> str:
     code = row["finance_instrument_code"]
@@ -38,6 +39,7 @@ def classify_instrument(row: pd.Series) -> str:
     if code in [410, 411, 412]:
         return "Equity"
     return "Other Instruments"
+
 
 df["instrument_group"] = df.apply(classify_instrument, axis=1)
 
