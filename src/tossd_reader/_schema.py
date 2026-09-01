@@ -73,14 +73,7 @@ class SchemaField:
     is_usd_thousand_amount: bool
 
 
-class _SchemaState:
-    """Mutable singleton state backing this module's warn-once accessor."""
-
-    def __init__(self) -> None:
-        self.warned_unknown_columns: set[str] = set()
-
-
-_state = _SchemaState()
+_warned_unknown_columns: set[str] = set()
 
 
 @lru_cache
@@ -340,10 +333,10 @@ def _first_uncastable_value(
 
 def _warn_unknown_columns(names: list[str]) -> None:
     """Warn once per never-before-seen unknown column name in `names`."""
-    new_names = [name for name in names if name not in _state.warned_unknown_columns]
+    new_names = [name for name in names if name not in _warned_unknown_columns]
     if not new_names:
         return
-    _state.warned_unknown_columns.update(new_names)
+    _warned_unknown_columns.update(new_names)
     warnings.warn(
         "The published file has column(s) not in tossd_reader's packaged "
         f"schema: {', '.join(new_names)}. Passed through unchanged; only "
@@ -359,4 +352,4 @@ def _reset_for_tests() -> None:
     query's per-module state; this module's own warn-once state is reset
     here instead, same as fetch.py's own local fixture.
     """
-    _state.warned_unknown_columns.clear()
+    _warned_unknown_columns.clear()

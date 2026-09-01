@@ -58,14 +58,7 @@ _DECODE_CODE_COLUMN = "parent_channel_code"
 _DECODE_NAME_COLUMN = "parent_channel_name"
 
 
-class _QueryState:
-    """Mutable singleton state backing this module's warn-once accessors."""
-
-    def __init__(self) -> None:
-        self.warned_unknown_codes: dict[str, set[str]] = {}
-
-
-_state = _QueryState()
+_warned_unknown_codes: dict[str, set[str]] = {}
 
 
 def get_tossd(
@@ -434,7 +427,7 @@ def _warn_unknown_decode_codes(column_name: str, missing_values: list[object]) -
     this session are counted, so a second query over the same unknown codes
     stays quiet.
     """
-    already_warned = _state.warned_unknown_codes.setdefault(column_name, set())
+    already_warned = _warned_unknown_codes.setdefault(column_name, set())
     new_missing = sorted(
         {str(value) for value in missing_values} - already_warned, key=str
     )
@@ -546,4 +539,4 @@ def _reset_for_tests() -> None:
     (alongside _discovery's, config's, and _pillars's own resets), rather
     than a local per-file fixture.
     """
-    _state.warned_unknown_codes.clear()
+    _warned_unknown_codes.clear()

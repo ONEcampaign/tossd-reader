@@ -396,14 +396,7 @@ def _make_fetcher(
     return _fetch, captured
 
 
-class _FetchState:
-    """Mutable singleton state backing this module's warn-once accessor."""
-
-    def __init__(self) -> None:
-        self.warned_degraded_years: set[int] = set()
-
-
-_state = _FetchState()
+_warned_degraded_years: set[int] = set()
 
 
 def _warn_degraded_revalidation(year: int) -> None:
@@ -414,9 +407,9 @@ def _warn_degraded_revalidation(year: int) -> None:
     `refresh=True` (or an enclosing `refresh_scope()`) forces a fresh
     download.
     """
-    if year in _state.warned_degraded_years:
+    if year in _warned_degraded_years:
         return
-    _state.warned_degraded_years.add(year)
+    _warned_degraded_years.add(year)
     warnings.warn(
         f"Neither the HEAD nor GET response for {year} carried an ETag, so "
         "this vintage's cache entry cannot be revalidated against a "
@@ -453,4 +446,4 @@ def _reset_for_tests() -> None:
     config's, and query's per-module state; this module's own warn-once state
     is reset locally instead, same as _schema.py's own local fixture.
     """
-    _state.warned_degraded_years.clear()
+    _warned_degraded_years.clear()
