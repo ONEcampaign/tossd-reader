@@ -32,9 +32,11 @@ The provenance record stores the source URL, HTTP ETag, file size in bytes, SHA-
 
 When creating analytical extracts using `tossd.export()`, the package compiles an export manifest (`<stem>.manifest.json`) alongside the exported Parquet file:
 
+<!-- prettier-ignore -->
 ```json
 {
   "created_at": "2026-08-29T08:43:24.037603+00:00",
+  "payload_sha256": "edb669d585db4108e63b9b73ed6a1a44e1eed200e4ce8a04506f62b34b234fca",
   "row_count": 290914,
   "schema_hash": "0a95f2c54852817a9db1a2174cffa5bd371d601e5d137a37cb27491182367df9",
   "tossd_reader_version": "0.1.0",
@@ -50,7 +52,9 @@ When creating analytical extracts using `tossd.export()`, the package compiles a
 }
 ```
 
-The manifest records provenance metadata, upstream ETags, retrieval timestamps, schema hashes, row counts, export timestamps, and package versions. This provides an audit trail for published research, collaborative projects, and institutional reporting.
+The manifest records provenance metadata, upstream ETags, retrieval timestamps, schema hashes, payload hashes, row counts, export timestamps, and package versions. This provides an audit trail for published research, collaborative projects, and institutional reporting.
+
+`verify_export()` recomputes `payload_sha256` from the Parquet file and confirms it matches the manifest. `load_export()` calls `verify_export()` before reading the file back, so a file that no longer matches its manifest raises before it reaches analysis.
 
 ## Offline workflows and vintage stability
 

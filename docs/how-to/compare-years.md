@@ -16,7 +16,7 @@ Compare multi-year TOSSD disbursements in constant prices and identify reporting
    )
    ```
 
-   The `get_tossd` function automatically includes `tossd_pillar`, `tossd_subpillar`, `is_aggregate`, and `unit` in custom column lists. Include `"year"` explicitly when grouping by year.
+   `get_tossd` always includes `year`, `tossd_pillar`, `tossd_subpillar`, `is_aggregate`, and `unit` in its output regardless of the `columns=` list.
 
 2. **Group by year and sum both current and constant price amounts.** Every financial flow column in `tossd_reader` provides a paired `_deflated` counterpart that expresses amounts in constant prices.
 
@@ -31,7 +31,7 @@ Compare multi-year TOSSD disbursements in constant prices and identify reporting
 
    ```text
          usd_disbursement  usd_disbursement_deflated
-   year                                             
+   year
    2019          299878.4                   340219.0
    2020          372334.6                   414304.5
    2021          392156.9                   411967.9
@@ -42,12 +42,11 @@ Compare multi-year TOSSD disbursements in constant prices and identify reporting
 
    Between 2019 and 2024, total disbursements increased 66.0% in current prices and 46.3% in constant prices. The remaining gap reflects price inflation.
 
-3. **Inspect known structural breaks across the comparison window.** The International Forum on TOSSD (IFT) expanded reporting coverage and introduced new classifications over successive reporting cycles. The `get_structural_breaks` helper lists these methodological changes.
+3. **Inspect known structural breaks across the comparison window.** The International Forum on TOSSD (IFT) expanded reporting coverage and introduced new classifications over successive reporting cycles. The `get_structural_breaks` helper lists these methodological changes. Pass `years=` to scope the result to the years you're comparing.
 
    ```python
-   breaks = tossd.get_structural_breaks()
-   window = breaks[(breaks["break_year"] <= 2024) & (breaks["end_year"] >= 2019)]
-   len(window)
+   breaks = tossd.get_structural_breaks(years=range(2019, 2025))
+   len(breaks)
    ```
 
    ```text

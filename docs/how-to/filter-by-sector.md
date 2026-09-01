@@ -135,7 +135,7 @@ Filter activity records by sector, purpose, channel, or modality codes using pac
 
    The `sector_code`, `purpose_code`, `channel_code`, and `modality_code` columns, along with their paired `_name` columns, appear in `columns="analysis"`. Additional columns such as `channel_raw_text`, `parent_channel_code`, and `parent_channel_name` appear under `columns="all"`. Refer to [Columns, presets, and units](../reference/columns.md) for the complete column layout.
 
-6. **Include `"year"` in explicit column selections across multiple years.** The `get_tossd` function automatically includes `tossd_pillar`, `tossd_subpillar`, `is_aggregate`, and `unit` in custom column lists. Include `"year"` explicitly when grouping by year.
+6. **Group by year with an explicit column selection.** `get_tossd` always includes `year`, along with `tossd_pillar`, `tossd_subpillar`, `is_aggregate`, and `unit`, in its output regardless of the `columns=` list.
 
    ```python
    df = tossd.get_tossd(
@@ -144,22 +144,14 @@ Filter activity records by sector, purpose, channel, or modality codes using pac
        columns=["sector_code", "sector_name", "usd_disbursement"],
        units="usd_million",
    )
-   df.groupby("year")["usd_disbursement"].sum()
+   list(df.columns)
    ```
 
    ```text
-   KeyError: 'year'
+   ['sector_code', 'sector_name', 'usd_disbursement', 'year', 'tossd_pillar', 'tossd_subpillar', 'is_aggregate', 'unit']
    ```
 
-   Adding `"year"` to the column list enables grouping across years.
-
    ```python
-   df = tossd.get_tossd(
-       years=range(2019, 2025),
-       recipients="Senegal",
-       columns=["year", "sector_code", "sector_name", "usd_disbursement"],
-       units="usd_million",
-   )
    edu_by_year = df[(df["sector_code"] == 110) & ~df["is_aggregate"]]
    edu_by_year.groupby("year", observed=True)["usd_disbursement"].sum().round(1)
    ```
@@ -191,7 +183,6 @@ True
 ## Troubleshooting
 
 - **`KeyError` on a dimension code column** (`sector_code`, `purpose_code`, `channel_code`, `modality_code`). The DataFrame was queried with `columns="minimal"`. Re-query with `columns="analysis"` or `columns="all"`, or include the required column in an explicit `columns=` list.
-- **`KeyError` on `"year"`**. An explicit `columns=` list requires `"year"` to be named explicitly for time-series grouping. Add `"year"` to the list.
 
 ## See also
 

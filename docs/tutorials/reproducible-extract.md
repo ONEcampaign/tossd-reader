@@ -16,12 +16,13 @@ exports/tossd_2019.manifest.json
 - How to export a full TOSSD annual release to Parquet format.
 - How to inspect provenance metadata in the generated JSON manifest.
 - How HTTP ETag headers identify published data vintages.
+- How to verify an extract's integrity and reload it with `load_export`.
 - How to document and package data extracts for reproducible research handover.
 
 ## What you'll need
 
 - Python 3.12 or newer, with `tossd-reader` installed.
-- About five minutes.
+- About seven minutes.
 - Cached 2019 TOSSD vintage (initial calls download the published file to local storage).
 
 ## Step 1: Export one year
@@ -54,6 +55,7 @@ print(Path("exports/tossd_2019.manifest.json").read_text())
 ```text
 {
   "created_at": "2026-08-29T08:43:24.037603+00:00",
+  "payload_sha256": "edb669d585db4108e63b9b73ed6a1a44e1eed200e4ce8a04506f62b34b234fca",
   "row_count": 290914,
   "schema_hash": "0a95f2c54852817a9db1a2174cffa5bd371d601e5d137a37cb27491182367df9",
   "tossd_reader_version": "0.1.0",
@@ -69,7 +71,7 @@ print(Path("exports/tossd_2019.manifest.json").read_text())
 }
 ```
 
-The manifest records descriptive metadata about the export. `tossd_reader_version` identifies the package version, while `schema_hash` hashes the packaged schema definition rather than the exported Parquet payload. `created_at` records the export timestamp, and `row_count` records the number of exported rows. The `vintages` mapping records the HTTP `etag` and initial `retrieved_at` timestamp for each year included in the file. Because the manifest contains no hash or signature of the Parquet file, it cannot by itself verify the payload's integrity or completeness after handover.
+The manifest records descriptive metadata about the export. `tossd_reader_version` identifies the package version, while `schema_hash` hashes the packaged schema definition rather than the exported Parquet payload. `payload_sha256` hashes the Parquet payload itself; `verify_export()` recomputes it on demand to confirm the file still matches this manifest. `created_at` records the export timestamp, and `row_count` records the number of exported rows. The `vintages` mapping records the HTTP `etag` and initial `retrieved_at` timestamp for each year included in the file.
 
 ## Step 3: Pin the vintage
 
@@ -102,13 +104,52 @@ manifest["vintages"]["2019"]["etag"]
 # "https://tossd.online/tossddata_2019.parquet"
 ```
 
-## Step 4: Hand it over
+## Step 4: Verify and reload the extract
+
+`verify_export()` recomputes the Parquet file's hash and compares it against `payload_sha256` in the manifest. Run it before handing an extract to a colleague, or right after receiving one, to confirm the file wasn't corrupted or edited in transit.
+
+```python
+tossd.verify_export("exports/tossd_2019.parquet")
+```
+
+A silent return means the file matches its manifest.
+
+`load_export()` calls `verify_export()` first, then reads the Parquet file back with the schema's nullable integer dtypes intact and attaches the manifest's provenance to `df.attrs`.
+
+```python
+df = tossd.load_export("exports/tossd_2019.parquet")
+df.shape
+```
+
+```text
+(290914, 55)
+```
+
+```python
+sorted(df.attrs["tossd_reader"])
+```
+
+```text
+['created_at', 'package_version', 'years']
+```
+
+The row count matches `row_count` in the manifest, and `df.attrs["tossd_reader"]` carries the same provenance you read from the manifest in Step 2.
+
+## Step 5: Hand it over
 
 A complete reproducible research handover includes three core artifacts.
 
 - The Parquet data file (`exports/tossd_2019.parquet`).
 - The JSON provenance manifest (`exports/tossd_2019.manifest.json`).
 - Analytical documentation recording the year range, provider filtering criteria, aggregate row handling, units, and price basis.
+
+<!-- prettier-ignore -->
+!!! note
+    If a colleague's copy of the file changes in transit, even by one byte, `verify_export()` catches it:
+
+    ```text
+    ExportIntegrityError: exports/tossd_2019.parquet does not match its manifest: sha256 49d27ebdb8030316… but the manifest recorded edb669d585db4108…. The file may have been modified or corrupted since export.
+    ```
 
 <!-- prettier-ignore -->
 !!! warning "Heads up"
@@ -121,6 +162,7 @@ If a cached provenance file is missing or corrupted, the manifest records `null`
 - You exported an annual TOSSD dataset to Parquet format.
 - You inspected provenance metadata in the generated JSON manifest.
 - You compared ETag headers to determine whether exports reference the same published data vintage.
+- You verified an extract's integrity and reloaded it with `load_export`.
 - You established the required documentation and file bundle for reproducible research handovers.
 
 ## What's next

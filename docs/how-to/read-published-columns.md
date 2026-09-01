@@ -161,10 +161,8 @@ tossd.get_tossd_raw(years=2024, providers="Senegal")
 ```
 
 ```text
-TypeError: get_tossd_raw() got an unexpected keyword argument 'providers'
+TypeError: get_tossd_raw() got unexpected keyword argument(s): providers. get_tossd_raw() only accepts years=/refresh=; for filtering, column selection, or unit conversion, use get_tossd() instead.
 ```
-
-The function accepts only `years` and `refresh`. To filter by provider, recipient, pillar, or custom columns, filter the returned frame in pandas using publisher column names, or use `get_tossd`.
 
 ## See also
 

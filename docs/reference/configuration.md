@@ -35,17 +35,17 @@ The cache retains the newest 24 artifacts or up to 4 GB of data, whichever limit
 
 ## Warnings
 
-| Source | Condition | Frequency |
-| --- | --- | --- |
-| Discovery | Publisher lists a reporting year outside the packaged known years. | Once per newly seen year per process. |
-| Fetch and cache | Publisher host is unreachable or year is unavailable, serving a cached vintage. | Emitted on every affected call. |
-| Fetch and cache | Neither HEAD nor GET responses returned an `ETag` for a year. | Once per year per process. |
+| Source          | Condition                                                                                               | Frequency                                    |
+| --------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Discovery       | Publisher lists a reporting year outside the packaged known years.                                      | Once per newly seen year per process.        |
+| Fetch and cache | Publisher host is unreachable or year is unavailable, serving a cached vintage.                         | Emitted on every affected call.              |
+| Fetch and cache | Neither HEAD nor GET responses returned an `ETag` for a year.                                           | Once per year per process.                   |
 | Fetch and cache | Provenance sidecar exists but contains invalid JSON, causing `null` vintage fields in export manifests. | Emitted on every read of the corrupted file. |
-| Query | Query filters match zero records. | Emitted on every empty result call. |
-| Query | Sub-pillar filter (`pillars=21` or `"II.A"`) with default `years=None` narrows to 2023 onward. | Once per process. |
-| Query | Sub-pillar filter includes 2023, where sub-pillar reporting coverage is partial. | Once per process. |
-| Query | Unmapped `parent_channel_code` value encountered during `parent_channel_name` resolution. | Once per newly seen code per process. |
-| Schema check | Published dataset contains a column not defined in `schema.csv` (visible under `columns="all"`). | Once per newly seen column per process. |
+| Query           | Query filters match zero records.                                                                       | Emitted on every empty result call.          |
+| Query           | Sub-pillar filter (`pillars=21` or `"II.A"`) with default `years=None` narrows to 2023 onward.          | Once per process.                            |
+| Query           | Sub-pillar filter includes 2023, where sub-pillar reporting coverage is partial.                        | Once per process.                            |
+| Query           | Unmapped `parent_channel_code` value encountered during `parent_channel_name` resolution.               | Once per newly seen code per process.        |
+| Schema check    | Published dataset contains a column not defined in `schema.csv` (visible under `columns="all"`).        | Once per newly seen column per process.      |
 
 ## Errors
 
@@ -78,6 +78,11 @@ All package exceptions inherit from `TossdReaderError`. Catching `TossdReaderErr
 
 <!-- prettier-ignore -->
 ::: tossd_reader.exceptions.InvalidPillarError
+    options:
+      heading_level: 3
+
+<!-- prettier-ignore -->
+::: tossd_reader.exceptions.ExportIntegrityError
     options:
       heading_level: 3
 

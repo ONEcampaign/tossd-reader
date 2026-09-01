@@ -1,16 +1,24 @@
 # Helpers
 
-The `tossd_reader.analysis` module provides analytical helper functions for working with `get_tossd()` outputs. Four functions accept a `pandas.DataFrame` and return a new DataFrame, leaving the input data unchanged. The `get_structural_breaks` function takes no arguments and returns the packaged structural break reference table. All five functions operate entirely offline without network access.
+The `tossd_reader.analysis` module provides analytical helper functions for working with `get_tossd()` outputs. Four functions accept a `pandas.DataFrame` and return a new DataFrame, leaving the input data unchanged. `get_structural_breaks` takes no DataFrame. Call it with an optional `years=` to narrow the packaged structural-break reference table to the years a query touches, or with no arguments for all five rows. All five functions operate entirely offline without network access.
 
-Each DataFrame helper validates required columns before processing and raises a `ValueError` naming any missing column.
+Each DataFrame helper validates required columns before processing and raises a `ValueError` naming any missing column. When a missing column ships in the `"analysis"` preset, the message also names the fix:
 
-| Helper | Input Requirements | Minimum Preset | Output |
-| --- | --- | --- | --- |
-| `explode_sdg` | `sdg_codes_raw` | `"analysis"` | Expanded DataFrame with `sdg_code`, `sdg_goal`, `sdg_is_target`, and `sdg_weight` |
-| `extract_keywords` | `keywords_raw` | `"analysis"` | DataFrame with 12 `kw_<marker>` boolean columns |
-| `add_iso3` | `provider_code` or `recipient_code` | `"minimal"` | DataFrame with `provider_iso3` or `recipient_iso3` categoricals |
-| `pillar2_provider_costs` | `tossd_pillar`, `sector_code` | `"analysis"` | DataFrame filtered to Pillar II domestic expenditures (sectors 910 and 930) |
-| `get_structural_breaks` | None (takes no input frame) | n/a | 5-row reference DataFrame of dataset discontinuities |
+```python
+tossd.explode_sdg(tossd.get_tossd(years=2024, columns="minimal"))
+```
+
+```text
+ValueError: explode_sdg() needs column(s) sdg_codes_raw, not present in df. Re-query with columns='analysis', or add sdg_codes_raw to your columns= list.
+```
+
+| Helper                   | Input Requirements                       | Minimum Preset | Output                                                                            |
+| ------------------------ | ---------------------------------------- | -------------- | --------------------------------------------------------------------------------- |
+| `explode_sdg`            | `sdg_codes_raw`                          | `"analysis"`   | Expanded DataFrame with `sdg_code`, `sdg_goal`, `sdg_is_target`, and `sdg_weight` |
+| `extract_keywords`       | `keywords_raw`                           | `"analysis"`   | DataFrame with 12 `kw_<marker>` boolean columns                                   |
+| `add_iso3`               | `provider_code` or `recipient_code`      | `"minimal"`    | DataFrame with `provider_iso3` or `recipient_iso3` categoricals                   |
+| `pillar2_provider_costs` | `tossd_pillar`, `sector_code`            | `"analysis"`   | DataFrame filtered to Pillar II domestic expenditures (sectors 910 and 930)       |
+| `get_structural_breaks`  | None; optional `years=` narrows the rows | n/a            | Reference DataFrame of dataset discontinuities (5 rows, fewer with `years=`)      |
 
 <!-- prettier-ignore -->
 ::: tossd_reader.analysis.explode_sdg
@@ -77,6 +85,18 @@ methodology        2026      2026                                              R
 ```
 
 The table's fifth column, `source`, names the verification reference for each discontinuity.
+
+Pass `years=` to narrow the table to breaks that intersect a query's own years, so `get_structural_breaks(years=query_years)` names only what's relevant to a matching `get_tossd(years=query_years)` call.
+
+```python
+tossd.get_structural_breaks(years=2021)
+```
+
+```text
+dimension  break_year  end_year                                      description                                        source
+ modality        2021      2021          Modality code K02 first appears in 2021                      audit of published files
+reporters        2019      2024 Reporter base grows from 97 (2019) to 130 (20...  distinct provider_code in the published files
+```
 
 ## Next
 
