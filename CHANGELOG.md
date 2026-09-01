@@ -8,10 +8,11 @@ Initial release. Covers TOSSD activity-level vintages 2019 to 2024.
 
 - `get_tossd`: typed, filtered queries over the published per-year parquet
   files, with year/provider/recipient/pillar filters, `minimal`/`analysis`/
-  `all` column presets, USD-thousand or USD-million units, and always-present
-  `year`, `is_aggregate`, and `unit` columns via the public `FORCED_COLUMNS`
-  tuple. After a `providers=`/`recipients=`/`pillars=` filter, categorical
-  columns carry only the categories present in the result.
+  `all` column presets, `usd_thousand` (default), `usd_million`, or `usd`
+  units, and always-present `year`, `is_aggregate`, and `unit` columns via
+  the public `FORCED_COLUMNS` tuple. After a `providers=`/`recipients=`/
+  `pillars=` filter, categorical columns carry only the categories present
+  in the result.
 - `get_tossd_raw`: the files exactly as published. An unexpected keyword now
   raises a `TypeError` that names the keyword and points to `get_tossd`.
 - ETag-keyed local caching with provenance sidecars, fetch-time validation of
@@ -28,10 +29,22 @@ Initial release. Covers TOSSD activity-level vintages 2019 to 2024.
 - Weekly codelist drift monitoring against the live endpoint.
 - Helpers: `explode_sdg`, `add_iso3`, `extract_keywords`,
   `get_structural_breaks` (takes a keyword-only `years=` to scope results to
-  the years being compared), `pillar2_provider_costs`. Missing-column errors
+  the years being compared), `filter_provider_costs`. Missing-column errors
   now name the fix when the column ships in the `"analysis"` preset.
 - Data canaries: weekly vintage-change detection and monthly full-download
   reconciliation against recorded headline totals.
+
+### Changed
+
+- **Breaking:** `tossd_subpillar` is NA unless the row carries a real
+  sub-pillar tag, with categories `"21"` and `"22"`. Pillar-1 rows,
+  untagged pillar-2 rows, and pillar-0 rows now read NA instead of the
+  previous sentinels `"1"` and `"2"`, so `.notna()` measures genuine
+  sub-pillar coverage. `get_tossd_raw()` still returns the published
+  sentinels verbatim.
+- **Breaking:** `pillar2_provider_costs` is renamed `filter_provider_costs`.
+  Behavior and the sector 910/930 carve-out are unchanged. No deprecation
+  shim.
 
 ### Notes
 

@@ -4,7 +4,7 @@ Filter a Pillar II frame to the sector-code carve-out for spending recorded insi
 
 ## Steps
 
-1. **Query Pillar II with the `"analysis"` column preset.** `pillar2_provider_costs` reads `sector_code`, which ships in the `"analysis"` preset. The `"minimal"` preset omits it.
+1. **Query Pillar II with the `"analysis"` column preset.** `filter_provider_costs` reads `sector_code`, which ships in the `"analysis"` preset. The `"minimal"` preset omits it.
 
    ```python
    import tossd_reader as tossd
@@ -20,7 +20,7 @@ Filter a Pillar II frame to the sector-code carve-out for spending recorded insi
 2. **Filter to the provider-costs carve-out.** The carve-out includes sector 910 ("Administrative Costs of Donors") and sector 930 ("Domestic expenditures for refugees/asylum seekers").
 
    ```python
-   pc = tossd.pillar2_provider_costs(p2)
+   pc = tossd.filter_provider_costs(p2)
    pc.groupby(["sector_code", "sector_name"], observed=True)[
        "usd_disbursement"
    ].sum().round(1)
@@ -63,7 +63,7 @@ Filter a Pillar II frame to the sector-code carve-out for spending recorded insi
 
 <!-- prettier-ignore -->
 !!! warning "Heads up"
-    `pillar2_provider_costs` applies a sector-family heuristic. The TOSSD Reporting Instructions issued by the International Forum on TOSSD (IFT) at tossd.online define this category as expenditures in the provider country. Sector families 910 and 930 match that definition, producing this package's 35.6% estimate. Sector 910 acts as a proxy for provider administrative overhead. Most administrative spending remains inside the provider country, while some occurs in recipient countries. Sector 720 ("Humanitarian Assistance") represents field humanitarian aid delivered through agencies like UNHCR and UNICEF, so it falls outside this carve-out.
+    `filter_provider_costs` applies a sector-family heuristic. The TOSSD Reporting Instructions issued by the International Forum on TOSSD (IFT) at tossd.online define this category as expenditures in the provider country. Sector families 910 and 930 match that definition, producing this package's 35.6% estimate. Sector 910 acts as a proxy for provider administrative overhead. Most administrative spending remains inside the provider country, while some occurs in recipient countries. Sector 720 ("Humanitarian Assistance") represents field humanitarian aid delivered through agencies like UNHCR and UNICEF, so it falls outside this carve-out.
 
 ## Verify it worked
 
@@ -79,9 +79,9 @@ len(pc) < len(p2), [int(c) for c in pc["sector_code"].unique()]
 
 ## Troubleshooting
 
-**`ValueError` naming `sector_code`.** `pillar2_provider_costs` requires `sector_code` on the input frame. That column ships in the `"analysis"` and `"all"` presets. The `"minimal"` preset omits it. Re-query with `columns="analysis"` or add `"sector_code"` to an explicit `columns=` list.
+**`ValueError` naming `sector_code`.** `filter_provider_costs` requires `sector_code` on the input frame. That column ships in the `"analysis"` and `"all"` presets. The `"minimal"` preset omits it. Re-query with `columns="analysis"` or add `"sector_code"` to an explicit `columns=` list.
 
 ## See also
 
-- [Helpers reference](../reference/helpers.md) for `pillar2_provider_costs` parameter definitions and behaviour.
+- [Helpers reference](../reference/helpers.md) for `filter_provider_costs` parameter definitions and behaviour.
 - [Pillars and aggregates](../about/pillars-and-aggregates.md) for the provider-costs carve-out concept and aggregate row filtering.

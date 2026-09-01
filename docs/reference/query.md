@@ -74,6 +74,40 @@ year
 2024    497676.0
 ```
 
+### Converting units
+
+`units=` accepts `"usd_thousand"` (default, as published), `"usd_million"`, or `"usd"`. The `unit` column records whichever option ran. `export()` takes no `units=` and always writes the published scale.
+
+```python
+import tossd_reader as tossd
+
+th = tossd.get_tossd(years=2024, columns="minimal")
+us = tossd.get_tossd(years=2024, columns="minimal", units="usd")
+round(th["usd_disbursement"].sum(), 1)
+```
+
+```text
+497675981.4
+```
+
+```python
+round(us["usd_disbursement"].sum(), 1)
+```
+
+```text
+497675981440.9
+```
+
+An unrecognised value raises `ValueError` naming the valid options:
+
+```python
+tossd.get_tossd(years=2024, units="usd_billion")
+```
+
+```text
+ValueError: Unknown units 'usd_billion'; expected one of ('usd_thousand', 'usd_million', 'usd').
+```
+
 ### Inspecting available filters
 
 ```python

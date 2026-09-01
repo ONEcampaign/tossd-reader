@@ -7,7 +7,7 @@ Tracking development finance flows to a partner country requires isolating real 
 A validated ranking of Senegal's top external finance providers in 2024 and a 2019-2024 constant-price disbursement time series exported to CSV.
 
 ```text
-provider_code  provider_name                 
+provider_code  provider_name
 976            Islamic Development Bank          445.0
 302            United States                     367.6
 4              France                            306.4
@@ -107,7 +107,7 @@ sen[~sen["is_aggregate"]].groupby(["provider_code", "provider_name"], observed=T
 ```
 
 ```text
-provider_code  provider_name                 
+provider_code  provider_name
 976            Islamic Development Bank          445.0
 302            United States                     367.6
 4              France                            306.4
@@ -189,7 +189,7 @@ print(window.to_string(index=False))
 ```text
  dimension  break_year  end_year                                                                                                                                                         description                                        source
 sub_pillar        2022      2022                                                                                Sub-pillar tagging (Tossdpillar2 21/22) first appears as trace data: 24 rows in 2022                      audit of published files
-sub_pillar        2023      2023                                                  Sub-pillar coverage ~51% in 2023, ~99% in 2024. Cross-year sub-pillar analysis is clean from 2024                      audit of published files
+sub_pillar        2023      2023                                           Sub-pillar coverage ~51% of pillar-2 rows in 2023; ~99% in 2024 -- cross-year sub-pillar analysis is only clean from 2024                      audit of published files
   modality        2021      2021                                                                                                                             Modality code K02 first appears in 2021                      audit of published files
  reporters        2019      2024 Reporter base grows from 97 (2019) to 130 (2024) distinct provider codes, counting provider_code != 0; apparent growth in totals partly reflects reporting coverage distinct provider_code in the published files
 ```

@@ -1,6 +1,34 @@
 # About the amount columns
 
-Published TOSSD datasets record financial transactions across eight numeric amount fields, expressed in thousands of US dollars. The `minimal` column preset includes all eight fields. When requested with `units="usd_million"`, `get_tossd()` converts these values into millions of US dollars. The `unit` metadata column accompanies every DataFrame to document the active unit scale.
+Published TOSSD datasets record financial transactions across eight numeric amount fields, expressed in thousands of US dollars. The `minimal` column preset includes all eight fields. `get_tossd()` takes a `units=` argument with three options: `"usd_thousand"` (the default, matching the published scale), `"usd_million"`, and `"usd"` for plain US dollars. The `unit` metadata column accompanies every DataFrame to record which scale is active.
+
+```python
+import tossd_reader as tossd
+
+th = tossd.get_tossd(years=2024, columns="minimal")
+us = tossd.get_tossd(years=2024, columns="minimal", units="usd")
+print(round(th["usd_disbursement"].sum(), 1))
+print(round(us["usd_disbursement"].sum(), 1))
+print(us["unit"].iloc[0])
+```
+
+```text
+497675981.4
+497675981440.9
+usd
+```
+
+`units=` accepts only those three scales.
+
+```python
+tossd.get_tossd(years=2024, units="usd_billion")
+```
+
+```text
+ValueError: Unknown units 'usd_billion'; expected one of ('usd_thousand', 'usd_million', 'usd').
+```
+
+`export()` takes no `units=` argument. It always writes files at the published thousands scale, regardless of what unit a prior `get_tossd()` call used.
 
 ## Commitments and disbursements
 
@@ -39,7 +67,7 @@ df.groupby("year", observed=True)[
 
 ```text
       usd_disbursement  usd_disbursement_deflated
-year                                             
+year
 2019          299878.4                   340219.0
 2020          372334.6                   414304.5
 2021          392156.9                   411967.9

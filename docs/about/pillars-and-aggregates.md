@@ -15,6 +15,8 @@ Pillar II captures expenditures that generate shared regional or global benefits
 - Pillar II.A (coded as `21`) covers regional and global public goods. This includes transnational climate change mitigation, biodiversity conservation, research and development for infectious diseases, pandemic preparedness, and international peacekeeping.
 - Pillar II.B (coded as `22`) covers support to international and multilateral mechanisms, global programmes, and provider-country expenditures that support sustainable development frameworks.
 
+`tossd_subpillar` carries exactly those two categories, `"21"` and `"22"`. A row reads `NA` unless it carries one of those tags: every Pillar I row, every Pillar 0 row, and any Pillar II row the reporting provider left untagged. `.notna()` on `tossd_subpillar` means the row carries a sub-pillar tag, and coverage measured that way reflects the real rollout described below. `get_tossd_raw()` returns the published sentinel codes verbatim, including the raw `"1"` and `"2"` values that `get_tossd()` maps to `NA`.
+
 ## Sub-pillar implementation timeline
 
 Sub-pillar classification phased in gradually across reporting cycles. In the 2022 dataset, sub-pillar tagging appeared in 24 activities out of 128,923 Pillar II records (0.02% coverage). In 2023, reporting providers tagged 50.6% of Pillar II activities with sub-pillar codes. In 2024, coverage reached 99.1% across 155,908 Pillar II activities.
@@ -59,7 +61,7 @@ Summing all bilateral providers and all multilateral institutions across both pi
 
 ## Provider-country expenditures in Pillar II
 
-Pillar II includes expenditures incurred within provider territories that contribute to global sustainable development frameworks. The helper `pillar2_provider_costs()` isolates these domestic outlays by selecting Pillar II activities under sector 910 (administrative costs of donors) and sector 930 (domestic expenditures for refugees and asylum seekers in the host country). In the 2024 dataset, domestic provider costs represent USD 47.5 billion across 27,275 records, accounting for 35.6% of Pillar II gross disbursements.
+Pillar II includes expenditures incurred within provider territories that contribute to global sustainable development frameworks. The helper `filter_provider_costs()` isolates these domestic outlays by selecting Pillar II activities under sector 910 (administrative costs of donors) and sector 930 (domestic expenditures for refugees and asylum seekers in the host country). In the 2024 dataset, domestic provider costs represent USD 47.5 billion across 27,275 records, accounting for 35.6% of Pillar II gross disbursements.
 
 Sector 720 records represent in-country humanitarian assistance delivered in recipient territories and remain distinct from domestic provider expenditures.
 
@@ -78,4 +80,4 @@ For debt instruments, the TOSSD methodology applies a uniform concessionality be
 - [How to rank providers by disbursement](../how-to/rank-providers.md). Step-by-step aggregate exclusion with 2024 figures.
 - [How to split Pillar II into its sub-pillars](../how-to/analyse-by-subpillar.md). The II.A and II.B filter, coverage figures, and warning behaviour.
 - [How to measure Pillar II expenditures in the provider country](../how-to/provider-costs.md). Domestic provider cost filtering across sectors 910 and 930.
-- [Helpers](../reference/helpers.md). Full parameter reference for `pillar2_provider_costs()`.
+- [Helpers](../reference/helpers.md). Full parameter reference for `filter_provider_costs()`.

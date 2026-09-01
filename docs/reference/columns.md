@@ -64,7 +64,7 @@ Columns are listed in source file order from `schema.csv`.
 | `isic_section_description`        | `category` |         |   Yes    | Description of the ISIC section.                                                                                                                                    |
 | `project_description`             | `string`   |         |          | Narrative description of project objectives and activities.                                                                                                         |
 | `tossd_pillar`                    | `Int8`     |   Yes   |   Yes    | Pillar classification (`1` for Pillar I, `2` for Pillar II, `0` for legacy publisher placeholder rows).                                                             |
-| `tossd_subpillar`                 | `category` |   Yes   |   Yes    | Sub-pillar category (`"21"` for Pillar II.A, `"22"` for Pillar II.B).                                                                                               |
+| `tossd_subpillar`                 | `category` |   Yes   |   Yes    | Sub-pillar category. `NA` unless the row carries a `"21"` (Pillar II.A) or `"22"` (Pillar II.B) tag.                                                                |
 | `usd_commitment`\*                | `float64`  |   Yes   |   Yes    | Total gross financial commitment in current USD thousands.                                                                                                          |
 | `usd_commitment_deflated`\*       | `float64`  |   Yes   |   Yes    | Total gross financial commitment in constant 2024 USD thousands.                                                                                                    |
 | `usd_disbursement`\*              | `float64`  |   Yes   |   Yes    | Gross financial disbursement in current USD thousands.                                                                                                              |
@@ -80,7 +80,7 @@ Columns are listed in source file order from `schema.csv`.
 | `mobilisation_origin`             | `string`   |         |          | Geographic origin of mobilised private investment.                                                                                                                  |
 | `source_name`                     | `category` |         |   Yes    | Data source identifier for the reported activity.                                                                                                                   |
 
-\* Reported in USD thousands. Specifying `units="usd_million"` divides these 8 columns by 1,000.
+\* Reported in USD thousands as published. `units="usd_million"` divides these 8 columns by 1,000. `units="usd"` multiplies them by 1,000.
 
 ## Amount columns
 
@@ -111,13 +111,39 @@ FORCED_COLUMNS
 ('year', 'tossd_pillar', 'tossd_subpillar', 'is_aggregate', 'unit')
 ```
 
-| Column            | Dtype      | Analytical Role                                                                                                                         |
-| ----------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `year`            | `Int16`    | Reporting year (2019 to 2024).                                                                                                          |
-| `tossd_pillar`    | `Int8`     | Pillar classification (`1` for Pillar I cross-border flows, `2` for Pillar II global public goods, `0` for publisher placeholder rows). |
-| `tossd_subpillar` | `category` | Sub-pillar category (`"21"` for Pillar II.A, `"22"` for Pillar II.B), populated from 2023 onward.                                       |
-| `is_aggregate`    | `bool`     | True for summary records (`provider_code == 0`) and False for individual activity records.                                              |
-| `unit`            | `category` | Denomination unit (`"usd_thousand"` or `"usd_million"`).                                                                                |
+| Column            | Dtype      | Analytical Role                                                                                                                             |
+| ----------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `year`            | `Int16`    | Reporting year (2019 to 2024).                                                                                                              |
+| `tossd_pillar`    | `Int8`     | Pillar classification (`1` for Pillar I cross-border flows, `2` for Pillar II global public goods, `0` for publisher placeholder rows).     |
+| `tossd_subpillar` | `category` | Sub-pillar category. `NA` unless the row carries a `"21"` (Pillar II.A) or `"22"` (Pillar II.B) tag. Categories are exactly `{"21", "22"}`. |
+| `is_aggregate`    | `bool`     | True for summary records (`provider_code == 0`) and False for individual activity records.                                                  |
+| `unit`            | `category` | Denomination unit (`"usd_thousand"`, `"usd_million"`, or `"usd"`).                                                                          |
+
+`tossd_subpillar` is `NA` unless the row carries a real `"21"`/`"22"` tag. A Pillar I row, an untagged Pillar II row, and a Pillar 0 row all read `NA`:
+
+```python
+import tossd_reader as tossd
+
+df = tossd.get_tossd(years=2024, columns="minimal")
+df["tossd_subpillar"].value_counts(dropna=False)
+```
+
+```text
+tossd_subpillar
+NaN    319526
+22      94754
+21      59746
+```
+
+```python
+list(df["tossd_subpillar"].cat.categories)
+```
+
+```text
+['21', '22']
+```
+
+`get_tossd_raw` returns the published sentinel values unchanged. This `NA` contract applies only to `get_tossd`.
 
 ## Data quality notes
 
