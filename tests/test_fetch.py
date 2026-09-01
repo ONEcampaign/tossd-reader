@@ -17,6 +17,7 @@ from readerkit import FetchContext, refresh_scope
 
 import tossd_reader
 from tests.factories import write_tossd_fixture
+from tests.fakes import patch_discovery, patch_fetcher_by_url, url_for
 from tossd_reader import _discovery, config, fetch
 from tossd_reader._discovery import VintageInfo
 from tossd_reader.exceptions import TossdNetworkError, VintageValidationError
@@ -39,55 +40,6 @@ def _read_schema() -> pd.DataFrame:
         return pd.read_csv(schema_path, dtype=str, keep_default_na=False)
 
 
-def _patch_discovery(
-    monkeypatch: pytest.MonkeyPatch, vintages: dict[int, VintageInfo]
-) -> None:
-    """Patch `_discovery._head_one` so the sweep sees exactly `vintages`."""
-
-    def _head_one(_session: requests.Session, year: int) -> VintageInfo | None:
-        return vintages.get(year)
-
-    monkeypatch.setattr(_discovery, "_head_one", _head_one)
-
-
-def _patch_fetcher_by_url(
-    monkeypatch: pytest.MonkeyPatch, sources: dict[str, tuple[bytes, str | None]]
-) -> None:
-    """Patch `fetch._make_fetcher` to serve `sources[url]` bytes under its own ETag.
-
-    `sources` is read fresh on every call, so a test can mutate it between two
-    `fetch_year` calls to simulate an upstream republish. The fake reproduces
-    `_make_fetcher`'s own ETag cross-check (including when `expected_etag` is
-    `None` but the source has its own ETag), so the `_EtagMismatchError` retry
-    path is exercised the same way it would be against a real GET response.
-    """
-
-    def _factory(
-        url: str,
-        _session: requests.Session,
-        *,
-        year: int,
-        expected_etag: str | None,
-    ) -> tuple[Callable[[object], None], dict[str, str | int | None]]:
-        captured: dict[str, str | int | None] = {"etag": None, "size_bytes": None}
-
-        def _fetch(ctx: object) -> None:
-            payload, true_etag = sources[url]
-            if true_etag is not None and true_etag != expected_etag:
-                raise fetch._EtagMismatchError(true_etag)
-            captured["etag"] = true_etag
-            captured["size_bytes"] = len(payload)
-            ctx.path.write_bytes(payload)  # type: ignore[attr-defined]
-
-        return _fetch, captured
-
-    monkeypatch.setattr(fetch, "_make_fetcher", _factory)
-
-
-def _url_for(year: int) -> str:
-    return f"https://tossd.online/tossddata_{year}.parquet"
-
-
 # --- Happy path -------------------------------------------------------------
 
 
@@ -98,14 +50,14 @@ def test_get_tossd_raw_years_none_uses_known_years_set(
     published: dict[int, VintageInfo] = {}
     sources: dict[str, tuple[bytes, str | None]] = {}
     for year in _discovery.known_years():
-        url = _url_for(year)
+        url = url_for(year)
         fixture = write_tossd_fixture(
             tmp_path / f"fixture_{year}.parquet", year, n_rows=2
         )
         published[year] = VintageInfo(url=url, etag=f'"e{year}"')
         sources[url] = (fixture.read_bytes(), f'"e{year}"')
-    _patch_discovery(monkeypatch, published)
-    _patch_fetcher_by_url(monkeypatch, sources)
+    patch_discovery(monkeypatch, published)
+    patch_fetcher_by_url(monkeypatch, sources)
 
     df = fetch.get_tossd_raw()
 
@@ -117,10 +69,10 @@ def test_get_tossd_raw_single_year_roundtrip(
 ) -> None:
     """A single-year fetch caches, then round-trips through `get_tossd_raw`."""
     year = 2019
-    url = _url_for(year)
+    url = url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=15)
-    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e19"')})
-    _patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e19"')})
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e19"')})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e19"')})
 
     df = fetch.get_tossd_raw(years=year)
 
@@ -138,14 +90,14 @@ def test_get_tossd_raw_multi_year_concatenates(
     sources: dict[str, tuple[bytes, str | None]] = {}
     row_counts = {2019: 5, 2020: 8}
     for year in years:
-        url = _url_for(year)
+        url = url_for(year)
         fixture = write_tossd_fixture(
             tmp_path / f"fixture_{year}.parquet", year, n_rows=row_counts[year]
         )
         published[year] = VintageInfo(url=url, etag=f'"e{year}"')
         sources[url] = (fixture.read_bytes(), f'"e{year}"')
-    _patch_discovery(monkeypatch, published)
-    _patch_fetcher_by_url(monkeypatch, sources)
+    patch_discovery(monkeypatch, published)
+    patch_fetcher_by_url(monkeypatch, sources)
 
     df = fetch.get_tossd_raw(years=years)
 
@@ -162,11 +114,11 @@ def test_etag_rekey_on_head_get_mismatch(
 ) -> None:
     """The GET response's ETag is authoritative; a HEAD/GET mismatch re-keys the entry."""
     year = 2021
-    url = _url_for(year)
+    url = url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=5)
     head_etag, get_etag = '"head-etag"', '"get-etag"'
-    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag=head_etag)})
-    _patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), get_etag)})
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag=head_etag)})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), get_etag)})
 
     path = fetch.fetch_year(year)
 
@@ -319,11 +271,11 @@ def test_fetch_year_rekeys_under_get_etag_when_head_reported_none(
 ) -> None:
     """The entry is keyed under the GET's ETag, not left `unknown`."""
     year = 2022
-    url = _url_for(year)
+    url = url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=4)
     get_etag = '"only-the-get-has-this"'
-    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag=None)})
-    _patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), get_etag)})
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag=None)})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), get_etag)})
 
     path = fetch.fetch_year(year)
 
@@ -341,9 +293,9 @@ def test_fetch_year_keeps_unknown_key_and_warns_once_with_no_etag_anywhere(
 ) -> None:
     """Neither HEAD nor GET has an ETag -> stays `unknown`, warns once."""
     year = 2023
-    url = _url_for(year)
+    url = url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=4)
-    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag=None)})
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag=None)})
     session = _FakeGetSession(
         _FakeGetResponse(headers={}, chunks=(fixture.read_bytes(),))
     )
@@ -372,10 +324,10 @@ def test_fetch_year_keeps_unknown_key_and_warns_once_with_no_etag_anywhere(
 def test_d10_validator_rejects_bad_magic(monkeypatch: pytest.MonkeyPatch) -> None:
     """Bytes not starting with the PAR1 magic fail validation loudly, naming the year/url."""
     year = 2022
-    url = _url_for(year)
+    url = url_for(year)
     corrupt = b"NOTP" + b"\x00" * 128
-    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
-    _patch_fetcher_by_url(monkeypatch, {url: (corrupt, '"e"')})
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
+    patch_fetcher_by_url(monkeypatch, {url: (corrupt, '"e"')})
 
     with pytest.raises(VintageValidationError, match=str(year)) as excinfo:
         fetch.fetch_year(year)
@@ -391,11 +343,11 @@ def test_d10_validator_rejects_truncated_file(
 ) -> None:
     """A truncated (footer-less) download fails validation loudly."""
     year = 2023
-    url = _url_for(year)
+    url = url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=20)
     truncated = fixture.read_bytes()[: fixture.stat().st_size // 2]
-    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
-    _patch_fetcher_by_url(monkeypatch, {url: (truncated, '"e"')})
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
+    patch_fetcher_by_url(monkeypatch, {url: (truncated, '"e"')})
 
     with pytest.raises(VintageValidationError, match=str(year)):
         fetch.fetch_year(year)
@@ -409,11 +361,11 @@ def test_provenance_sidecar_written_and_write_if_absent(
 ) -> None:
     """The provenance sidecar carries the right fields and is written only once."""
     year = 2024
-    url = _url_for(year)
+    url = url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=10)
     etag = '"prov-etag"'
-    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag=etag)})
-    _patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), etag)})
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag=etag)})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), etag)})
 
     path = fetch.fetch_year(year)
     provenance_path = path.with_suffix(".provenance.json")
@@ -442,11 +394,11 @@ def test_provenance_rewritten_after_sidecar_loss_falls_back_to_key_etag(
 ) -> None:
     """A cache hit with a lost sidecar still records the key's own ETag, not null."""
     year = 2021
-    url = _url_for(year)
+    url = url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=6)
     etag = '"stable-etag"'
-    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag=etag)})
-    _patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), etag)})
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag=etag)})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), etag)})
 
     path = fetch.fetch_year(year)
     path.with_suffix(".provenance.json").unlink()
@@ -465,10 +417,10 @@ def test_offline_rule_a_network_down_serves_cached_with_warning(
 ) -> None:
     """Network down + year cached -> serve the newest local vintage, one warning."""
     year = 2019
-    url = _url_for(year)
+    url = url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=5)
-    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
-    _patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e"')})
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e"')})
     cached_path = fetch.fetch_year(year)
 
     _discovery._reset_for_tests()
@@ -489,10 +441,10 @@ def test_offline_rule_a_falls_back_to_mtime_without_a_provenance_sidecar(
 ) -> None:
     """With no provenance sidecar, the stale-serve warning falls back to file mtime."""
     year = 2019
-    url = _url_for(year)
+    url = url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=5)
-    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
-    _patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e"')})
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e"')})
     cached_path = fetch.fetch_year(year)
     cached_path.with_suffix(".provenance.json").unlink()
 
@@ -534,10 +486,10 @@ def test_offline_rule_a_tolerates_corrupt_provenance_sidecar(
     degrades silently.
     """
     year = 2019
-    url = _url_for(year)
+    url = url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=5)
-    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
-    _patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e"')})
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e"')})
     cached_path = fetch.fetch_year(year)
     cached_path.with_suffix(".provenance.json").write_bytes(corrupt_content)
 
@@ -584,21 +536,21 @@ def test_offline_rule_c_known_year_unpublished_serves_cached_then_refresh_raises
 ) -> None:
     """A known cached year 404s; refresh=True on it raises instead."""
     year = 2020
-    url = _url_for(year)
+    url = url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=5)
-    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
-    _patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e"')})
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e"')})
     cached_path = fetch.fetch_year(year)
 
     _discovery._reset_for_tests()
-    _patch_discovery(monkeypatch, {})  # the sweep now succeeds, but 2020 404s
+    patch_discovery(monkeypatch, {})  # the sweep now succeeds, but 2020 404s
 
     with pytest.warns(UserWarning, match=str(year)):
         served_path = fetch.fetch_year(year)
     assert served_path == cached_path
 
     _discovery._reset_for_tests()
-    _patch_discovery(monkeypatch, {})
+    patch_discovery(monkeypatch, {})
     with pytest.raises(TossdNetworkError, match=str(year)):
         fetch.fetch_year(year, refresh=True)
 
@@ -609,10 +561,10 @@ def test_offline_rule_d_unknown_year_honoured_when_discovered(
     """A year outside `known_years()` is honoured once discovery finds it."""
     year = 2025
     assert year not in _discovery.known_years()
-    url = _url_for(year)
+    url = url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=3)
-    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
-    _patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e"')})
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e"')})
 
     # Discovering an unknown year also fires the once-per-process discovery
     # warning (tested in isolation in test_discovery.py); expected here too.
@@ -625,7 +577,7 @@ def test_offline_rule_d_unknown_year_raises_naming_available_years(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Not discovered and nothing cached -> raise naming available years."""
-    _patch_discovery(monkeypatch, {2019: VintageInfo(url=_url_for(2019), etag='"e"')})
+    patch_discovery(monkeypatch, {2019: VintageInfo(url=url_for(2019), etag='"e"')})
 
     with pytest.raises(ValueError, match="2025"):
         fetch.fetch_year(2025)
@@ -639,9 +591,9 @@ def test_get_mid_stream_drop_serves_cached_vintage_with_warning(
 ) -> None:
     """A connection drop partway through a GET falls back to the cached vintage."""
     year = 2019
-    url = _url_for(year)
+    url = url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=5)
-    # Drives the real `_make_fetcher` (not the higher-level `_patch_fetcher_by_url`
+    # Drives the real `_make_fetcher` (not the higher-level `patch_fetcher_by_url`
     # fake), so the mid-stream drop below exercises the actual code under test:
     # one successful response for the initial download, then a dropped one.
     session = _ScriptedSession(
@@ -653,13 +605,13 @@ def test_get_mid_stream_drop_serves_cached_vintage_with_warning(
         ]
     )
     monkeypatch.setattr(_discovery, "get_session", lambda: session)
-    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e1"')})
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e1"')})
     cached_path = fetch.fetch_year(year)
 
     # Simulate a republish (a new ETag, so a fresh download is attempted this
     # time) whose GET connection then drops mid-transfer.
     _discovery._reset_for_tests()
-    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e2"')})
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e2"')})
 
     with pytest.warns(UserWarning, match=str(year)):
         served_path = fetch.fetch_year(year)
@@ -672,8 +624,8 @@ def test_get_mid_stream_drop_with_nothing_cached_raises_tossd_network_error(
 ) -> None:
     """With nothing cached, a mid-stream drop raises TossdNetworkError, not a requests error."""
     year = 2022
-    url = _url_for(year)
-    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
+    url = url_for(year)
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
     session = _ScriptedSession(
         [
             _ScriptedResponse(
@@ -694,8 +646,8 @@ def test_truncated_content_length_raises_named_error_not_cached(
 ) -> None:
     """A body shorter than the declared Content-Length raises, naming expected/actual."""
     year = 2020
-    url = _url_for(year)
-    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
+    url = url_for(year)
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
     session = _FakeGetSession(
         _FakeGetResponse(
             headers={"ETag": '"e"', "Content-Length": "1000"}, chunks=(b"short-body",)
@@ -719,9 +671,9 @@ def test_etag_thrash_exhausts_retries_raises_tossd_network_error(
 ) -> None:
     """An ETag that keeps changing across every retry raises TossdNetworkError."""
     year = 2020
-    url = _url_for(year)
+    url = url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=3)
-    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"head-etag"')})
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"head-etag"')})
     call_count = 0
 
     def _factory(
@@ -761,14 +713,14 @@ def test_get_tossd_raw_refresh_sweeps_discovery_once_for_multiple_years(
     published: dict[int, VintageInfo] = {}
     sources: dict[str, tuple[bytes, str | None]] = {}
     for year in years:
-        url = _url_for(year)
+        url = url_for(year)
         fixture = write_tossd_fixture(
             tmp_path / f"fixture_{year}.parquet", year, n_rows=2
         )
         published[year] = VintageInfo(url=url, etag=f'"e{year}"')
         sources[url] = (fixture.read_bytes(), f'"e{year}"')
-    _patch_discovery(monkeypatch, published)
-    _patch_fetcher_by_url(monkeypatch, sources)
+    patch_discovery(monkeypatch, published)
+    patch_fetcher_by_url(monkeypatch, sources)
 
     discover_calls = 0
     real_discover = _discovery.discover
@@ -793,10 +745,10 @@ def test_serving_stale_warning_points_at_the_caller(
 ) -> None:
     """The stale-serve warning's stacklevel attributes it to fetch_year's caller."""
     year = 2019
-    url = _url_for(year)
+    url = url_for(year)
     fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=5)
-    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
-    _patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e"')})
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e"')})
     fetch.fetch_year(year)
 
     _discovery._reset_for_tests()
@@ -829,22 +781,22 @@ def test_refresh_scope_equivalent_to_refresh_true(
 ) -> None:
     """An enclosing `readerkit.refresh_scope()` has the same effect as `refresh=True`."""
     year = 2019
-    url = _url_for(year)
+    url = url_for(year)
     fixture_v1 = write_tossd_fixture(tmp_path / "v1.parquet", year, n_rows=5, seed=1)
     fixture_v2 = write_tossd_fixture(tmp_path / "v2.parquet", year, n_rows=9, seed=2)
 
     sources: dict[str, tuple[bytes, str | None]] = {
         url: (fixture_v1.read_bytes(), '"e1"')
     }
-    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e1"')})
-    _patch_fetcher_by_url(monkeypatch, sources)
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e1"')})
+    patch_fetcher_by_url(monkeypatch, sources)
 
     path_v1 = fetch.fetch_year(year)
 
     # Simulate an upstream republish. Discovery's in-process memo means this
     # alone changes nothing without a refresh.
     sources[url] = (fixture_v2.read_bytes(), '"e2"')
-    _patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e2"')})
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e2"')})
 
     path_again = fetch.fetch_year(year)
     assert path_again == path_v1, "no refresh requested: the memo must still win"

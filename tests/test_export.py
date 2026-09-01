@@ -17,46 +17,14 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 import pytest
-import requests
 
 import tossd_reader
 from tests.factories import build_tossd_table
-from tossd_reader import _discovery, fetch, query
+from tests.fakes import patch_discovery, patch_fetcher_by_url, url_for
+from tossd_reader import fetch, query
 from tossd_reader._discovery import VintageInfo
 
-# --- shared fetch/discovery patching (mirrors tests/test_query.py's own helpers) --
-
-
-def _url_for(year: int) -> str:
-    return f"https://tossd.online/tossddata_{year}.parquet"
-
-
-def _patch_discovery(
-    monkeypatch: pytest.MonkeyPatch, vintages: dict[int, VintageInfo]
-) -> None:
-    def _head_one(_session: requests.Session, year: int) -> VintageInfo | None:
-        return vintages.get(year)
-
-    monkeypatch.setattr(_discovery, "_head_one", _head_one)
-
-
-def _patch_fetcher_by_url(
-    monkeypatch: pytest.MonkeyPatch, sources: dict[str, tuple[bytes, str | None]]
-) -> None:
-    def _factory(
-        url: str, _session: requests.Session, *, year: int, expected_etag: str | None
-    ):
-        captured: dict[str, str | int | None] = {"etag": None, "size_bytes": None}
-
-        def _fetch(ctx: object) -> None:
-            payload, true_etag = sources[url]
-            captured["etag"] = true_etag
-            captured["size_bytes"] = len(payload)
-            ctx.path.write_bytes(payload)  # type: ignore[attr-defined]
-
-        return _fetch, captured
-
-    monkeypatch.setattr(fetch, "_make_fetcher", _factory)
+# --- shared fetch/discovery patching (see tests/fakes.py) ---------------------
 
 
 def _setup_default_years(
@@ -72,12 +40,12 @@ def _setup_default_years(
         table = build_tossd_table(year, n_rows=n_rows, seed=seed)
         path = tmp_path / f"fixture_{year}.parquet"
         pq.write_table(table, path, row_group_size=table.num_rows)
-        url = _url_for(year)
+        url = url_for(year)
         etag = f'"e{year}"'
         published[year] = VintageInfo(url=url, etag=etag)
         sources[url] = (path.read_bytes(), etag)
-    _patch_discovery(monkeypatch, published)
-    _patch_fetcher_by_url(monkeypatch, sources)
+    patch_discovery(monkeypatch, published)
+    patch_fetcher_by_url(monkeypatch, sources)
 
 
 def _independent_schema_hash() -> str:
