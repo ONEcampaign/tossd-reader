@@ -509,9 +509,7 @@ def _unknown_column_message(name: str, valid_names: set[str]) -> str:
     suggestions = difflib.get_close_matches(
         name, sorted(valid_names), n=_matching.MAX_SUGGESTIONS
     )
-    suggestion_note = (
-        f" Closest matches: {', '.join(suggestions)}." if suggestions else ""
-    )
+    suggestion_note = _matching.closest_matches_note(suggestions)
     return f"Unknown column {name!r} in columns=.{suggestion_note}"
 
 

@@ -71,12 +71,14 @@ def _match_name(dimension: str, token: str) -> int | None:
     return None if matches.empty else int(matches.iloc[0])
 
 
+def closest_matches_note(suggestions: list[str]) -> str:
+    """Format a " Closest matches: ..." suffix, or "" if `suggestions` is empty."""
+    return f" Closest matches: {', '.join(suggestions)}." if suggestions else ""
+
+
 def _unknown_code_error(token: str, *, dimension: str, label: str) -> UnknownCodeError:
     """Build UnknownCodeError, carrying `token` and up to 5 sorted suggestions."""
-    suggestions = _suggest(dimension, token)
-    suggestion_note = (
-        f" Closest matches: {', '.join(suggestions)}." if suggestions else ""
-    )
+    suggestion_note = closest_matches_note(_suggest(dimension, token))
     return UnknownCodeError(
         f"{token!r} did not match any {label} code or name in the packaged "
         f"codelist.{suggestion_note}"
