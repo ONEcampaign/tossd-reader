@@ -47,7 +47,7 @@ def write_provenance_if_absent(
         "url": url,
         "etag": captured.get("etag") or etag_fallback,
         "size_bytes": path.stat().st_size,
-        "sha256": sha256_file(path),
+        "sha256": _sha256_file(path),
         "row_count": parquet_file.metadata.num_rows,
         "retrieved_at": datetime.now(UTC).isoformat(),
         "tossd_reader_version": __version__,
@@ -81,15 +81,15 @@ def read_provenance(path: Path) -> dict[str, object] | None:
     except FileNotFoundError:
         return None  # vanished since the is_file() check: same as missing
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        warn_corrupt_provenance(provenance_path, reason=str(exc))
+        _warn_corrupt_provenance(provenance_path, reason=str(exc))
         return None
     if isinstance(record, dict):
         return record
-    warn_corrupt_provenance(provenance_path, reason="not a JSON object")
+    _warn_corrupt_provenance(provenance_path, reason="not a JSON object")
     return None
 
 
-def warn_corrupt_provenance(provenance_path: Path, *, reason: str) -> None:
+def _warn_corrupt_provenance(provenance_path: Path, *, reason: str) -> None:
     """Warn that a present-but-unparseable sidecar is being ignored.
 
     The warning is loud because the sidecar feeds the export manifest's audit
@@ -100,16 +100,13 @@ def warn_corrupt_provenance(provenance_path: Path, *, reason: str) -> None:
     warnings.warn(
         f"Ignoring corrupt provenance sidecar {provenance_path} ({reason}); "
         "the cached payload itself is unaffected.",
-        # 3 frames up: warn_corrupt_provenance -> read_provenance -> its
+        # 3 frames up: _warn_corrupt_provenance -> read_provenance -> its
         # caller (fetch._latest_cached, or _export._vintage_provenance).
         stacklevel=3,
     )
 
 
-def sha256_file(path: Path) -> str:
+def _sha256_file(path: Path) -> str:
     """Hash `path`'s full contents."""
-    digest = hashlib.sha256()
     with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1 << 20), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+        return hashlib.file_digest(handle, "sha256").hexdigest()
