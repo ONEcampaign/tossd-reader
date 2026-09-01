@@ -223,7 +223,6 @@ def test_make_fetcher_streams_body_and_captures_get_headers(tmp_path: Path) -> N
 
     assert dest.read_bytes() == payload
     assert captured["etag"] == '"e1"'
-    assert captured["size_bytes"] == len(payload)
 
 
 def test_make_fetcher_raises_etag_mismatch_before_writing_bytes(tmp_path: Path) -> None:
@@ -678,8 +677,8 @@ def test_etag_thrash_exhausts_retries_raises_tossd_network_error(
 
     def _factory(
         _url: str, _session: requests.Session, *, year: int, expected_etag: str | None
-    ) -> tuple[Callable[[object], None], dict[str, str | int | None]]:
-        captured: dict[str, str | int | None] = {"etag": None, "size_bytes": None}
+    ) -> tuple[Callable[[object], None], dict[str, str | None]]:
+        captured: dict[str, str | None] = {"etag": None}
 
         def _fetch(ctx: object) -> None:
             nonlocal call_count

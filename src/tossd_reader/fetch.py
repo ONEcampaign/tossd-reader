@@ -335,8 +335,13 @@ def _download_and_cache(
 
 def _make_fetcher(
     url: str, session: requests.Session, *, year: int, expected_etag: str | None
-) -> tuple[Fetcher, dict[str, str | int | None]]:
-    """Build a `Fetcher` that streams `url`, capturing the GET response's own ETag/size.
+) -> tuple[Fetcher, dict[str, str | None]]:
+    """Build a `Fetcher` that streams `url`, capturing the GET response's own ETag.
+
+    The response's `Content-Length` is still parsed and checked against the
+    bytes actually written, raising on a truncated download; it just isn't
+    stashed in the captured dict, since nothing downstream reads it from
+    there.
 
     Raises `_EtagMismatchError` before writing any bytes whenever the GET
     response's ETag differs from `expected_etag` — the GET response is
@@ -352,7 +357,7 @@ def _make_fetcher(
     `requests` exception when the connection fails or the transfer
     truncates, mirroring `_discovery._head_one`'s own conversion.
     """
-    captured: dict[str, str | int | None] = {"etag": None, "size_bytes": None}
+    captured: dict[str, str | None] = {"etag": None}
 
     def _fetch(ctx: FetchContext) -> None:
         try:
@@ -372,7 +377,6 @@ def _make_fetcher(
             captured["etag"] = get_etag
             content_length = response.headers.get("Content-Length")
             expected_size = int(content_length) if content_length is not None else None
-            captured["size_bytes"] = expected_size
 
             written = 0
             try:

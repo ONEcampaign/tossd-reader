@@ -24,7 +24,7 @@ def write_provenance_if_absent(
     path: Path,
     *,
     url: str,
-    captured: dict[str, str | int | None],
+    captured: dict[str, str | None],
     etag_fallback: str | None,
 ) -> None:
     """Write `<path stem>.provenance.json` beside `path`, unless one already exists.
@@ -32,8 +32,9 @@ def write_provenance_if_absent(
     Args:
         path: The cached parquet payload.
         url: The vintage's download URL.
-        captured: The fetcher's captured `etag`/`size_bytes`. Empty (both
-            `None`) on a cache hit, since the fetcher never ran.
+        captured: The fetcher's captured `etag`, keyed under `"etag"`.
+            `captured["etag"]` is `None` on a cache hit, since the fetcher
+            never ran.
         etag_fallback: The cache key's own ETag (the retry loop's winning
             `etag`), used when `captured["etag"]` is `None` — a cache hit
             whose sidecar was lost still records the right ETag rather than

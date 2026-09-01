@@ -51,15 +51,14 @@ def patch_fetcher_by_url(
         *,
         year: int,
         expected_etag: str | None,
-    ) -> tuple[Callable[[object], None], dict[str, str | int | None]]:
-        captured: dict[str, str | int | None] = {"etag": None, "size_bytes": None}
+    ) -> tuple[Callable[[object], None], dict[str, str | None]]:
+        captured: dict[str, str | None] = {"etag": None}
 
         def _fetch(ctx: object) -> None:
             payload, true_etag = sources[url]
             if true_etag is not None and true_etag != expected_etag:
                 raise fetch._EtagMismatchError(true_etag)
             captured["etag"] = true_etag
-            captured["size_bytes"] = len(payload)
             ctx.path.write_bytes(payload)  # type: ignore[attr-defined]
 
         return _fetch, captured
