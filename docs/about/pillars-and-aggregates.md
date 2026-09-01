@@ -36,6 +36,8 @@ The boolean `is_aggregate` column is present in every DataFrame returned by `get
 - Calculating global headline volumes matching official IFT statistical publications requires retaining aggregate rows to capture all reported funding.
 - Conducting provider-level rankings, recipient analyses, or sector-level aggregations requires filtering out aggregate rows (`~df["is_aggregate"]`) to prevent double-counting and isolate individual reporting institutions.
 
+`get_tossd(include_aggregates=False)` applies that same exclusion at query time, as an explicit alternative to filtering on `is_aggregate` afterward, and the `tossd_reader.verbs` aggregation functions default `include_aggregates=False` on their own.
+
 ```python
 import tossd_reader as tossd
 

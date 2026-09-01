@@ -1,77 +1,92 @@
 # How to rank providers by disbursement
 
-Rank official providers by total disbursement, using the `is_aggregate` flag to separate provider activities from aggregate totals and grouping by provider code and name.
+Rank official providers by total disbursement with `df.tossd.rank_entities()`, which excludes aggregate summary rows by default so the ranking reflects individual reporting institutions.
 
 ## Steps
 
-1. **Query activity records with amounts scaled to USD million.**
+1. **Query the year.** `rank_entities` needs `{dimension}_code`, `{dimension}_name`, and the value column it sums, all present in the `"analysis"` preset.
 
    ```python
    import tossd_reader as tossd
 
-   h = tossd.get_tossd(years=2024, columns="minimal", units="usd_million")
+   df = tossd.get_tossd(years=2024, columns="analysis", units="usd_million")
    ```
 
-   The `columns="minimal"` preset provides `provider_code`, `provider_name`, `is_aggregate`, and `usd_disbursement`.
-
-2. **Filter out aggregate total rows.** The TOSSD data published at tossd.online includes summary aggregate records alongside activity records. Grouping without filtering aggregates inflates totals with double-counted figures.
+2. **See what aggregate rows do to a ranking.** Published TOSSD files bundle summary rows (`provider_code == 0`, `provider_name == "Aggregate"`) alongside the providers that fund them. Pass `include_aggregates=True` to see the effect.
 
    ```python
-   # Unfiltered data includes aggregate summary rows
-   h.groupby("provider_name", observed=True)["usd_disbursement"].sum().sort_values(
-       ascending=False
-   ).round(1).head(3)
-   ```
-
-   ```text
-   provider_name
-   Aggregate          99379.6
-   United States      67695.9
-   EU Institutions    58667.5
-   Name: usd_disbursement, dtype: float64
-   ```
-
-3. **Group by `["provider_code", "provider_name"]` and sort descending.** Grouping by both `provider_code` and `provider_name` ensures distinct reporting entities that share similar labels remain separate.
-
-   ```python
-   # Filter aggregates and group by code and name
-   ranked = (
-       h[~h["is_aggregate"]]
-       .groupby(["provider_code", "provider_name"], observed=True)["usd_disbursement"]
-       .sum()
-       .sort_values(ascending=False)
-       .round(1)
+   cols = ["provider_code", "provider_name", "usd_disbursement", "share_pct", "rank"]
+   print(
+       df.tossd.rank_entities(top=3, include_aggregates=True)[cols].to_string(index=False)
    )
-   ranked.head(5)
    ```
 
    ```text
-   provider_code  provider_name               
-   302            United States                   67695.9
-   918            EU Institutions                 58667.5
-   4              France                          25444.6
-   915            Asian Development Bank Group    18558.3
-   701            Japan                           17339.4
-   Name: usd_disbursement, dtype: float64
+    provider_code   provider_name  usd_disbursement  share_pct  rank
+                0       Aggregate      99379.609718  19.968737     1
+              302   United States      67695.935324  13.602412     2
+              918 EU Institutions      58667.476757  11.788288     3
    ```
+
+   Aggregate outranks every real provider. It isn't one. `rank_entities` defaults `include_aggregates=False`. Drop the argument and it disappears from the ranking:
+
+   ```python
+   print(df.tossd.rank_entities(top=3)[cols].to_string(index=False))
+   ```
+
+   ```text
+    provider_code   provider_name  usd_disbursement  share_pct  rank
+              302   United States      67695.935324  16.996373     1
+              918 EU Institutions      58667.476757  14.729604     2
+                4          France      25444.627005   6.388365     3
+   ```
+
+   `share_pct` shifts too. United States's share rises from 13.6% to 17.0% once Aggregate's USD 99.4 billion drops out of the total each share is measured against.
+
+3. **Get the full ranking.** Drop the column subset to see every field `rank_entities` adds, including `n_activities`.
+
+   ```python
+   print(df.tossd.rank_entities(top=5).to_string(index=False))
+   ```
+
+   ```text
+    provider_code                provider_name  usd_disbursement  n_activities  share_pct  rank
+              302                United States      67695.935324         61832  16.996373     1
+              918              EU Institutions      58667.476757         85406  14.729604     2
+                4                       France      25444.627005         14066   6.388365     3
+              915 Asian Development Bank Group      18558.332668          4671   4.659428     4
+              701                        Japan      17339.414452         17981   4.353395     5
+   ```
+
+   `n_activities` counts distinct `tossd_id` values per provider, excluding the `"0000"` placeholder that marks bundled lines with no activity identifier of their own.
+
+<!-- prettier-ignore -->
+!!! info "Why"
+    `rank_entities` groups on the `(provider_code, provider_name)` pair. Some institutional families share a name across distinct reporting entities. The African Development Bank Group reports as both the African Development Bank (code 913) and the African Development Fund (code 914). Grouping on the pair keeps them apart.
+
+<!-- prettier-ignore -->
+!!! note
+    `"0000"` also lands on a small share of real providers' own rows in 2023-24 (bundled lines that belong to a real provider, not a pseudo-aggregate), so `n_activities` can slightly undercount those providers even after aggregate rows are excluded.
+
+<!-- prettier-ignore -->
+!!! warning "Heads up"
+    `df` here carries both pillars. Ranking providers across both pillars mixes Pillar I bilateral outflows with Pillar II core contributions to multilateral institutions, which double-counts funding reported once by the donor and again by the institution it funds. See [Bilateral core contributions and multilateral double-counting](../about/pillars-and-aggregates.md#bilateral-core-contributions-and-multilateral-double-counting).
+
+`rank_entities` works for any dimension with a matching `{dimension}_code`/`{dimension}_name` pair. Pass `dimension="recipient"` (or `"sector"`, `"purpose"`, `"channel"`) to rank a different one.
 
 ## Verify it worked
 
-Calculate the share of disbursements represented by aggregate rows to confirm the scale of separated totals.
+`share_pct` is each provider's share of the ranked total, so the full, untruncated ranking should sum to 100.
 
 ```python
-agg = h[h["is_aggregate"]]["usd_disbursement"].sum()
-total = h["usd_disbursement"].sum()
-round(agg / total * 100, 1)
+print(df.tossd.rank_entities()["share_pct"].sum())
 ```
 
 ```text
-20.0
+100.0
 ```
-
-Aggregate summary rows account for 20.0% of the total recorded disbursements in the 2024 dataset.
 
 ## See also
 
-- [Pillars and aggregate rows](../about/pillars-and-aggregates.md) for how aggregate rows are constructed and reported in TOSSD.
-- [Query reference](../reference/query.md) for query arguments and column presets.
+- [Pillars and aggregate rows](../about/pillars-and-aggregates.md) for how aggregate rows are built and the bilateral/multilateral double-counting risk.
+- [Columns, presets, and units](../reference/columns.md) for what the `"analysis"` preset includes.

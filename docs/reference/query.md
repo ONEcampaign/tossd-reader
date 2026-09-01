@@ -83,7 +83,7 @@ import tossd_reader as tossd
 
 th = tossd.get_tossd(years=2024, columns="minimal")
 us = tossd.get_tossd(years=2024, columns="minimal", units="usd")
-round(th["usd_disbursement"].sum(), 1)
+print(round(th["usd_disbursement"].sum(), 1))
 ```
 
 ```text
@@ -91,7 +91,7 @@ round(th["usd_disbursement"].sum(), 1)
 ```
 
 ```python
-round(us["usd_disbursement"].sum(), 1)
+print(round(us["usd_disbursement"].sum(), 1))
 ```
 
 ```text
@@ -107,6 +107,49 @@ tossd.get_tossd(years=2024, units="usd_billion")
 ```text
 ValueError: Unknown units 'usd_billion'; expected one of ('usd_thousand', 'usd_million', 'usd').
 ```
+
+### Excluding aggregate rows
+
+`include_aggregates=True` (the default) keeps every row `get_tossd()`
+loads, including the `provider_code == 0` pseudo-aggregate rows the
+publisher reports alongside individual providers' own records, so the
+output matches the published files in full. Pass
+`include_aggregates=False` to drop them before anything downstream
+aggregates the frame.
+
+```python
+df = tossd.get_tossd(years=2024, columns="analysis", units="usd_million")
+
+tossd.rank_entities(df, top=3, include_aggregates=True)[
+    ["provider_code", "provider_name", "usd_disbursement", "share_pct", "rank"]
+]
+```
+
+```text
+ provider_code   provider_name  usd_disbursement  share_pct  rank
+             0       Aggregate      99379.609718  19.968737     1
+           302   United States      67695.935324  13.602412     2
+           918 EU Institutions      58667.476757  11.788288     3
+```
+
+```python
+tossd.rank_entities(df, top=3, include_aggregates=False)[
+    ["provider_code", "provider_name", "usd_disbursement", "share_pct", "rank"]
+]
+```
+
+```text
+ provider_code   provider_name  usd_disbursement  share_pct  rank
+           302   United States      67695.935324  16.996373     1
+           918 EU Institutions      58667.476757  14.729604     2
+             4          France      25444.627005   6.388365     3
+```
+
+Passed to `get_tossd()` itself, `include_aggregates=False` removes the
+same rows one step earlier, before any grouping or ranking runs. Every
+`tossd_reader.verbs` function defaults `include_aggregates=False` on its
+own (see [Verbs](verbs.md)), so a query already excluding aggregates
+needs no further filtering before ranking, comparing, or totalling.
 
 ### Inspecting available filters
 
@@ -161,6 +204,7 @@ TypeError: get_tossd_raw() got unexpected keyword argument(s): providers. get_to
 
 ## Next
 
+- [Verbs](verbs.md). Aggregation functions (`rank_entities`, `compare_years`, and others) built on `get_tossd()` output.
 - [Look up provider and recipient codes](../how-to/look-up-codes.md). Code lookup techniques and error handling.
 - [Read the published columns unchanged](../how-to/read-published-columns.md). Compare `get_tossd_raw` with typed `get_tossd` outputs.
 - [Columns, presets, and units](columns.md). The full column surface, including `FORCED_COLUMNS`.

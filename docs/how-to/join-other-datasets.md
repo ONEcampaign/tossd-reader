@@ -41,7 +41,7 @@ Add ISO3 country codes to a `get_tossd` frame, then join it to World Bank, IMF, 
 Count the missing ISO3 values to identify rows that an inner join drops.
 
 ```python
-iso["provider_iso3"].isna().sum()
+print(iso["provider_iso3"].isna().sum())
 ```
 
 ```text

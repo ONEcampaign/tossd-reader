@@ -1,6 +1,6 @@
 # Helpers
 
-The `tossd_reader.analysis` module provides analytical helper functions for working with `get_tossd()` outputs. Four functions accept a `pandas.DataFrame` and return a new DataFrame, leaving the input data unchanged. `get_structural_breaks` takes no DataFrame. Call it with an optional `years=` to narrow the packaged structural-break reference table to the years a query touches, or with no arguments for all five rows. All five functions operate entirely offline without network access.
+The `tossd_reader.analysis` module provides analytical helper functions for working with `get_tossd()` outputs. Six functions accept a `pandas.DataFrame` and return a new DataFrame, leaving the input data unchanged. Three take no DataFrame: `get_structural_breaks` (call it with an optional `years=` to narrow the packaged structural-break reference table to the years a query touches, or with no arguments for all five rows), `get_recipient_groups_version`, and `get_instrument_groups_version` (each returns the version stamp of a packaged classification table). All nine functions operate entirely offline without network access.
 
 Function names spell one verb per operation, used consistently across the package: `get_` fetches, `add_` annotates rows, `explode_` expands rows, `extract_` derives flag columns, `filter_` subsets rows.
 
@@ -14,13 +14,17 @@ tossd.explode_sdg(tossd.get_tossd(years=2024, columns="minimal"))
 ValueError: explode_sdg() needs column(s) sdg_codes_raw, not present in df. Re-query with columns='analysis', or add sdg_codes_raw to your columns= list.
 ```
 
-| Helper                  | Input Requirements                       | Minimum Preset | Output                                                                            |
-| ----------------------- | ---------------------------------------- | -------------- | --------------------------------------------------------------------------------- |
-| `explode_sdg`           | `sdg_codes_raw`                          | `"analysis"`   | Expanded DataFrame with `sdg_code`, `sdg_goal`, `sdg_is_target`, and `sdg_weight` |
-| `extract_keywords`      | `keywords_raw`                           | `"analysis"`   | DataFrame with 12 `kw_<marker>` boolean columns                                   |
-| `add_iso3`              | `provider_code` or `recipient_code`      | `"minimal"`    | DataFrame with `provider_iso3` or `recipient_iso3` categoricals                   |
-| `filter_provider_costs` | `tossd_pillar`, `sector_code`            | `"analysis"`   | DataFrame filtered to Pillar II domestic expenditures (sectors 910 and 930)       |
-| `get_structural_breaks` | None; optional `years=` narrows the rows | n/a            | Reference DataFrame of dataset discontinuities (5 rows, fewer with `years=`)      |
+| Helper                          | Input Requirements                                    | Minimum Preset | Output                                                                                                                |
+| ------------------------------- | ----------------------------------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `explode_sdg`                   | `sdg_codes_raw` (plus `value` when `value=` is given) | `"analysis"`   | Expanded DataFrame with `sdg_code`, `sdg_goal`, `sdg_is_target`, `sdg_weight`, and (with `value=`) `{value}_weighted` |
+| `extract_keywords`              | `keywords_raw`                                        | `"analysis"`   | DataFrame with 12 `kw_<marker>` boolean columns                                                                       |
+| `add_iso3`                      | `provider_code` or `recipient_code`                   | `"minimal"`    | DataFrame with `provider_iso3` or `recipient_iso3` categoricals                                                       |
+| `add_recipient_group`           | `recipient_code`                                      | `"minimal"`    | DataFrame with a `recipient_group` categorical (`scheme="ldc"`/`"income"`/`"region"`)                                 |
+| `get_recipient_groups_version`  | None                                                  | n/a            | Version stamp (`str`) of the packaged recipient-groups table                                                          |
+| `add_instrument_group`          | `finance_instrument_code`, `concessionality_flag`     | `"analysis"`   | DataFrame with an `instrument_group` categorical                                                                      |
+| `get_instrument_groups_version` | None                                                  | n/a            | Version stamp (`str`) of the packaged instrument-groups table                                                         |
+| `filter_provider_costs`         | `tossd_pillar`, `sector_code`                         | `"analysis"`   | DataFrame filtered to Pillar II domestic expenditures (sectors 910 and 930)                                           |
+| `get_structural_breaks`         | None; optional `years=` narrows the rows              | n/a            | Reference DataFrame of dataset discontinuities (5 rows, fewer with `years=`)                                          |
 
 <!-- prettier-ignore -->
 ::: tossd_reader.analysis.explode_sdg
@@ -55,6 +59,80 @@ dtype: int64
 ::: tossd_reader.analysis.add_iso3
     options:
       heading_level: 2
+
+<!-- prettier-ignore -->
+::: tossd_reader.analysis.add_recipient_group
+    options:
+      heading_level: 2
+
+<!-- prettier-ignore -->
+::: tossd_reader.analysis.get_recipient_groups_version
+    options:
+      heading_level: 2
+
+```python
+import tossd_reader as tossd
+
+df = tossd.get_tossd(years=2024, columns="analysis", units="usd_million")
+rg = tossd.add_recipient_group(df, scheme="ldc")
+rg.groupby("recipient_group", observed=True)["usd_disbursement"].sum().round(1)
+```
+
+```text
+Least Developed Countries                88056.9
+Other Developing Countries              262225.0
+Regional / Multi-country Unallocated    147394.1
+```
+
+```python
+tossd.get_recipient_groups_version()
+```
+
+```text
+'ldc-2024review/wb-fy27'
+```
+
+<!-- prettier-ignore -->
+::: tossd_reader.analysis.add_instrument_group
+    options:
+      heading_level: 2
+
+<!-- prettier-ignore -->
+::: tossd_reader.analysis.get_instrument_groups_version
+    options:
+      heading_level: 2
+
+```python
+ig = tossd.add_instrument_group(df)
+ig.groupby("instrument_group", dropna=False, observed=True)[
+    "usd_disbursement"
+].sum().round(1)
+```
+
+```text
+Concessional Loans           47194.6
+Direct Provider Spending     49378.8
+Equity                        2796.1
+Grants                      200931.0
+Guarantees                     882.3
+Hybrid/Mezzanine               467.2
+Non-concessional Loans       95923.0
+Other Instruments                8.7
+NaN                         100094.2
+```
+
+```python
+tossd.get_instrument_groups_version()
+```
+
+```text
+'oecd-dac-cl15-2026-09-01/instrument-groups-methodology-v2'
+```
+
+The `NaN` row (pseudo-aggregates plus blank-concessionality loans) carries
+roughly 20% of 2024 dollar volume. `dropna=False` keeps it visible.
+pandas' default `groupby` drops `NaN` keys, which silently loses that
+share.
 
 <!-- prettier-ignore -->
 ::: tossd_reader.analysis.filter_provider_costs

@@ -9,7 +9,9 @@ Initial release. Covers TOSSD activity-level vintages 2019 to 2024.
 - `get_tossd`: typed, filtered queries over the published per-year parquet
   files, with year/provider/recipient/pillar filters, `minimal`/`analysis`/
   `all` column presets, `usd_thousand` (default), `usd_million`, or `usd`
-  units, and always-present `year`, `is_aggregate`, and `unit` columns via
+  units, an `include_aggregates=` toggle (`True` by default, matching the
+  published records, `False` dropping `provider_code == 0` pseudo-aggregate
+  rows), and always-present `year`, `is_aggregate`, and `unit` columns via
   the public `FORCED_COLUMNS` tuple. After a `providers=`/`recipients=`/
   `pillars=` filter, categorical columns carry only the categories present
   in the result.
@@ -27,7 +29,26 @@ Initial release. Covers TOSSD activity-level vintages 2019 to 2024.
 - Packaged OECD codelist snapshot with `get_available_filters` and
   `get_codelists_version`.
 - Weekly codelist drift monitoring against the live endpoint.
-- Helpers: `explode_sdg`, `add_iso3`, `extract_keywords`,
+- Five aggregation verbs, `rank_entities`, `compare_years`, `sdg_totals`,
+  `keyword_totals`, and `subpillar_breakdown`, each summing a
+  `get_tossd()`-shaped frame along one dimension. Each defaults
+  `include_aggregates=False`, the opposite of `get_tossd()`'s own default,
+  and copies `df.attrs` onto its result.
+- The `df.tossd` pandas accessor, available on any DataFrame once
+  `tossd_reader` has registered it (any query or helper import triggers
+  registration). Carries the five aggregation verbs plus `add_iso3`,
+  `add_recipient_group`, `add_instrument_group`, `extract_keywords`,
+  `explode_sdg`, and `filter_provider_costs` as methods, and three
+  accessor-only methods: `summary()` (a one-row overview of years, row
+  counts, pillar mix, and unit), `exclude_aggregates()`, and
+  `groupby_entity(dimension=)`.
+- Packaged recipient-groups and instrument-groups reference tables.
+  `add_recipient_group` (`scheme="ldc"|"income"|"region"`) and
+  `add_instrument_group` join them onto a `get_tossd()`-shaped frame.
+  `get_recipient_groups_version()` and `get_instrument_groups_version()`
+  report each table's version stamp.
+- Helpers: `explode_sdg` (an optional `value=` column adds a
+  `{value}_weighted` sibling column), `add_iso3`, `extract_keywords`,
   `get_structural_breaks` (takes a keyword-only `years=` to scope results to
   the years being compared), `filter_provider_costs`. Missing-column errors
   now name the fix when the column ships in the `"analysis"` preset.

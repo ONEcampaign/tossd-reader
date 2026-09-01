@@ -36,7 +36,7 @@ Filter a Pillar II frame to the sector-code carve-out for spending recorded insi
 3. **Take the share of Pillar II disbursements.**
 
    ```python
-   round(pc["usd_disbursement"].sum() / p2["usd_disbursement"].sum() * 100, 1)
+   print(round(pc["usd_disbursement"].sum() / p2["usd_disbursement"].sum() * 100, 1))
    ```
 
    ```text

@@ -54,7 +54,7 @@ Filter activity records by sector, purpose, channel, or modality codes using pac
    ```
 
    ```python
-   round(edu["usd_disbursement"].sum(), 1)
+   print(round(edu["usd_disbursement"].sum(), 1))
    ```
 
    ```text
@@ -82,12 +82,12 @@ Filter activity records by sector, purpose, channel, or modality codes using pac
    ```
 
    ```text
-      sector_code                         sector_name  usd_disbursement  share_pct
-   0          230   Energy generation and supply                 532.1       20.1
-   1          210   Transport & Storage                          468.4       17.7
-   2          311   Agriculture                                  312.8       11.8
-   3          110   Education                                    213.2        8.1
-   4          140   Water Supply & Sanitation                    189.5        7.2
+      sector_code                     sector_name  usd_disbursement  share_pct
+   0          320  Industry, Mining, Construction             343.7       15.7
+   1          230                          Energy             225.8       10.3
+   2          210             Transport & Storage             213.4        9.7
+   3          110                       Education             213.2        9.7
+   4          310  Agriculture, Forestry, Fishing             175.6        8.0
    ```
 
 5. **Apply the same pattern to purpose, channel, and modality.** Look up the code and apply the same filtering pattern.
@@ -135,7 +135,43 @@ Filter activity records by sector, purpose, channel, or modality codes using pac
 
    The `sector_code`, `purpose_code`, `channel_code`, and `modality_code` columns, along with their paired `_name` columns, appear in `columns="analysis"`. Additional columns such as `channel_raw_text`, `parent_channel_code`, and `parent_channel_name` appear under `columns="all"`. Refer to [Columns, presets, and units](../reference/columns.md) for the complete column layout.
 
-6. **Group by year with an explicit column selection.** `get_tossd` always includes `year`, along with `tossd_pillar`, `tossd_subpillar`, `is_aggregate`, and `unit`, in its output regardless of the `columns=` list.
+6. **Count activities, not rows.** The publisher publishes one row per activity-sector pairing, and recipient, channel, and instrument splits multiply rows the same way. `len()` on a filtered frame counts rows. Amount sums stay correct either way, since each split row already carries its own share of the total, but a row count overstates how many activities were involved.
+
+   ```python
+   len(edu)
+   ```
+
+   ```text
+   553
+   ```
+
+   An activity tagged with two education purposes shows up on two of those rows. Count activities as distinct `tossd_id`, excluding the `"0000"` placeholder the publisher uses for bundled lines with no activity identifier of their own.
+
+   ```python
+   edu.loc[edu["tossd_id"] != "0000", "tossd_id"].nunique()
+   ```
+
+   ```text
+   528
+   ```
+
+   The gap varies in size. The purpose, channel, and modality filters from the previous step show it at different scales.
+
+   ```python
+   for name, frame in [("purpose", purpose), ("channel", channel), ("modality", modality)]:
+       n_activities = frame.loc[frame["tossd_id"] != "0000", "tossd_id"].nunique()
+       print(name, len(frame), n_activities)
+   ```
+
+   ```text
+   purpose 72 72
+   channel 383 383
+   modality 122 119
+   ```
+
+   Purpose and channel happen to match here. Modality doesn't. `rank_entities()`'s own `n_activities` column runs this same distinct-count logic, so a ranking built with `df.tossd.rank_entities()` never needs the manual `.loc[...].nunique()` step.
+
+7. **Group by year with an explicit column selection.** `get_tossd` always includes `year`, along with `tossd_pillar`, `tossd_subpillar`, `is_aggregate`, and `unit`, in its output regardless of the `columns=` list.
 
    ```python
    df = tossd.get_tossd(
@@ -173,7 +209,7 @@ Confirm that the 2024 multi-year sum matches the single-year filtered total.
 
 ```python
 by_year = edu_by_year.groupby("year", observed=True)["usd_disbursement"].sum().round(1)
-by_year[2024] == round(edu["usd_disbursement"].sum(), 1)
+print(by_year[2024] == round(edu["usd_disbursement"].sum(), 1))
 ```
 
 ```text

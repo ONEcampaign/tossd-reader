@@ -33,6 +33,7 @@ nav = [
     { "Query" = "reference/query.md" },
     { "Export" = "reference/export.md" },
     { "Helpers" = "reference/helpers.md" },
+    { "Verbs" = "reference/verbs.md" },
     { "Columns, presets, and units" = "reference/columns.md" },
     { "Configuration, warnings, and errors" = "reference/configuration.md" },
   ] },
