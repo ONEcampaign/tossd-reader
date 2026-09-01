@@ -1,10 +1,10 @@
 # How to measure Pillar II expenditures in the provider country
 
-Filter a Pillar II frame to the sector-code carve-out for spending recorded inside the provider country, then take its share of Pillar II disbursements.
+Filter a Pillar II frame to the sector-code carve-out for spending recorded inside the provider country, then calculate its share of total Pillar II disbursements.
 
 ## Steps
 
-1. **Query Pillar II with the `"analysis"` column preset.** `pillar2_provider_costs` reads `sector_code`, which ships in `"analysis"` but not `"minimal"`.
+1. **Query Pillar II with the `"analysis"` column preset.** `pillar2_provider_costs` reads `sector_code`, which ships in the `"analysis"` preset. The `"minimal"` preset omits it.
 
    ```python
    import tossd_reader as tossd
@@ -17,7 +17,7 @@ Filter a Pillar II frame to the sector-code carve-out for spending recorded insi
    (155908, 44)
    ```
 
-2. **Filter to the provider-costs carve-out.** It holds two sectors: `910` ("Administrative Costs of Donors") and `930` ("Domestic expenditures for refugees/asylum seekers").
+2. **Filter to the provider-costs carve-out.** The carve-out includes sector 910 ("Administrative Costs of Donors") and sector 930 ("Domestic expenditures for refugees/asylum seekers").
 
    ```python
    pc = tossd.pillar2_provider_costs(p2)
@@ -43,32 +43,31 @@ Filter a Pillar II frame to the sector-code carve-out for spending recorded insi
    35.6
    ```
 
-That's 47,503.8 of 133,561.8 USD million. The largest providers, aggregate rows excluded:
+   Provider-country expenditures account for 47,503.8 of 133,561.8 USD million (35.6% of Pillar II in 2024). The five largest providers after removing aggregate rows are shown below.
 
-```python
-pc[~pc["is_aggregate"]].groupby("provider_name", observed=True)[
-    "usd_disbursement"
-].sum().sort_values(ascending=False).round(1).head(5)
-```
+   ```python
+   pc[~pc["is_aggregate"]].groupby("provider_name", observed=True)[
+       "usd_disbursement"
+   ].sum().sort_values(ascending=False).round(1).head(5)
+   ```
 
-```text
-provider_name
-United States      14304.2
-United Kingdom      4524.2
-France              2261.5
-Canada              2073.7
-EU Institutions     2012.3
-Name: usd_disbursement, dtype: float64
-```
+   ```text
+   provider_name
+   United States      14304.2
+   United Kingdom      4524.2
+   France              2261.5
+   Canada              2073.7
+   EU Institutions     2012.3
+   Name: usd_disbursement, dtype: float64
+   ```
 
 <!-- prettier-ignore -->
-!!! warning "Sector 720 humanitarian aid is excluded"
-
-    `pillar2_provider_costs` applies a sector-family heuristic. TOSSD's Reporting Instructions describe this category as "expenditures in the provider country". Sector families 910 and 930 are the two that match that description, and 35.6% is this package's estimate on that basis. Sector `910` is a proxy for provider administrative overhead. Most of that spending stays inside the provider country, and some is incurred in-country at the recipient end. Sector `720` ("Humanitarian Assistance") rows are in-country humanitarian aid delivered by agencies such as UNHCR and UNICEF, so they fall outside the carve-out.
+!!! warning "Heads up"
+    `pillar2_provider_costs` applies a sector-family heuristic. The TOSSD Reporting Instructions issued by the International Forum on TOSSD (IFT) at tossd.online define this category as expenditures in the provider country. Sector families 910 and 930 match that definition, producing this package's 35.6% estimate. Sector 910 acts as a proxy for provider administrative overhead. Most administrative spending remains inside the provider country, while some occurs in recipient countries. Sector 720 ("Humanitarian Assistance") represents field humanitarian aid delivered through agencies like UNHCR and UNICEF, so it falls outside this carve-out.
 
 ## Verify it worked
 
-`pc` is a strict subset of `p2`, restricted to sectors `910` and `930`:
+`pc` is a subset of `p2` restricted to sectors 910 and 930.
 
 ```python
 len(pc) < len(p2), [int(c) for c in pc["sector_code"].unique()]
@@ -80,9 +79,9 @@ len(pc) < len(p2), [int(c) for c in pc["sector_code"].unique()]
 
 ## Troubleshooting
 
-**`ValueError` naming `sector_code`.** `pillar2_provider_costs` needs `sector_code` on the frame it's given. That column ships in `"analysis"` and `"all"`, not `"minimal"`. Re-query with `columns="analysis"`, or add `"sector_code"` to an explicit `columns=` list.
+**`ValueError` naming `sector_code`.** `pillar2_provider_costs` requires `sector_code` on the input frame. That column ships in the `"analysis"` and `"all"` presets. The `"minimal"` preset omits it. Re-query with `columns="analysis"` or add `"sector_code"` to an explicit `columns=` list.
 
 ## See also
 
-- [Helpers reference](../reference/helpers.md) for `pillar2_provider_costs`'s full contract.
-- [Pillars and aggregates](../about/pillars-and-aggregates.md) for the provider-costs carve-out as a concept, and why aggregate rows are excluded from the provider ranking above.
+- [Helpers reference](../reference/helpers.md) for `pillar2_provider_costs` parameter definitions and behaviour.
+- [Pillars and aggregates](../about/pillars-and-aggregates.md) for the provider-costs carve-out concept and aggregate row filtering.

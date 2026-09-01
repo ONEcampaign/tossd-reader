@@ -1,8 +1,8 @@
 # How to check a figure against the published total
 
-Check these six properties to reconcile a computed figure against the publisher's portal or a spreadsheet.
+Reconcile a computed figure against the International Forum on TOSSD (IFT) data portal at [tossd.online](https://tossd.online) or an external spreadsheet by verifying six core data properties.
 
-Every check below runs against one six-year frame:
+Load the multi-year dataset to evaluate reconciliation parameters.
 
 ```python
 import tossd_reader as tossd
@@ -12,7 +12,7 @@ df = tossd.get_tossd(years=range(2019, 2025), columns="minimal")
 
 ## Checks
 
-1. **Units.** `get_tossd` returns USD thousands by default. Read the `unit` column:
+1. **Units.** The `get_tossd` function returns amounts in USD thousands by default (`units="usd_thousand"`). Inspect the `unit` column to verify the active scale.
 
    ```python
    df["unit"].unique()
@@ -23,9 +23,9 @@ df = tossd.get_tossd(years=range(2019, 2025), columns="minimal")
    Categories (1, str): ['usd_thousand']
    ```
 
-Pass `units="usd_million"` to match a figure quoted in millions.
+   Pass `units="usd_million"` to match figures published in millions.
 
-2. **Aggregate rows.** Provider code `0`, the publisher's own aggregate pseudo-provider, is in every result unless you drop it:
+2. **Aggregate rows.** The TOSSD dataset includes aggregate total rows (marked with `is_aggregate = True` and provider code `0`) alongside individual activity records.
 
    ```python
    int(df["is_aggregate"].sum())
@@ -35,13 +35,13 @@ Pass `units="usd_million"` to match a figure quoted in millions.
    38432
    ```
 
-A provider or activity-count total that includes these rows won't match one that excludes them. See [How to rank providers by disbursement](rank-providers.md).
+   Keep aggregate rows when reconciling the publisher's headline total. In 2024, they contribute USD 99.4 billion to the USD 497.7 billion total across all rows. Exclude them for provider rankings or other calculations restricted to named reporting institutions (`~df["is_aggregate"]`). See [How to rank providers by disbursement](rank-providers.md).
 
-3. **Current versus deflated.** `usd_disbursement` and its twin, `usd_disbursement_deflated`, answer different questions. A multi-year comparison built on the current-price column carries inflation as well as new finance. See [How to compare TOSSD totals across years](compare-years.md).
+3. **Price basis (current versus constant).** Current prices (`usd_disbursement`) capture nominal flows, whereas deflated prices (`usd_disbursement_deflated`) express values in constant prices adjusted for inflation. Verify which price basis was used in the comparison figure. See [How to compare TOSSD totals across years](compare-years.md).
 
-4. **A `pillars=` filter.** Passing `pillars=1` or `pillars=2` excludes pillar-0 rows, a 2020-2023 publisher artefact with no pillar tag. The default `pillars=None` keeps them in. Check whether your query and the figure you're matching against made the same choice.
+4. **Pillar filtering.** Filtering by `pillars=1` or `pillars=2` restricts records to Pillar I (cross-border flows) or Pillar II (global public goods). The default `pillars=None` includes all records, including unassigned pillar records from 2020 to 2023. Confirm whether the target figure applies a pillar filter.
 
-5. **Which vintage.** The publisher republishes each year in place, so two downloads of "2019" can still differ. `export()` writes the vintage's ETag and retrieval time into its manifest:
+5. **Data vintage and ETag.** The International Forum on TOSSD (IFT) updates annual data files in place at tossd.online. The `export` function records the file ETag and retrieval timestamp in the export manifest.
 
    ```python
    from pathlib import Path
@@ -68,9 +68,9 @@ A provider or activity-count total that includes these rows won't match one that
    }
    ```
 
-Matching `etag` values mean the same vintage. A different `etag` means the publisher has revised that year since one of the two downloads.
+   Matching `etag` values confirm identical data releases. Differing `etag` values indicate that the publisher updated the dataset between downloads.
 
-6. **Year coverage.** Confirm both figures cover the same years:
+6. **Year coverage.** Confirm that both calculations span the exact same set of reporting years.
 
    ```python
    int(df["year"].min()), int(df["year"].max()), df["year"].nunique()
@@ -80,13 +80,13 @@ Matching `etag` values mean the same vintage. A different `etag` means the publi
    (2019, 2024, 6)
    ```
 
-A colleague's spreadsheet built before a new year's file was published won't include it.
+   Figures produced before an annual release reflect a narrower year span.
 
 ## Verify it worked
 
-Two figures agree once units, aggregate rows, price basis, `pillars=`, vintage, and year coverage all match.
+Two figures agree once units, aggregate row filtering, price basis, pillar filters, vintage ETag, and year coverage all align.
 
 ## See also
 
-- [About the amount columns](../about/amounts.md) for the full commitments-versus-disbursements and current-versus-constant picture.
-- [Reproducibility](../about/reproducibility.md) for how the ETag identifies a vintage.
+- [About the amount columns](../about/amounts.md) for commitment versus disbursement definitions and price adjustments.
+- [Reproducibility and vintages](../about/reproducibility.md) for tracking data revisions using HTTP ETags.

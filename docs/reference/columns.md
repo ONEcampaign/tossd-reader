@@ -1,129 +1,129 @@
 # Columns, presets, and units
 
-_As of v0.1._
-
-tossd_reader publishes 53 columns from each TOSSD activity-level file, renamed to snake_case and cast to the dtypes in `schema.csv`. The `columns=` argument to `get_tossd` selects a subset, a named preset (`"minimal"`, `"analysis"`, or `"all"`, the default) or an explicit `list[str]` of snake_case names. Four columns are forced into the result regardless of that selection: `tossd_pillar`, `tossd_subpillar`, `is_aggregate`, and `unit`. The first two are published columns. `is_aggregate`, derived as `provider_code == 0`, and `unit` are added by tossd_reader, so `columns="all"` returns 55 columns against the file's 53. `parent_channel_name` is the one column decoded from a codelist.
+The `tossd-reader` package processes 53 columns from each official TOSSD activity-level file, standardised into snake_case names and typed according to `schema.csv`. The `columns` parameter of `get_tossd` accepts a preset name (`"minimal"`, `"analysis"`, or `"all"`) or a list of specific snake_case column names. Four columns always appear in query results regardless of selection (`tossd_pillar`, `tossd_subpillar`, `is_aggregate`, and `unit`). The `is_aggregate` flag (`provider_code == 0`) and `unit` indicator are derived columns added by the package, bringing the `"all"` preset to 55 total columns.
 
 ## Presets
 
-| Preset     | Columns | Intent                                                                     |
-| ---------- | :-----: | -------------------------------------------------------------------------- |
-| `minimal`  |   19    | IDs, names, pillars, amounts.                                              |
-| `analysis` |   44    | Adds sectors, channels, SDG and keyword raw fields, modalities.            |
-| `all`      |   55    | Every packaged column, plus passthrough of any unexpected published extra. |
+| Preset | Total Columns | Analytical Scope |
+| --- | :---: | --- |
+| `minimal` | 19 | Core identifiers, provider and recipient names, pillar categories, and financial amounts. |
+| `analysis` | 44 | Adds sector classifications, channel codes, raw SDG tags, keyword fields, and financing modalities. |
+| `all` | 55 | All packaged schema columns, derived fields, and any unmodelled publisher passthrough columns. |
 
-## Preset memory and timing
+## Memory footprint
 
-| `columns=`        | Columns |  2024 alone | All six years |
-| ----------------- | :-----: | ----------: | ------------: |
-| `"minimal"`       |   19    | 55MB, 0.05s |   278MB, 0.2s |
-| `"analysis"`      |   44    | 102MB, 0.1s |   505MB, 0.6s |
-| `"all"` (default) |   55    | 377MB, 0.2s |   2.1GB, 1.1s |
+| Preset (`columns=`) | Columns | 2024 (Single Year) | 2019 to 2024 (All Six Years) |
+| --- | :---: | ---: | ---: |
+| `"minimal"` | 19 | 55 MB | 278 MB |
+| `"analysis"` | 44 | 102 MB | 505 MB |
+| `"all"` (default) | 55 | 377 MB | 2.1 GB |
 
-Memory is pandas `memory_usage(deep=True)` on the real 2026-04 vintage files. Timings are warm-cache.
+Memory figures represent pandas `memory_usage(deep=True)` across the official dataset.
 
-## All columns
+## Schema columns
 
-Generated from `schema.csv`, in publisher-file order.
+Columns are listed in source file order from `schema.csv`.
 
-| Column                            | Dtype      | Minimal | Analysis | Notes                 |
-| --------------------------------- | ---------- | :-----: | :------: | --------------------- |
-| `year`                            | `Int16`    |    ✓    |    ✓     |                       |
-| `provider_code`                   | `Int16`    |    ✓    |    ✓     |                       |
-| `provider_name`                   | `category` |    ✓    |    ✓     |                       |
-| `provider_agency_name`            | `category` |         |          |                       |
-| `tossd_id`                        | `string`   |    ✓    |    ✓     |                       |
-| `project_number`                  | `string`   |    ✓    |    ✓     |                       |
-| `recipient_code`                  | `Int16`    |    ✓    |    ✓     |                       |
-| `recipient_name`                  | `category` |    ✓    |    ✓     |                       |
-| `region_name`                     | `category` |         |    ✓     |                       |
-| `channel_raw_text`                | `string`   |         |          |                       |
-| `channel_code`                    | `Int32`    |         |    ✓     |                       |
-| `parent_channel_code`             | `Int32`    |         |          |                       |
-| `parent_channel_name`             | `string`   |         |          | decoded from codelist |
-| `other_partners`                  | `string`   |         |          |                       |
-| `channel_name`                    | `category` |         |    ✓     |                       |
-| `finance_instrument_code`         | `Int16`    |         |    ✓     |                       |
-| `finance_instrument_name`         | `category` |         |    ✓     |                       |
-| `financing_arrangement_code`      | `category` |         |    ✓     |                       |
-| `financing_arrangement_name`      | `category` |         |    ✓     |                       |
-| `framework_of_collaboration_code` | `category` |         |    ✓     |                       |
-| `framework_of_collaboration_name` | `category` |         |    ✓     |                       |
-| `modality_code`                   | `category` |         |    ✓     |                       |
-| `modality_name`                   | `category` |         |    ✓     |                       |
-| `project_title`                   | `string`   |         |          |                       |
-| `external_link`                   | `string`   |         |          |                       |
-| `sdg_codes_raw`                   | `string`   |         |    ✓     |                       |
-| `sdg_goal_level_explanation`      | `string`   |         |          |                       |
-| `keywords_raw`                    | `string`   |         |    ✓     |                       |
-| `purpose_code`                    | `Int32`    |         |    ✓     |                       |
-| `purpose_name`                    | `category` |         |    ✓     |                       |
-| `sector_name`                     | `category` |         |    ✓     |                       |
-| `sector_code`                     | `Int16`    |         |    ✓     |                       |
-| `isic_code`                       | `category` |         |    ✓     |                       |
-| `isic_description`                | `category` |         |    ✓     |                       |
-| `isic_section_letter`             | `category` |         |    ✓     |                       |
-| `isic_section_description`        | `category` |         |    ✓     |                       |
-| `project_description`             | `string`   |         |          |                       |
-| `tossd_pillar`                    | `Int8`     |    ✓    |    ✓     |                       |
-| `tossd_subpillar`                 | `category` |    ✓    |    ✓     |                       |
-| `usd_commitment`\*                | `float64`  |    ✓    |    ✓     |                       |
-| `usd_commitment_deflated`\*       | `float64`  |    ✓    |    ✓     |                       |
-| `usd_disbursement`\*              | `float64`  |    ✓    |    ✓     |                       |
-| `usd_disbursement_deflated`\*     | `float64`  |    ✓    |    ✓     |                       |
-| `usd_reflow`\*                    | `float64`  |    ✓    |    ✓     |                       |
-| `usd_reflow_deflated`\*           | `float64`  |    ✓    |    ✓     |                       |
-| `salary_cost`                     | `float64`  |         |          |                       |
-| `concessionality_flag`            | `Int8`     |         |    ✓     |                       |
-| `maturity`                        | `Int16`    |         |    ✓     |                       |
-| `mobilisation_instrument`         | `category` |         |    ✓     |                       |
-| `usd_amount_mobilised`\*          | `float64`  |    ✓    |    ✓     |                       |
-| `usd_amount_mobilised_deflated`\* | `float64`  |    ✓    |    ✓     |                       |
-| `mobilisation_origin`             | `string`   |         |          |                       |
-| `source_name`                     | `category` |         |    ✓     |                       |
+| Column | Dtype | Minimal | Analysis | Description |
+| --- | --- | :---: | :---: | --- |
+| `year` | `Int16` | Yes | Yes | Reporting year (2019 to 2024). |
+| `provider_code` | `Int16` | Yes | Yes | Numeric provider code. Code `0` indicates an aggregate summary row. |
+| `provider_name` | `category` | Yes | Yes | Standard English name of the provider country or multilateral institution. |
+| `provider_agency_name` | `category` | | | Extending agency or department within the provider. |
+| `tossd_id` | `string` | Yes | Yes | Unique TOSSD activity identifier. |
+| `project_number` | `string` | Yes | Yes | Provider internal project or commitment identifier. |
+| `recipient_code` | `Int16` | Yes | Yes | Numeric recipient country or regional code. |
+| `recipient_name` | `category` | Yes | Yes | Standard English name of the recipient country, territory, or region. |
+| `region_name` | `category` | | Yes | Geographic region of the recipient. |
+| `channel_raw_text` | `string` | | | Unstructured channel text as reported by the provider. |
+| `channel_code` | `Int32` | | Yes | Numeric code for the implementing channel organization. |
+| `parent_channel_code` | `Int32` | | | Numeric code for the parent organization of the implementing channel. |
+| `parent_channel_name` | `string` | | | Decoded English name of the parent channel organization from the channel codelist. |
+| `other_partners` | `string` | | | Names of co-financing entities or implementing partners. |
+| `channel_name` | `category` | | Yes | Standard category of the implementing channel. |
+| `finance_instrument_code` | `Int16` | | Yes | Numeric code for the financial instrument (grants, debt, equity). |
+| `finance_instrument_name` | `category` | | Yes | Name of the financial instrument. |
+| `financing_arrangement_code` | `category` | | Yes | Code for the financing arrangement: blended finance, Islamic finance, recipient-counterpart co-financing, officially supported export credits, or SDR transactions. |
+| `financing_arrangement_name` | `category` | | Yes | Name of the financing arrangement. |
+| `framework_of_collaboration_code` | `category` | | Yes | Code for South-South or triangular collaboration frameworks. |
+| `framework_of_collaboration_name` | `category` | | Yes | Name of the collaboration framework. |
+| `modality_code` | `category` | | Yes | Code for the aid modality (e.g. project aid, core contributions). |
+| `modality_name` | `category` | | Yes | Name of the aid modality. |
+| `project_title` | `string` | | | Short title of the activity. |
+| `external_link` | `string` | | | URL pointing to external project documentation. |
+| `sdg_codes_raw` | `string` | | Yes | Semicolon-separated SDG goals and targets tagged for the activity. |
+| `sdg_goal_level_explanation` | `string` | | | Narrative rationale for the assigned SDG classifications. |
+| `keywords_raw` | `string` | | Yes | Pipe-separated thematic keywords (e.g. climate, biodiversity, gender). |
+| `purpose_code` | `Int32` | | Yes | 5-digit DAC purpose code identifying the sector sub-discipline. |
+| `purpose_name` | `category` | | Yes | Description of the 5-digit DAC purpose code. |
+| `sector_name` | `category` | | Yes | Broad sector classification name (3-digit DAC sector). |
+| `sector_code` | `Int16` | | Yes | 3-digit DAC sector code. |
+| `isic_code` | `category` | | Yes | International Standard Industrial Classification (ISIC) industry code. |
+| `isic_description` | `category` | | Yes | Description of the ISIC industry code. |
+| `isic_section_letter` | `category` | | Yes | High-level ISIC section letter (e.g. A for Agriculture). |
+| `isic_section_description` | `category` | | Yes | Description of the ISIC section. |
+| `project_description` | `string` | | | Narrative description of project objectives and activities. |
+| `tossd_pillar` | `Int8` | Yes | Yes | Pillar classification (`1` for Pillar I, `2` for Pillar II, `0` for legacy publisher placeholder rows). |
+| `tossd_subpillar` | `category` | Yes | Yes | Sub-pillar category (`"21"` for Pillar II.A, `"22"` for Pillar II.B). |
+| `usd_commitment`\* | `float64` | Yes | Yes | Total gross financial commitment in current USD thousands. |
+| `usd_commitment_deflated`\* | `float64` | Yes | Yes | Total gross financial commitment in constant 2024 USD thousands. |
+| `usd_disbursement`\* | `float64` | Yes | Yes | Gross financial disbursement in current USD thousands. |
+| `usd_disbursement_deflated`\* | `float64` | Yes | Yes | Gross financial disbursement in constant 2024 USD thousands. |
+| `usd_reflow`\* | `float64` | Yes | Yes | Financial reflows and repayments in current USD thousands. |
+| `usd_reflow_deflated`\* | `float64` | Yes | Yes | Financial reflows and repayments in constant 2024 USD thousands. |
+| `salary_cost` | `float64` | | | Administrative salary costs reported for technical cooperation. |
+| `concessionality_flag` | `Int8` | | Yes | Concessionality status (`1` for concessional, `0` for non-concessional). |
+| `maturity` | `Int16` | | Yes | Maturity duration for debt instruments as reported by the provider. |
+| `mobilisation_instrument` | `category` | | Yes | Instrument used to mobilise private commercial finance. |
+| `usd_amount_mobilised`\* | `float64` | Yes | Yes | Private capital mobilised by official interventions in current USD thousands. |
+| `usd_amount_mobilised_deflated`\* | `float64` | Yes | Yes | Private capital mobilised in constant 2024 USD thousands. |
+| `mobilisation_origin` | `string` | | | Geographic origin of mobilised private investment. |
+| `source_name` | `category` | | Yes | Data source identifier for the reported activity. |
 
-\* Reported in USD thousands. `units="usd_million"` divides these 8 columns by 1000.
+\* Reported in USD thousands. Specifying `units="usd_million"` divides these 8 columns by 1,000.
 
 ## Amount columns
 
-| Column                          | 2024 non-null rows |
-| ------------------------------- | -----------------: |
-| `usd_commitment`                |            390,190 |
-| `usd_commitment_deflated`       |            390,190 |
-| `usd_disbursement`              |            441,645 |
-| `usd_disbursement_deflated`     |            441,645 |
-| `usd_reflow`                    |            215,264 |
-| `usd_reflow_deflated`           |            215,264 |
-| `usd_amount_mobilised`          |              1,693 |
-| `usd_amount_mobilised_deflated` |              1,693 |
+| Column | 2024 Non-Null Rows | Analytical Scope |
+| --- | ---: | --- |
+| `usd_commitment` | 390,190 | Official commitments in current prices. |
+| `usd_commitment_deflated` | 390,190 | Official commitments adjusted to 2024 constant prices. |
+| `usd_disbursement` | 441,645 | Gross disbursements in current prices. |
+| `usd_disbursement_deflated` | 441,645 | Gross disbursements adjusted to 2024 constant prices. |
+| `usd_reflow` | 215,264 | Loan repayments and capital returns in current prices. |
+| `usd_reflow_deflated` | 215,264 | Loan repayments adjusted to 2024 constant prices. |
+| `usd_amount_mobilised` | 1,693 | Private finance mobilised in current prices. |
+| `usd_amount_mobilised_deflated` | 1,693 | Private finance mobilised adjusted to 2024 constant prices. |
 
-Each nominal column and its `_deflated` twin have identical non-null counts in 2024. See [About the amount columns](../about/amounts.md) for what distinguishes commitments, disbursements, reflows, and mobilised amounts, and current from constant prices.
+Each current price column has the identical non-null count as its corresponding deflated column. For conceptual differences between commitments, disbursements, reflows, and mobilised amounts, see [The amount columns](../about/amounts.md).
 
-## Always present
+## Always present columns
 
-| Column            | Dtype      | Meaning                                                                                                                 |
-| ----------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `tossd_pillar`    | `Int8`     | Pillar number, `1`, `2`, or `0` for the 2020-2023 placeholder rows (a publisher artefact). |
-| `tossd_subpillar` | `category` | Sub-pillar tag, `"21"` or `"22"`, where tagged.                                                                         |
-| `is_aggregate`    | `bool`     | `provider_code == 0`.                                                                                                   |
-| `unit`            | `category` | `"usd_thousand"` or `"usd_million"`, set by the `units=` argument to `get_tossd`.                                       |
+These four columns appear in all query outputs:
+
+| Column | Dtype | Analytical Role |
+| --- | --- | --- |
+| `tossd_pillar` | `Int8` | Pillar classification (`1` for Pillar I cross-border flows, `2` for Pillar II global public goods, `0` for publisher placeholder rows). |
+| `tossd_subpillar` | `category` | Sub-pillar category (`"21"` for Pillar II.A, `"22"` for Pillar II.B), populated from 2023 onward. |
+| `is_aggregate` | `bool` | True for summary records (`provider_code == 0`) and False for individual activity records. |
+| `unit` | `category` | Denomination unit (`"usd_thousand"` or `"usd_million"`). |
 
 ## Data quality notes
 
-- Empty strings in the published files become real nulls in `get_tossd`. `get_tossd_raw` leaves them as published.
-- Modality code `c01` is normalised to `C01`. The published files carry both cases across years.
-- `maturity`'s unit is undocumented by the publisher and is passed through as published.
+- Empty strings in published files convert to typed null values in `get_tossd`. `get_tossd_raw` preserves raw publisher string representations.
+- Modality code `c01` standardises to uppercase `C01`. Published files contain mixed case across different reporting years.
+- The `maturity` column reflects values directly from the publisher without unit conversion.
 
-## Schema drift
+## Schema drift detection
 
-On every read, tossd_reader checks the published file's columns against `schema.csv`. A published file missing a column the packaged schema expects raises `SchemaDriftError`. So does a value that cannot be cast to its `schema.csv` `target_dtype`, and a file carrying two columns whose names normalise to the same key. The message names the column, and the offending value where there is one.
+During data loading, `tossd_reader` compares published columns against `schema.csv`. A missing expected column, an unconvertible data type, or duplicate normalised column names raises `SchemaDriftError` identifying the affected column and offending value.
 
 <!-- prettier-ignore -->
-!!! warning "Unrecognised schema columns"
+!!! warning "Heads up"
 
-    A column the file carries that `schema.csv` doesn't recognise warns once per process and passes through under its original name, visible only under `columns="all"`.
+    Columns present in source files that do not appear in `schema.csv` emit a single warning per process and pass through under their original names when using `columns="all"`.
 
 ## Next
 
-- [Pillars, aggregates, and breaks](../about/pillars-and-aggregates.md). Pillar and sub-pillar semantics, the pillar-0 placeholder rows, and the reporter-base structural break.
-- [Query](query.md). `columns=` and `units=` in context, on `get_tossd`.
+- [Pillars and aggregate rows](../about/pillars-and-aggregates.md). Pillar classification rules, aggregate row filtering, and structural breaks.
+- [Query](query.md). Filter syntax and preset selection on `get_tossd`.

@@ -4,7 +4,7 @@ Add ISO3 country codes to a `get_tossd` frame, then join it to World Bank, IMF, 
 
 ## Steps
 
-1. **Add ISO3 codes.** `add_iso3` looks up `provider_code` and `recipient_code` against the OECD DAC codelist. Provider names collide in the published files. Use the ISO3 codes for joining to avoid merging distinct entities like the African Development Bank Group.
+1. **Add ISO3 codes.** `add_iso3` looks up `provider_code` and `recipient_code` against the standard OECD DAC codelist. Because provider names in published files vary or collide, use ISO3 codes when joining external datasets to distinguish sovereign countries from multilateral institutions and regional bodies.
 
    ```python
    import tossd_reader as tossd
@@ -34,11 +34,11 @@ Add ISO3 country codes to a `get_tossd` frame, then join it to World Bank, IMF, 
    merged = iso.merge(wdi, left_on="provider_iso3", right_on="iso3", how="left")
    ```
 
-Aggregates (provider code `0`), multilaterals such as the African Development Bank Group, and TOSSD-only entities all resolve to `NA` for `provider_iso3`. A `how="inner"` join drops those rows silently. `how="left"` keeps them, with `NA` in every joined column.
+   Aggregate rows (provider code `0`), multilateral organizations such as the African Development Bank Group, and TOSSD-only entities resolve to `NA` for `provider_iso3`. A `how="left"` join keeps all activities and leaves `NA` in the joined columns. An `how="inner"` join silently drops activities from multilateral and aggregate providers.
 
 ## Verify it worked
 
-Count the nulls before joining to identify rows an inner join drops.
+Count the missing ISO3 values to identify rows that an inner join drops.
 
 ```python
 iso["provider_iso3"].isna().sum()
@@ -48,13 +48,13 @@ iso["provider_iso3"].isna().sum()
 1864
 ```
 
-1,864 of 4,802 rows carry no `provider_iso3`. The same check applies to `recipient_iso3` before joining on the recipient side.
+In this Senegal query, 1,864 of 4,802 rows carry no `provider_iso3` because they represent multilateral providers or aggregate entries. Run the same verification on `recipient_iso3` when joining on recipient countries.
 
 ## Troubleshooting
 
-**`ValueError` naming `provider_code`/`recipient_code`.** `add_iso3` needs at least one of them present. Both ship in every column preset. This happens with an explicit `columns=` list that drops them.
+**`ValueError` naming `provider_code` or `recipient_code`.** `add_iso3` requires at least one of these columns on the input frame. Both columns ship in all default presets. This error occurs when an explicit `columns=` list omits both columns.
 
 ## See also
 
-- [Helpers reference](../reference/helpers.md) for `add_iso3`'s full contract.
-- [Pillars and aggregates](../about/pillars-and-aggregates.md) for what aggregate and TOSSD-only rows are.
+- [Helpers reference](../reference/helpers.md) for `add_iso3` parameter definitions and lookup tables.
+- [Pillars and aggregates](../about/pillars-and-aggregates.md) for details on aggregate rows and TOSSD-only reporting entities.

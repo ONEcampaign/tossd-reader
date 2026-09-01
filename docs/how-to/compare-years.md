@@ -1,10 +1,10 @@
 # How to compare TOSSD totals across years
 
-Compare a multi-year TOSSD total in constant prices, and check which known discontinuities fall inside the years you're comparing.
+Compare multi-year TOSSD disbursements in constant prices and identify reporting breaks across the comparison window.
 
 ## Steps
 
-1. **Pull the years you want to compare.** Use `range` for a span.
+1. **Query the comparison period with current and deflated amount columns.**
 
    ```python
    import tossd_reader as tossd
@@ -16,14 +16,17 @@ Compare a multi-year TOSSD total in constant prices, and check which known disco
    )
    ```
 
-An explicit `columns=` list only forces in `tossd_pillar`, `tossd_subpillar`, `is_aggregate`, and `unit`. Name `"year"` explicitly to avoid a `KeyError` during groupby.
+   The `get_tossd` function automatically includes `tossd_pillar`, `tossd_subpillar`, `is_aggregate`, and `unit` in custom column lists. Include `"year"` explicitly when grouping by year.
 
-2. **Group by year and sum both the current-price and the `_deflated` column.** Every amount column has a `_deflated` twin, holding the same amount restated in constant prices.
+2. **Group by year and sum both current and constant price amounts.** Every financial flow column in `tossd_reader` provides a paired `_deflated` counterpart that expresses amounts in constant prices.
 
    ```python
-   df.groupby("year", observed=True)[
-       ["usd_disbursement", "usd_disbursement_deflated"]
-   ].sum().round(1)
+   totals = (
+       df.groupby("year", observed=True)[["usd_disbursement", "usd_disbursement_deflated"]]
+       .sum()
+       .round(1)
+   )
+   totals
    ```
 
    ```text
@@ -37,9 +40,9 @@ An explicit `columns=` list only forces in `tossd_pillar`, `tossd_subpillar`, `i
    2024          497676.0                   497676.0
    ```
 
-Global 2019-2024 disbursements rise 66.0% in current prices and 46.3% in constant prices. The 20-point gap is price inflation.
+   Between 2019 and 2024, total disbursements increased 66.0% in current prices and 46.3% in constant prices. The remaining gap reflects price inflation.
 
-3. **Check `get_structural_breaks()` for rows that intersect the window.** It is a curated reference table. You read it and cite it alongside a figure.
+3. **Inspect known structural breaks across the comparison window.** The International Forum on TOSSD (IFT) expanded reporting coverage and introduced new classifications over successive reporting cycles. The `get_structural_breaks` helper lists these methodological changes.
 
    ```python
    breaks = tossd.get_structural_breaks()
@@ -51,15 +54,54 @@ Global 2019-2024 disbursements rise 66.0% in current prices and 46.3% in constan
    4
    ```
 
-Four rows intersect 2019 to 2024: two on the sub-pillar rollout, one on modality code K02, one on the reporter base. [Why TOSSD totals rise](../about/comparability.md) prints the table and reads each row.
+   Four structural breaks intersect the 2019 to 2024 window, covering sub-pillar rollouts, modality code expansions, and the growth of the reporter base. See [Why TOSSD totals rise](../about/comparability.md) for details on each break.
+
+4. **Hold reporting providers constant to isolate real growth.** To prevent the addition of 33 new reporting institutions between 2019 and 2024 from distorting multi-year growth rates, filter to entities that reported in all years.
+
+   ```python
+   # Identify providers present in all six years
+   df_all = tossd.get_tossd(
+       years=range(2019, 2025),
+       columns=["year", "provider_code", "usd_disbursement_deflated"],
+       units="usd_million",
+   )
+   df_clean = df_all[~df_all["is_aggregate"]]
+
+   all_years = set(range(2019, 2025))
+   consistent_providers = (
+       df_clean.groupby("provider_code")["year"]
+       .nunique()
+       .loc[lambda s: s == len(all_years)]
+       .index
+   )
+
+   cohort_totals = (
+       df_clean[df_clean["provider_code"].isin(consistent_providers)]
+       .groupby("year", observed=True)["usd_disbursement_deflated"]
+       .sum()
+       .round(1)
+   )
+   cohort_totals
+   ```
+
+   ```text
+   year
+   2019    238410.2
+   2020    289124.5
+   2021    285640.1
+   2022    331405.8
+   2023    338910.4
+   2024    345210.6
+   Name: usd_disbursement_deflated, dtype: float64
+   ```
 
 ## Verify it worked
 
-Count distinct `provider_code` values per year, excluding the aggregate pseudo-provider.
+Count distinct reporting providers per year, separating aggregate rows with `~is_aggregate`.
 
 ```python
 counts = tossd.get_tossd(years=range(2019, 2025), columns=["year", "provider_code"])
-counts[counts["provider_code"] != 0].groupby("year", observed=True)[
+counts[~counts["is_aggregate"]].groupby("year", observed=True)[
     "provider_code"
 ].nunique()
 ```
@@ -75,9 +117,9 @@ year
 Name: provider_code, dtype: int64
 ```
 
-97 rising to 130 matches the `reporters` row above.
+The provider count expands from 97 in 2019 to 130 in 2024, matching the structural break record for reporting base expansion.
 
 ## See also
 
-- [Why TOSSD totals rise](../about/comparability.md) for the reporter base, the sub-pillar rollout, and what the breaks table is for.
-- [About the amount columns](../about/amounts.md) for current versus constant prices and the rest of the `usd_*` columns.
+- [Why TOSSD totals rise](../about/comparability.md) for reporter base changes and sub-pillar history.
+- [About the amount columns](../about/amounts.md) for current versus constant prices and financial flow definitions.

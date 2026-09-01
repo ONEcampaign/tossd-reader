@@ -1,10 +1,10 @@
 # How to split Pillar II into its sub-pillars
 
-Filter to Pillar II.A or II.B with `pillars=`, check sub-pillar coverage before you compare years, and get every pillar-2 row when tagging doesn't matter for your question.
+Filter to Pillar II.A or II.B with `pillars=`, check sub-pillar coverage before comparing years, and retrieve all Pillar II rows when tracking general pillar spending.
 
 ## Steps
 
-1. **Filter with `pillars=`.** Pillar II.A takes `21`, `"21"`, or `"II.A"`; Pillar II.B takes `22`, `"22"`, or `"II.B"`. Matching is case-insensitive, so `"ii.a"` works too. All three forms of II.A return the same rows.
+1. **Filter with `pillars=`.** Pillar II.A accepts `21`, `"21"`, or `"II.A"`. Pillar II.B accepts `22`, `"22"`, or `"II.B"`. Matching is case-insensitive, so `"ii.a"` also works. All three forms of II.A return identical rows.
 
    ```python
    import tossd_reader as tossd
@@ -21,7 +21,7 @@ Filter to Pillar II.A or II.B with `pillars=`, check sub-pillar coverage before 
    True True
    ```
 
-Querying both sub-pillars for 2024 gives their disbursement split.
+   Querying both sub-pillars for 2024 gives their disbursement split across International Public Goods (II.A) and Global Challenges (II.B).
 
    ```python
    b = tossd.get_tossd(years=2024, pillars="II.B", columns="minimal", units="usd_million")
@@ -32,7 +32,7 @@ Querying both sub-pillars for 2024 gives their disbursement split.
    76510.1 54782.7
    ```
 
-2. **Check sub-pillar coverage before you compare years.** Sub-pillar tagging rolled out gradually. Measure it as the share of pillar-2 rows whose `tossd_subpillar` is `"21"` or `"22"`. An untagged pillar-2 row carries `tossd_subpillar == "2"`, the pillar value itself, so counting non-nulls would report full coverage in every year.
+2. **Check sub-pillar coverage before you compare years.** Sub-pillar tagging rolled out gradually starting in 2023. Measure coverage as the share of Pillar II rows where `tossd_subpillar` is `"21"` or `"22"`. An untagged Pillar II row carries `tossd_subpillar == "2"`, the pillar value itself, so counting non-nulls would report full coverage in every year.
 
    ```python
    def subpillar_coverage(year):
@@ -53,10 +53,10 @@ Querying both sub-pillars for 2024 gives their disbursement split.
    ```
 
    <!-- prettier-ignore -->
-   !!! warning "Sub-pillar coverage gap in 2023"
-    A cross-year sub-pillar comparison is only clean from 2024. 2023 tags about half its pillar-2 rows, and the untagged half sits under `tossd_subpillar == "2"`.
+   !!! warning "Heads up"
+       Cross-year sub-pillar comparisons are clean from 2024 onward. Data for 2023 tags roughly half its Pillar II rows, and untagged activities remain under `tossd_subpillar == "2"`.
 
-3. **Read the two warnings a default-years sub-pillar query emits.** With `years=None` (the default), a sub-pillar filter narrows silently to 2023 onward, and a second warning names the 2023 coverage gap.
+3. **Read the two warnings emitted by default-years sub-pillar queries.** When `years=None` (the default), a sub-pillar filter narrows automatically to 2023 onward, and a second warning notes the 2023 coverage gap.
 
    ```python
    ii_a = tossd.get_tossd(pillars=21, columns="minimal")
@@ -67,7 +67,7 @@ Querying both sub-pillars for 2024 gives their disbursement split.
    UserWarning: 2023 sub-pillar tagging is incomplete: roughly 49% of 2023 pillar-2 rows carry no sub-pillar tag (the rollout wasn't yet complete that year). Treat 2023 sub-pillar splits as indicative; 2024 onward is complete.
    ```
 
-4. **Name an explicit pre-2023 year with a sub-pillar filter and it raises instead of narrowing.** The silent narrowing applies only to the default `years=None`. An explicit year before 2023 combined with a sub-pillar filter is an error.
+4. **Passing an explicit pre-2023 year with a sub-pillar filter raises an error.** Automatic narrowing applies only when `years=None`. Specifying an explicit year prior to 2023 alongside a sub-pillar filter raises an `InvalidPillarError`.
 
    ```python
    tossd.get_tossd(years=2021, pillars="II.A", columns="minimal")
@@ -77,7 +77,7 @@ Querying both sub-pillars for 2024 gives their disbursement split.
    InvalidPillarError: Sub-pillar filters (pillars=21/'II.A' or 22/'II.B') are not meaningful before 2023; requested year(s) [2021] predate that.
    ```
 
-5. **Get every pillar-2 row regardless of tagging with `pillars=2`.** This is the only way to reach 2022's 24-row trace and every untagged 2023 row alongside the tagged ones, with no year narrowing and no warning.
+5. **Retrieve every Pillar II row with `pillars=2`.** This retrieves all Pillar II activities across all available years, including the 2022 baseline records and untagged 2023 rows, without year narrowing or warnings.
 
    ```python
    p2 = tossd.get_tossd(years=2024, pillars=2, columns="minimal", units="usd_million")
@@ -94,7 +94,7 @@ Querying both sub-pillars for 2024 gives their disbursement split.
 
 ## Verify it worked
 
-The three `tossd_subpillar` groups partition every pillar-2 row, so the tagged and untagged counts add up to the frame's length.
+The three `tossd_subpillar` groups partition every Pillar II row, so the tagged and untagged counts sum to the total row count.
 
 ```python
 tagged = p2["tossd_subpillar"].isin(["21", "22"]).sum()
@@ -106,13 +106,13 @@ int(tagged + untagged) == len(p2)
 True
 ```
 
-Pillar II's 2024 disbursements total 133561.8 USD million. Each group's figure above is rounded on its own, so adding the three printed numbers lands a decimal off that total.
+Pillar II disbursements for 2024 total 133,561.8 USD million. Each group amount above is rounded independently, so summing the three printed values differs by a decimal from the total.
 
 ## Troubleshooting
 
-**`InvalidPillarError` naming a year.** You passed `pillars=21`/`22` (or `"II.A"`/`"II.B"`) with an explicit `years=` that includes a year before 2023. Drop `years=` to fall back to the 2023-onward narrowing, or switch to `pillars=2` for pre-2023 pillar-2 rows with no sub-pillar split.
+**`InvalidPillarError` naming a year.** You passed `pillars=21`/`22` (or `"II.A"`/`"II.B"`) with an explicit `years=` argument containing years before 2023. Omit `years=` to use the 2023-onward default narrowing, or use `pillars=2` to query all Pillar II rows across any year without sub-pillar splits.
 
 ## See also
 
-- [Pillars and aggregate rows](../about/pillars-and-aggregates.md) for the sub-pillar rollout and why 2023 figures move as more of that year's backlog gets tagged.
-- [Query reference](../reference/query.md) for `get_tossd`'s full `pillars=` contract.
+- [Pillars and aggregate rows](../about/pillars-and-aggregates.md) for the sub-pillar rollout context and reporting instructions.
+- [Query reference](../reference/query.md) for `get_tossd`'s full `pillars=` filter options.

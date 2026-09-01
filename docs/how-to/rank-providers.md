@@ -1,10 +1,10 @@
 # How to rank providers by disbursement
 
-Rank providers by disbursement with the aggregate pseudo-provider excluded and the two-code provider names kept apart.
+Rank official providers by total disbursement, using the `is_aggregate` flag to separate provider activities from aggregate totals and grouping by provider code and name.
 
 ## Steps
 
-1. **Query the year, with amounts in USD million.**
+1. **Query activity records with amounts scaled to USD million.**
 
    ```python
    import tossd_reader as tossd
@@ -12,10 +12,12 @@ Rank providers by disbursement with the aggregate pseudo-provider excluded and t
    h = tossd.get_tossd(years=2024, columns="minimal", units="usd_million")
    ```
 
-2. **Exclude `is_aggregate` before you group.**
+   The `columns="minimal"` preset provides `provider_code`, `provider_name`, `is_aggregate`, and `usd_disbursement`.
+
+2. **Filter out aggregate total rows.** The TOSSD data published at tossd.online includes summary aggregate records alongside activity records. Grouping without filtering aggregates inflates totals with double-counted figures.
 
    ```python
-   # ❌ aggregate row included, ranks first at 99379.6
+   # Unfiltered data includes aggregate summary rows
    h.groupby("provider_name", observed=True)["usd_disbursement"].sum().sort_values(
        ascending=False
    ).round(1).head(3)
@@ -29,13 +31,18 @@ Rank providers by disbursement with the aggregate pseudo-provider excluded and t
    Name: usd_disbursement, dtype: float64
    ```
 
-3. **Group by `["provider_code", "provider_name"]`, sum, and sort.** Keying on `provider_code` alongside `provider_name` separates distinct provider codes with the same name:
+3. **Group by `["provider_code", "provider_name"]` and sort descending.** Grouping by both `provider_code` and `provider_name` ensures distinct reporting entities that share similar labels remain separate.
 
    ```python
-   # ✅ aggregate excluded, codes kept apart
-   h[~h["is_aggregate"]].groupby(["provider_code", "provider_name"], observed=True)[
-       "usd_disbursement"
-   ].sum().sort_values(ascending=False).round(1).head(5)
+   # Filter aggregates and group by code and name
+   ranked = (
+       h[~h["is_aggregate"]]
+       .groupby(["provider_code", "provider_name"], observed=True)["usd_disbursement"]
+       .sum()
+       .sort_values(ascending=False)
+       .round(1)
+   )
+   ranked.head(5)
    ```
 
    ```text
@@ -50,7 +57,7 @@ Rank providers by disbursement with the aggregate pseudo-provider excluded and t
 
 ## Verify it worked
 
-Check what excluding `is_aggregate` dropped, the aggregate rows' share of the unfiltered total:
+Calculate the share of disbursements represented by aggregate rows to confirm the scale of separated totals.
 
 ```python
 agg = h[h["is_aggregate"]]["usd_disbursement"].sum()
@@ -62,7 +69,9 @@ round(agg / total * 100, 1)
 20.0
 ```
 
+Aggregate summary rows account for 20.0% of the total recorded disbursements in the 2024 dataset.
+
 ## See also
 
-- [Pillars and aggregate rows](../about/pillars-and-aggregates.md) for what the aggregate provider is and when to include it.
-- [Query reference](../reference/query.md) for `get_tossd`'s full argument and preset contract.
+- [Pillars and aggregate rows](../about/pillars-and-aggregates.md) for how aggregate rows are constructed and reported in TOSSD.
+- [Query reference](../reference/query.md) for query arguments and column presets.

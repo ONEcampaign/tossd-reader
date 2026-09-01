@@ -4,6 +4,9 @@ site_description = "Python package to access TOSSD activity-level data"
 site_url = "https://onecampaign.github.io/tossd-reader/"
 repo_url = "https://github.com/ONEcampaign/tossd-reader"
 
+[project.extra.version]
+provider = "mike"
+
 nav = [
   "index.md",
   { "Get started" = [
@@ -12,16 +15,18 @@ nav = [
   ] },
   { "How-to guides" = [
     { "Look up provider and recipient codes" = "how-to/look-up-codes.md" },
-    { "Filter by sector, purpose, or channel" = "how-to/filter-by-sector.md" },
+    { "Filter by sector, purpose, channel, or modality" = "how-to/filter-by-sector.md" },
     { "Rank providers by disbursement" = "how-to/rank-providers.md" },
     { "Compare totals across years" = "how-to/compare-years.md" },
-    { "Check a figure against the published total" = "how-to/reconcile-a-figure.md" },
+    { "Aggregate by recipient country groups" = "how-to/aggregate-by-recipient-group.md" },
+    { "Analyse financial instruments and concessionality" = "how-to/analyse-instruments-and-debt.md" },
     { "Split disbursements across SDG goals" = "how-to/analyse-by-sdg.md" },
     { "Measure climate and gender finance" = "how-to/analyse-by-keyword.md" },
     { "Split Pillar II into sub-pillars" = "how-to/analyse-by-subpillar.md" },
     { "Measure Pillar II expenditures in the provider country" = "how-to/provider-costs.md" },
     { "Join TOSSD to other country datasets" = "how-to/join-other-datasets.md" },
-    { "Read the published columns unchanged" = "how-to/read-published-columns.md" },
+    { "Check a figure against published totals" = "how-to/reconcile-a-figure.md" },
+    { "Read published columns unchanged" = "how-to/read-published-columns.md" },
     { "Work offline and manage the cache" = "how-to/work-offline.md" },
   ] },
   { "Reference" = [
@@ -35,7 +40,7 @@ nav = [
     { "Pillars and aggregate rows" = "about/pillars-and-aggregates.md" },
     { "The amount columns" = "about/amounts.md" },
     { "Why TOSSD totals rise" = "about/comparability.md" },
-    { "Reproducibility and vintages" = "about/reproducibility.md" },
+    { "Reproducibility and the cache" = "about/reproducibility.md" },
   ] },
 ]
 
@@ -43,6 +48,7 @@ nav = [
 admonition = {}
 pymdownx.details = {}
 pymdownx.superfences = {}
+pymdownx.tabbed = { alternate_style = true }
 pymdownx.highlight.anchor_linenums = true
 pymdownx.highlight.pygments_lang_class = true
 pymdownx.inlinehilite = {}

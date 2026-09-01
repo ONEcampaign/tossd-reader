@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     )
     from tossd_reader.codelists import get_available_filters as get_available_filters
     from tossd_reader.codelists import get_codelists_version as get_codelists_version
+    from tossd_reader.config import get_cache_dir as get_cache_dir
     from tossd_reader.config import set_cache_dir as set_cache_dir
     from tossd_reader.exceptions import InvalidPillarError as InvalidPillarError
     from tossd_reader.exceptions import SchemaDriftError as SchemaDriftError
@@ -44,6 +45,7 @@ __all__ = [
     "export",
     "extract_keywords",
     "get_available_filters",
+    "get_cache_dir",
     "get_codelists_version",
     "get_structural_breaks",
     "get_tossd",
@@ -57,6 +59,7 @@ _LAZY_ATTRS: dict[str, tuple[str, str]] = {
     "get_tossd": ("tossd_reader.query", "get_tossd"),
     "export": ("tossd_reader._export", "export"),
     "set_cache_dir": ("tossd_reader.config", "set_cache_dir"),
+    "get_cache_dir": ("tossd_reader.config", "get_cache_dir"),
     "get_available_filters": ("tossd_reader.codelists", "get_available_filters"),
     "get_codelists_version": ("tossd_reader.codelists", "get_codelists_version"),
     "TossdReaderError": ("tossd_reader.exceptions", "TossdReaderError"),

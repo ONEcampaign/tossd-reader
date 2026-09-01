@@ -1,10 +1,10 @@
 # How to look up provider and recipient codes
 
-Resolve a provider or recipient name or code before passing it to `get_tossd`, and read the error when a name doesn't match.
+Look up official provider and recipient codes or names from the packaged codelists before querying `get_tossd`, and resolve unknown code errors.
 
 ## Steps
 
-1. **List the filterable dimensions.**
+1. **List the available filter dimensions.**
 
    ```python
    import tossd_reader as tossd
@@ -17,9 +17,9 @@ Resolve a provider or recipient name or code before passing it to `get_tossd`, a
    ['channel', 'finance_instrument', 'financing_arrangement', 'framework_of_collaboration', 'modality', 'pillar', 'provider', 'purpose', 'recipient', 'sector', 'years']
    ```
 
-Eleven dimensions come back, but `get_tossd` only takes three as arguments: `providers`, `recipients`, and `pillars`. Filter sector, purpose, channel, and modality in pandas after the call, as [How to filter by sector, purpose, channel, or modality](filter-by-sector.md) shows.
+   The packaged codelists contain eleven dimensions. The `get_tossd` function accepts `providers`, `recipients`, and `pillars` as query arguments. Filter other dimensions such as sector, purpose, channel, and modality in pandas after querying, as shown in [How to filter by sector, purpose, channel, or modality](filter-by-sector.md).
 
-2. **Inspect the dimension you need.**
+2. **Inspect the target dimension DataFrame.**
 
    ```python
    filters["provider"].head(3)
@@ -32,7 +32,7 @@ Eleven dimensions come back, but `get_tossd` only takes three as arguments: `pro
    2    3  Denmark       False  DNK
    ```
 
-3. **Pass the code or the exact name to `get_tossd`.** A misspelled name raises `UnknownCodeError` with suggestions:
+3. **Pass the numeric code or exact name to `get_tossd`.** An unrecognized string raises `UnknownCodeError` with suggested matches.
 
    ```python
    tossd.get_tossd(years=2024, providers="Germny")
@@ -42,7 +42,7 @@ Eleven dimensions come back, but `get_tossd` only takes three as arguments: `pro
    UnknownCodeError: 'Germny' did not match any providers code or name in the packaged codelist. Closest matches: Germany.
    ```
 
-A string is checked against the codelist. An in-range integer passes without codelist lookup:
+   Strings are validated against the packaged codelist. In-range integer codes pass directly to the query.
 
    ```python
    tossd.get_tossd(years=2024, providers=500, columns="minimal").shape
@@ -52,9 +52,9 @@ A string is checked against the codelist. An in-range integer passes without cod
    (0, 19)
    ```
 
-`500` fits the provider code column's range, so the call returns an empty frame and warns that the filters matched no rows.
+   Provider code `500` matches the numeric column range, so the call returns an empty DataFrame with a warning when no records match.
 
-The provider codelist has 159 rows, the recipient codelist 177, so a name valid for one raises for the other:
+   The provider codelist contains 159 rows while the recipient codelist contains 177 rows. Querying a recipient with a provider name raises an error.
 
    ```python
    tossd.get_tossd(years=2024, recipients="Japan")
@@ -64,11 +64,11 @@ The provider codelist has 159 rows, the recipient codelist 177, so a name valid 
    UnknownCodeError: 'Japan' did not match any recipients code or name in the packaged codelist. Closest matches: Azerbaijan, Panama.
    ```
 
-Japan is a provider.
+   Japan reports as an official provider in the TOSSD standard.
 
 ## Verify it worked
 
-An unvalidated integer code returns an empty frame, so check the row count:
+Check the row count to confirm that the resolved query returns matching records.
 
 ```python
 df = tossd.get_tossd(years=2024, providers="Germany", columns="minimal")
@@ -81,5 +81,5 @@ True
 
 ## See also
 
-- [Query reference](../reference/query.md) for the full resolution rules behind `providers=`, `recipients=`, and `pillars=`.
-- [How to rank providers by disbursement](rank-providers.md) for the next step once your provider or recipient list resolves.
+- [Query reference](../reference/query.md) for code and name resolution rules behind `providers=`, `recipients=`, and `pillars=`.
+- [How to rank providers by disbursement](rank-providers.md) for aggregating provider disbursements.

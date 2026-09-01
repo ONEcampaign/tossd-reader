@@ -1,6 +1,12 @@
 # tossd-reader
 
-> Cached, typed access to TOSSD activity-level data for pandas analysts.
+Total Official Support for Sustainable Development (TOSSD) is an international standard tracked by the International Forum on TOSSD at [tossd.online](https://tossd.online). It measures cross-border development finance under Pillar I and expenditures for global public goods under Pillar II. The published dataset covers six years (2019 to 2024) across 2.4 million activity-level records.
+
+`tossd-reader` provides Python analysts with clean, cached pandas DataFrames loaded directly from these official records. Annual files download once and cache locally on disk, so repeat queries run from local storage.
+
+## Quick verification
+
+A single query reproduces the 2024 published headline figures of USD 364.1 billion for Pillar I and USD 133.6 billion for Pillar II directly from the raw activity records.
 
 ```python
 import tossd_reader as tossd
@@ -16,36 +22,39 @@ tossd_pillar
 Name: usd_disbursement, dtype: float64
 ```
 
-Those are the TOSSD Secretariat's own 2024 headline figures, USD 364.1 billion for Pillar I and 133.6 billion for Pillar II, reproduced from the raw activity-level files in one call.
-
-TOSSD, Total Official Support for Sustainable Development, is an activity-level record of official development finance, one row per reported activity, published by the TOSSD Secretariat. The published files run six years, 2019 to 2024, about 2.4 million rows, with amounts reported in USD thousands.
-
-tossd-reader downloads the per-year parquet files from the publisher's site, caches each one locally keyed to its ETag, and returns typed pandas frames with snake_case column names, nullable integers for codes, and categoricals for names.
-
 ## Install
 
 Python 3.12 or newer.
 
-```bash
-pip install git+https://github.com/ONEcampaign/tossd-reader.git
-```
+=== "uv"
 
-## What you get
+    ```bash
+    uv add git+https://github.com/ONEcampaign/tossd-reader.git
+    ```
 
-- Typed columns and real nulls in place of the published empty strings.
-- Name-or-code filters for providers, recipients, and pillars, checked against the packaged codelists, with suggestions on a misspelling.
-- Derived `is_aggregate` and pillar tags in every result.
-- A provenance record, URL, ETag, and retrieval time, for every cached vintage.
+=== "pip"
 
-## Limits
+    ```bash
+    pip install git+https://github.com/ONEcampaign/tossd-reader.git
+    ```
 
-- The first call for a year downloads the whole published file, 55 to 91MB. `columns="minimal"` reduces the memory the resulting frame uses. The download is the full published file either way.
-- `get_tossd` filters on years, providers, recipients, and pillars. Sector, purpose, and channel are post-query pandas work, covered in [How to filter by sector, purpose, channel, or modality](how-to/filter-by-sector.md).
-- There is no CLI.
-- Installs from git. There is no package-index release.
+## What the package handles
+
+- Typed DataFrames with snake_case column names, standard numeric types, nullable integer codes, and string categoricals.
+- Provider and recipient filtering by name or official code, with fuzzy suggestions for misspelled names.
+- Double-counting protection through the `is_aggregate` flag to separate activity-level transactions from summary records.
+- Domain helpers for multi-goal SDG weighting, thematic keyword tags for climate and gender, and constant-price deflators.
+- Automatic disk caching to accelerate repeat queries.
+
+## Data size and workflow
+
+- Initial queries for a year download the full published annual dataset (55 to 91 MB per year).
+- The `columns="minimal"` preset loads the core financial and classification fields, keeping memory usage low during interactive analysis.
+- Query parameters filter on years, providers, recipients, and pillars at load time. Detailed filtering by sector, purpose, channel, and modality takes place in pandas on the returned DataFrame, as shown in [How to filter by sector, purpose, channel, or modality](how-to/filter-by-sector.md).
 
 ## Where to start
 
-- [Build a six-year Senegal disbursement trend](tutorials/first-analysis.md) walks one query through a provider ranking, a multi-year trend, and a switch to constant prices, about ten minutes.
-- [About the amount columns](about/amounts.md) explains current versus deflated columns, a 20-point gap between them over 2019 to 2024.
-- [Query](reference/query.md) documents `get_tossd`, its filters, and how to look up a provider or recipient name.
+- [Build a six-year Senegal disbursement trend](tutorials/first-analysis.md) walks through a query, provider rankings, multi-year trends, and constant prices for Senegal.
+- [About pillars and aggregate rows](about/pillars-and-aggregates.md) explains how Pillar I and Pillar II differ and how to handle summary records safely.
+- [About the amount columns](about/amounts.md) details current prices, constant prices, and the eight financial metrics in the dataset.
+- [Query](reference/query.md) documents `get_tossd()`, its filter parameters, and code resolution helpers.

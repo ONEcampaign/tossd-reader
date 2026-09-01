@@ -1,6 +1,8 @@
 # tossd-reader
 
-> Cached, typed access to TOSSD activity-level data for pandas analysts.
+Total Official Support for Sustainable Development (TOSSD) is an international standard tracked by the International Forum on TOSSD (IFT) at [tossd.online](https://tossd.online). It measures cross-border development finance under Pillar I and expenditures for global public goods under Pillar II. The published dataset covers six years (2019 to 2024) across 2.4 million activity-level records.
+
+`tossd-reader` provides Python analysts with typed, cached pandas DataFrames loaded directly from these official records. Annual files download once and cache locally on disk, so repeat queries run from local storage.
 
 ```python
 import tossd_reader as tossd
@@ -16,11 +18,19 @@ tossd_pillar
 Name: usd_disbursement, dtype: float64
 ```
 
-Those are the TOSSD Secretariat's own 2024 headline figures, USD 364.1 billion for Pillar I and 133.6 billion for Pillar II, reproduced from the raw activity-level files in one call. tossd-reader downloads the per-year parquet files from the publisher's site, caches each one locally keyed to its ETag, and returns typed pandas frames with snake_case column names.
+A single query reproduces the 2024 published headline figures of USD 364.1 billion for Pillar I and USD 133.6 billion for Pillar II directly from the raw activity records.
 
 ## Install
 
 Python 3.12 or newer.
+
+### uv
+
+```bash
+uv add git+https://github.com/ONEcampaign/tossd-reader.git
+```
+
+### pip
 
 ```bash
 pip install git+https://github.com/ONEcampaign/tossd-reader.git
@@ -49,16 +59,16 @@ provider_code  provider_name
 Name: usd_disbursement, dtype: float64
 ```
 
-`is_aggregate` marks rows reported by the publisher's own aggregate pseudo-providers. Provider-level rankings exclude them. `provider_name` collides too, with two provider codes sharing "African Development Bank Group", so group by code and name together. A misspelled provider or recipient name raises `UnknownCodeError` with close matches.
+The `is_aggregate` flag marks rows reported by the publisher's aggregate pseudo-providers. Activity-level provider rankings filter on `~is_aggregate` to prevent double-counting. Two provider codes share the name African Development Bank Group, so grouping by code and name preserves distinct entities. Filter parameters accept official codes and exact names, and misspelled names return close matches in `UnknownCodeError`.
 
 ## What it does
 
-TOSSD, Total Official Support for Sustainable Development, is an activity-level record of official development finance published by the TOSSD Secretariat. Six years, 2019 to 2024, about 2.4 million rows, amounts in USD thousands. tossd-reader normalises the published files into typed pandas frames, checks provider and recipient filters against packaged codelists, and adds helpers for SDG splits, keyword markers, and country lookups. `export()` writes a normalised extract to parquet with a manifest recording the package version and each year's vintage.
+`tossd-reader` normalises published annual parquet files into typed pandas DataFrames with snake_case column names, standard numeric types, nullable integer codes, and string categoricals. It validates provider and recipient filters against packaged codelists and provides helpers for multi-goal SDG weighting, thematic keyword markers, and country code lookups. The `export()` function writes normalised extracts to parquet with a manifest recording the package version and data vintages.
 
 ## Documentation
 
-The [docs site](https://onecampaign.github.io/tossd-reader/) covers a full tutorial, task-oriented how-to guides, the API reference, and the concepts behind pillars, aggregate rows, and comparability across years.
+The [documentation site](https://onecampaign.github.io/tossd-reader/) provides tutorials, how-to guides, an API reference, and background notes on pillars, aggregate rows, and data comparability across years.
 
 ---
 
-MIT licence, see [LICENSE](LICENSE). Data from the TOSSD Secretariat, published at [tossd.online](https://tossd.online).
+MIT licence, see [LICENSE](LICENSE). Data from the International Forum on TOSSD, published at [tossd.online](https://tossd.online).

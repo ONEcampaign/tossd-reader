@@ -1,18 +1,28 @@
 # About the amount columns
 
-_As of v0.1._
-
-Every published TOSSD file carries eight `usd_*` amount columns, in USD thousands as published. All eight are marked `is_usd_thousand_amount=True` in the packaged schema, all eight are in the `minimal` preset, and `units="usd_million"` divides all eight by 1000. The `unit` column, forced into every `get_tossd()` result, names which of the two states the rest of the frame is currently in, so a frame passed between functions carries its own units.
+Published TOSSD datasets record financial transactions across eight numeric amount fields, expressed in thousands of US dollars. The `minimal` column preset includes all eight fields. When requested with `units="usd_million"`, `get_tossd()` converts these values into millions of US dollars. The `unit` metadata column accompanies every DataFrame to document the active unit scale.
 
 ## Commitments and disbursements
 
-A commitment (`usd_commitment`) is what a provider promised in a given year. A disbursement (`usd_disbursement`) is what actually moved. The two are reported independently. An activity can carry a commitment with no matching disbursement that year, or a disbursement against a commitment made in an earlier year. 2024 has 390,190 non-null `usd_commitment` rows against 441,645 non-null `usd_disbursement` rows, out of 474,026 rows total.
+TOSSD measures financial resources across two primary operational stages:
 
-## Current and constant prices
+- `usd_commitment` records a formal institutional obligation undertaken during the reporting year to provide specified financial resources to a recipient or activity. Commitments represent forward-looking resource allocations, policy priorities, and signed agreements.
+- `usd_disbursement` records the actual transfer of funds or placement of financial resources at the disposal of a recipient or executing partner during the reporting year.
 
-Each nominal column (`usd_commitment`, `usd_disbursement`, `usd_reflow`, `usd_amount_mobilised`) has a `_deflated` twin, with an identical non-null count in every case. The nominal column is current prices, as reported. The `_deflated` column restates the same flow in constant prices, with 2024 as the base year. Every 2024 row's nominal and deflated value are identical, and earlier years are adjusted relative to it.
+Commitments and disbursements follow independent multi-year project lifecycles. An activity can report a commitment in its inaugural year followed by disbursements distributed across several subsequent years. Ongoing multi-year operations often report annual disbursements against commitments established in earlier reporting periods. In the 2024 dataset, 390,190 records report non-null commitments and 441,645 records report non-null disbursements out of 474,026 total activities.
 
-A multi-year comparison in current prices measures inflation as well as finance. Global disbursements from 2019 to 2024 are measured in USD million.
+## Current prices and constant prices
+
+Each nominal financial field pairs with a deflated counterpart adjusted for price movements:
+
+- `usd_commitment` and `usd_commitment_deflated`
+- `usd_disbursement` and `usd_disbursement_deflated`
+- `usd_reflow` and `usd_reflow_deflated`
+- `usd_amount_mobilised` and `usd_amount_mobilised_deflated`
+
+Nominal columns measure transactions at current prices and exchange rates during the reporting year. Deflated columns express transactions in constant 2024 US dollars using official deflators published alongside the dataset. In 2024, nominal and constant values match. For 2019 through 2023, deflated metrics adjust for global price inflation and currency movements relative to the 2024 base year.
+
+Comparing multi-year disbursements in constant prices isolates real financial volume growth from inflation.
 
 ```python
 import tossd_reader as tossd
@@ -38,15 +48,28 @@ year
 2024          497676.0                   497676.0
 ```
 
-2019 to 2024 growth is 66.0% in current prices and 46.3% in constant prices. The gap between the two is inflation over that period, priced into the current-price column and stripped out of the constant-price one.
+Between 2019 and 2024, global TOSSD gross disbursements expanded by 66.0% in current prices (from USD 299.9 billion to USD 497.7 billion) and by 46.3% in constant 2024 prices (from USD 340.2 billion to USD 497.7 billion). The gap between current and constant values reflects price inflation over this five-year period.
 
-## Reflows and mobilised amounts
+## Gross disbursements, reflows, and net flows
 
-`usd_reflow` records returns against past finance: loan repayments, recoveries, equity sales. 2024 carries 215,264 non-null rows. `usd_reflow` is reported gross. A query that wants net flows subtracts it from `usd_disbursement` itself, after confirming both are in the same price basis and the same units.
+`usd_disbursement` measures gross financial flows provided to recipients and international activities.
 
-`usd_amount_mobilised` records private finance a provider's activity brought in alongside its own official contribution. 2024 carries 1,693 non-null rows, a small slice of the 474,026-row file. The headline Pillar I/II disbursement totals cover `usd_disbursement` only.
+`usd_reflow` measures capital repayments returned to providers during the reporting year, including loan principal repayments, equity divestments, and returned grants. In the 2024 dataset, 215,264 records report non-null reflow values.
+
+Net financial flows equal gross disbursements minus reflows (`usd_disbursement - usd_reflow`). Both metrics require alignment in the same unit scale and price basis before calculating net transfers.
+
+## Mobilised private finance
+
+`usd_amount_mobilised` records commercial private capital mobilised directly through official development finance interventions, such as syndicated loans, guarantees, credit lines, and direct equity participation. In the 2024 dataset, 1,693 activities report mobilised private finance.
+
+TOSSD measures mobilised private finance as an indicator of private capital leverage in sustainable development. Official headline disbursement totals for Pillar I and Pillar II reflect official direct resources in `usd_disbursement`.
+
+<!-- prettier-ignore -->
+!!! warning "Heads up"
+    Do not add `usd_amount_mobilised` directly to `usd_disbursement`. The `usd_amount_mobilised` field measures private commercial capital mobilised through official interventions, whereas `usd_disbursement` captures direct official fiscal transfers.
 
 ## Related
 
-- [Columns, presets, and units](../reference/columns.md). Every column's dtype and preset membership, including the amount columns' `*` marker.
-- [How to compare TOSSD totals across years](../how-to/compare-years.md). Puts the deflated column into a year-over-year comparison.
+- [Columns, presets, and units](../reference/columns.md). Reference table of all eight amount columns and schema properties.
+- [How to compare totals across years](../how-to/compare-years.md). Step-by-step instructions for constant-price time-series queries.
+- [Why TOSSD totals rise](comparability.md). Analysis of inflation, provider expansion, and structural breaks across 2019 to 2024.

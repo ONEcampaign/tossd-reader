@@ -1,57 +1,81 @@
 # About pillars and aggregate rows
 
-_As of v0.1._
+Total Official Support for Sustainable Development (TOSSD) is an international statistical framework established by the International Forum on TOSSD (IFT) to track all officially supported financial resources for the Sustainable Development Goals (SDGs). The framework structures development finance into two distinct pillars based on delivery mechanisms and beneficiary scope, with Pillar I capturing cross-border flows to developing countries and Pillar II capturing regional and global expenditures addressing international public goods and global challenges.
 
-TOSSD splits activities into Pillar I (support delivered to recipient countries) and Pillar II (expenditure with no specific recipient, such as global public goods, in-donor costs, and regional programmes). Pillar II further splits into II.A and II.B, recorded in `tossd_pillar`/`tossd_subpillar`. Every published file also mixes real provider rows with publisher-computed aggregate rows, and a handful of older rows carry no pillar at all.
+## Pillar I cross-border flows to developing countries
 
-## Pillar I and Pillar II
+Pillar I captures resource transfers provided directly to developing countries and territories on the official TOSSD recipient list. Every transaction in Pillar I associates with a designated recipient partner country or territory.
 
-`pillars=` filters to one of the two pillars, or to a specific sub-pillar, case-insensitively. See [Query](../reference/query.md) for the exact accepted values.
+These cross-border flows encompass bilateral development projects, official grants, concessional and non-concessional loans, equity investments, and technical cooperation. The defining characteristic of Pillar I is the direct cross-border transfer of resources to support development priorities within the recipient economy.
 
-`sector` and `purpose_code` are single-valued per row in the published 2019 to 2024 files. A sum grouped by either column adds whole rows, with nothing to split across categories first.
+## Pillar II global public goods and regional expenditures
 
-## The sub-pillar rollout
+Pillar II captures expenditures that generate shared regional or global benefits where financial resources are not transferred to a single recipient country. These activities support sustainable development through two operational sub-pillars recorded in `tossd_subpillar`:
 
-Sub-pillar tagging rolled out in stages. 2022 carries 24 trace rows out of roughly 128,900 pillar-2 rows that year. 2023 tags about 51% of pillar-2 rows, leaving the rest unattributed to either sub-pillar. 2024 reaches about 99%. A sub-pillar breakdown compared across years is clean from 2024 onward. 2023 figures move as more of that year's backlog gets tagged.
+- Pillar II.A (coded as `21`) covers regional and global public goods. This includes transnational climate change mitigation, biodiversity conservation, research and development for infectious diseases, pandemic preparedness, and international peacekeeping.
+- Pillar II.B (coded as `22`) covers support to international and multilateral mechanisms, global programmes, and provider-country expenditures that support sustainable development frameworks.
 
-`get_tossd()` encodes the rollout in the query itself. A sub-pillar filter combined with an explicit year before 2023 raises `InvalidPillarError`, naming the years that predate sub-pillar tagging. With the default `years=None`, the same filter narrows silently to years 2023 onward, with one warning. A sub-pillar filter that resolves to 2023 adds a second warning naming the ~51% coverage figure. A query that needs every pillar-2 row, tagged or not, can pass `pillars=2` instead of a sub-pillar filter.
+## Sub-pillar implementation timeline
 
-## Aggregate rows
+Sub-pillar classification phased in gradually across reporting cycles. In the 2022 dataset, sub-pillar tagging appeared in 24 activities out of 128,923 Pillar II records (0.02% coverage). In 2023, reporting providers tagged 50.6% of Pillar II activities with sub-pillar codes. In 2024, coverage reached 99.1% across 155,908 Pillar II activities.
 
-Every published file interleaves activity rows from real providers with aggregate rows the publisher computes itself, tagged `provider_code == 0` and displayed as "Aggregate". `get_tossd()` forces an `is_aggregate` column into every result, regardless of `columns=`.
+Because sub-pillar tagging was established incrementally, longitudinal analysis by sub-pillar is fully consistent from 2024 onward. Data for 2023 provides partial sub-pillar attribution, while data from 2019 through 2022 captures Pillar II as a unified total.
 
-Aggregate rows carry about 20% of 2024 disbursements. Group by provider without excluding them and a ranking gains an "Aggregate" row larger than every real provider. A total that keeps them matches the publisher's headline figure, and dropping them removes those aggregate disbursements.
+`get_tossd()` reflects this reporting history. Supplying a sub-pillar filter with an explicit year prior to 2023 raises `InvalidPillarError`. When querying without year constraints (`years=None`), sub-pillar filters select records from 2023 onward and emit an informational warning. Queries that examine total Pillar II volume can pass `pillars=2` to capture all Pillar II activities regardless of sub-pillar classification.
+
+## Aggregate provider records and double-counting protection
+
+Published annual datasets combine activity-level project transactions from reporting providers with pre-computed summary rows. These summary records carry `provider_code == 0` and `provider_name == "Aggregate"`.
+
+The TOSSD Secretariat includes aggregate records to represent high-level institutional totals where providers submitted summary figures. In the 2024 dataset, aggregate records represent 5,626 rows and account for USD 99.4 billion in disbursements, representing 20.0% of total reported disbursements (USD 497.7 billion).
+
+The boolean `is_aggregate` column is present in every DataFrame returned by `get_tossd()`. The choice to include or exclude aggregate rows depends on the analytical objective:
+
+- Calculating global headline volumes matching official IFT statistical publications requires retaining aggregate rows to capture all reported funding.
+- Conducting provider-level rankings, recipient analyses, or sector-level aggregations requires filtering out aggregate rows (`~df["is_aggregate"]`) to prevent double-counting and isolate individual reporting institutions.
 
 ```python
 import tossd_reader as tossd
 
 df = tossd.get_tossd(years=2024, columns="minimal", units="usd_million")
 
-# ✅ Excludes aggregate rows before ranking providers
-df.loc[~df["is_aggregate"]].groupby("provider_name")["usd_disbursement"].sum()
+# Exclude aggregate rows for provider rankings
+df.loc[~df["is_aggregate"]].groupby("provider_name", observed=True)[
+    "usd_disbursement"
+].sum()
 
-# ❌ Aggregate rows land in the ranking as if they were a provider
-df.groupby("provider_name")["usd_disbursement"].sum()
+# Include all rows for headline totals matching official releases
+df.groupby("provider_name", observed=True)["usd_disbursement"].sum()
 ```
 
-Keep aggregate rows to match publisher-level headline figures. Exclude them when ranking individual providers. The full recipe, with the 2024 figures, is on [How to rank providers by disbursement](../how-to/rank-providers.md).
+## Bilateral core contributions and multilateral double-counting
 
-## Pillar-0 rows
+Beyond publisher aggregate rows (`is_aggregate`), development finance analysis involves an architectural double-counting risk when combining bilateral and multilateral providers:
 
-The 2020 to 2023 files carry a few hundred rows tagged pillar `0`, a publisher artefact from before the current two-pillar structure. `pillars=None` (the default) keeps them, so an unfiltered `get_tossd()` reproduces the row count of the published file exactly. Any other `pillars=` value excludes them, because `tossd_pillar in {1, 2}` only matches pillars 1 and 2.
+- **Provider perspective:** Measures a donor country's total financial effort, which includes bilateral cross-border transfers (Pillar I) plus core unearmarked contributions to multilateral organisations (Pillar II.B, aid modality `B02`).
+- **Recipient perspective:** Measures resources received by developing countries, which includes bilateral cross-border transfers from donors plus the multilateral institutions' subsequent cross-border project disbursements (Pillar I).
 
-## Provider costs
+Summing all bilateral providers and all multilateral institutions across both pillars counts the same funding twice: first as a bilateral core contribution to a multilateral fund, and second as a multilateral project disbursement in a partner country. When analysing cross-border finance received by partner countries, query Pillar I (`pillars=1`) and exclude core contributions (`modality_code != "B02"`).
 
-Part of Pillar II covers administrative overhead and in-donor refugee costs, which TOSSD's Reporting Instructions describe as "expenditures in the provider country". `pillar2_provider_costs()` isolates that share by filtering pillar-2 rows to sector families 910 (administrative costs of donors, a proxy for provider overhead) and 930 (domestic expenditures for refugees and asylum seekers), an estimated 35.6% of pillar-2 gross disbursements on the 2024 data.
+## Provider-country expenditures in Pillar II
 
-Sector 720 rows are in-country humanitarian aid delivered by agencies such as UNHCR and UNICEF, so they fall outside the carve-out.
+Pillar II includes expenditures incurred within provider territories that contribute to global sustainable development frameworks. The helper `pillar2_provider_costs()` isolates these domestic outlays by selecting Pillar II activities under sector 910 (administrative costs of donors) and sector 930 (domestic expenditures for refugees and asylum seekers in the host country). In the 2024 dataset, domestic provider costs represent USD 47.5 billion across 27,275 records, accounting for 35.6% of Pillar II gross disbursements.
 
-## Concessionality
+Sector 720 records represent in-country humanitarian assistance delivered in recipient territories and remain distinct from domestic provider expenditures.
 
-`concessionality_flag` is self-reported. TOSSD's concessionality test also differs from ODA's grant-equivalent methodology. TOSSD applies a flat threshold, roughly a 35% grant element on a 5% discount rate, to loans and equity only. ODA's grant-equivalent system discounts cash flows against reference rates that vary by recipient income group.
+## Transitional Pillar 0 classifications
+
+Datasets from 2020 through 2023 contain several hundred transactions recorded with pillar `0`. These records represent early submissions from provider entities prior to the uniform adoption of the two-pillar structure. Default queries (`pillars=None`) retain these rows to preserve the exact record count of the published source files. To select both standard pillars, leave `pillars` unset and filter the result with `df[df["tossd_pillar"].isin([1, 2])]`; alternatively, make separate queries with `pillars=1` and `pillars=2`.
+
+## Concessionality criteria
+
+TOSSD captures both concessional and non-concessional resource flows across all eligible instruments. The `concessionality_flag` field captures provider-reported concessionality status.
+
+For debt instruments, the TOSSD methodology applies a uniform concessionality benchmark requiring a minimum 35% grant element calculated at a fixed 5% discount rate across loans and equity. By comparison, the OECD DAC grant-equivalent methodology for Official Development Assistance applies variable discount rates based on recipient income classifications (least developed countries, lower-middle-income countries, and upper-middle-income countries).
 
 ## Related
 
-- [How to rank providers by disbursement](../how-to/rank-providers.md). The full aggregate-exclusion recipe, with the 2024 figures.
-- [How to split Pillar II into its sub-pillars](../how-to/analyse-by-subpillar.md). The II.A/II.B filter, the 2023 coverage gap, and the warnings it raises.
-- [Helpers](../reference/helpers.md). `pillar2_provider_costs()`'s full parameter and return-value reference.
+- [How to rank providers by disbursement](../how-to/rank-providers.md). Step-by-step aggregate exclusion with 2024 figures.
+- [How to split Pillar II into its sub-pillars](../how-to/analyse-by-subpillar.md). The II.A and II.B filter, coverage figures, and warning behaviour.
+- [How to measure Pillar II expenditures in the provider country](../how-to/provider-costs.md). Domestic provider cost filtering across sectors 910 and 930.
+- [Helpers](../reference/helpers.md). Full parameter reference for `pillar2_provider_costs()`.

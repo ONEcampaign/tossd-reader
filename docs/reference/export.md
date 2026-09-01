@@ -1,16 +1,15 @@
 # Export
 
-_As of v0.1._
-
-`export()` runs the same fetch, schema, and derived-column pipeline as `get_tossd`, then writes the result to parquet. `columns` is fixed at `"all"` and `units` at `"usd_thousand"`, as published. `export` writes every row of every requested year. The parquet file is written with `zstd` compression.
+The `export` function processes TOSSD activity records through schema casting and derived column generation, then writes the complete result to a compressed parquet file with a JSON provenance manifest. Exports retain all columns (`columns="all"`) and original units (`units="usd_thousand"` in USD thousands).
 
 ```python
 import tossd_reader as tossd
 
-tossd.export("exports", years=2019)
+path = tossd.export("exports", years=2019)
+print(path)
 ```
 
-```
+```text
 exports/tossd_2019.parquet
 ```
 
@@ -21,17 +20,17 @@ exports/tossd_2019.parquet
 
 ## Generated filenames
 
-`path` given as a directory (created if it doesn't exist) writes `tossd_<years>.parquet` inside it. `path` given as an explicit filename ending in `.parquet` is used verbatim, creating its parent directories if needed.
+When `path` specifies a directory, `export` creates the directory if needed and writes `tossd_<years>.parquet` inside it. When `path` ends in `.parquet`, `export` writes directly to that file path, creating parent directories as needed.
 
-`<years>` is built from the resolved, sorted year list.
+The `<years>` segment reflects the resolved, sorted list of years:
 
-- A single year is that year alone, e.g. `tossd_2019.parquet`.
-- A contiguous run is `<first>-<last>`, e.g. `tossd_2019-2024.parquet`.
-- A non-contiguous set is every year joined by `_`, e.g. `tossd_2019_2021_2024.parquet`.
+- Single year: `tossd_2019.parquet`
+- Contiguous range: `tossd_2019-2024.parquet`
+- Non-contiguous set: `tossd_2019_2021_2024.parquet`
 
 ## Manifest fields
 
-Every export writes a `<stem>.manifest.json` sidecar alongside the parquet file.
+Each export writes a companion `<stem>.manifest.json` file beside the parquet file.
 
 ```json
 {
@@ -51,16 +50,20 @@ Every export writes a `<stem>.manifest.json` sidecar alongside the parquet file.
 }
 ```
 
-| Field                  | Type          | Description                                                                                                                                  |
-| ---------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tossd_reader_version` | string        | Package version that wrote the export.                                                                                                       |
-| `schema_hash`          | string        | SHA-256 of the packaged `schema.csv`, CRLF-normalised.                                                                                       |
-| `years`                | list of `int` | Exported years, sorted.                                                                                                                      |
-| `row_count`            | int           | Total rows across all exported years.                                                                                                        |
-| `created_at`           | string        | Export write time, ISO 8601, UTC.                                                                                                            |
-| `vintages`             | object        | One entry per exported year. Both `etag` and `retrieved_at` are `null` when that year's provenance sidecar is missing or unreadable. |
+| Field | Type | Description |
+| --- | --- | --- |
+| `tossd_reader_version` | string | Package version that created the export file. |
+| `schema_hash` | string | SHA-256 hash of packaged `schema.csv`, CRLF-normalised. |
+| `years` | list of `int` | Sorted list of reporting years included in the export. |
+| `row_count` | int | Total row count across all exported reporting years. |
+| `created_at` | string | Export timestamp in ISO 8601 format (UTC). |
+| `vintages` | object | Mapping of reporting year to source metadata (`etag` and `retrieved_at`). |
+
+## Performance and memory
+
+Exporting the default full dataset (`years=None`, covering 2019 through 2024) materialises approximately 2.4 million rows in memory as an Apache Arrow table before writing to disk. This requires roughly 2.1 GB of resident memory. Pass specific years to `years=` when working in memory-constrained environments.
 
 ## Next
 
-- [Configuration, warnings, and errors](configuration.md). What a corrupt provenance sidecar does to the `vintages` fields above.
-- [Query](query.md). `get_tossd`'s full filter and column arguments.
+- [Configuration, warnings, and errors](configuration.md). Cache settings, provenance handling, and error types.
+- [Query](query.md). Interactive querying with `get_tossd`.

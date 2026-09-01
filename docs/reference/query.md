@@ -1,18 +1,29 @@
 # Query
 
-_As of v0.1._
+TOSSD activity-level data, tracked by the International Forum on TOSSD (IFT), measures development finance across Pillar I (cross-border flows) and Pillar II (global public goods). The query module loads, filters, and types these records into pandas DataFrames.
 
-| Function                                              | Use for                                                                                                                  |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `get_tossd()`                                         | Typed, filtered activity-level data. The default entry point.                                                            |
-| `get_available_filters()` / `get_codelists_version()` | Which provider, recipient, sector, and pillar values are valid before filtering, and which codelist vintage is packaged. |
-| `get_tossd_raw()`                                     | Publisher column names, dtypes, and column order, unfiltered.                                                            |
+| Function | Output | Purpose |
+| --- | --- | --- |
+| `get_tossd()` | `pandas.DataFrame` | Typed and filtered activity-level data. Primary entry point. |
+| `get_available_filters()` | `dict[str, pandas.DataFrame]` | Dimension names, codes, and labels available for query filtering. |
+| `get_codelists_version()` | `str` | Snapshot date of the packaged OECD and TOSSD codelists (ISO 8601 date). |
+| `get_tossd_raw()` | `pandas.DataFrame` | Raw published data preserving original column names, types, and ordering. |
 
-`export()` writes a normalised, unfiltered parquet extract with a provenance manifest. It has [its own page](export.md).
+For saving complete annual datasets to disk, see [Export](export.md).
 
-`get_tossd` applies schema typing, row filters, and derived columns (`is_aggregate`, `unit`, the pillar tags) over one or more packaged years. `get_tossd_raw` fetches and concatenates the requested years as published, keeping publisher column names, dtypes, and column order. `get_available_filters` and `get_codelists_version` return codelist metadata, dimension names, codes, and the snapshot date. Call them to resolve a provider or recipient name before passing it to `providers=`/`recipients=`, or to check which codelist vintage is packaged. `pillars=` takes a single value. `providers=` and `recipients=` each take a single value or an iterable of values.
+## Usage
 
-## Resolving a provider name
+The `get_tossd` function applies schema casting, row filtering, and derived columns (`is_aggregate`, `unit`, `tossd_pillar`, `tossd_subpillar`) across requested reporting years.
+
+The `get_tossd_raw` function loads requested annual files as published, preserving source column names, data types, and column ordering.
+
+The `get_available_filters` function returns a dictionary of DataFrames for each filter dimension, including valid provider codes, recipient codes, pillar categories, and reporting years.
+
+The `get_codelists_version` function returns the snapshot date of the packaged codelists.
+
+### Resolving a provider name
+
+The `providers` and `recipients` arguments accept official numeric codes, string codes, or full names matched case-insensitively against the packaged codelist. Numeric strings evaluate as codes first and fall back to name matching. Unresolved strings raise `UnknownCodeError` with closest matching names.
 
 ```python
 import tossd_reader as tossd
@@ -20,21 +31,20 @@ import tossd_reader as tossd
 tossd.get_tossd(years=2024, providers="Germny")
 ```
 
-```
+```text
 UnknownCodeError: 'Germny' did not match any providers code or name in the packaged codelist. Closest matches: Germany.
 ```
 
-`providers=` and `recipients=` match a string case-insensitively against the packaged codelist's `name` column. A digit string is tried as a code first, then falls back to a name match. An unresolved token raises `UnknownCodeError` naming up to 5 closest matches.
-
-## Looking up the pillar codelist
+### Inspecting available filters
 
 ```python
 import tossd_reader as tossd
 
-print(tossd.get_available_filters()["pillar"].to_string(index=False))
+filters = tossd.get_available_filters()
+print(filters["pillar"].to_string(index=False))
 ```
 
-```
+```text
 code        name  tossd_only
    1    Pillar I        True
    2   Pillar II        True
@@ -64,6 +74,6 @@ code        name  tossd_only
 
 ## Next
 
-- [How to look up provider and recipient codes](../how-to/look-up-codes.md). Resolve a name before filtering, with the full `UnknownCodeError` behaviour.
-- [How to read the published columns unchanged](../how-to/read-published-columns.md). `get_tossd_raw` worked end to end, against `get_tossd` on the same year.
-- [Export](export.md). Write a normalised, unfiltered parquet extract with a provenance manifest.
+- [Look up provider and recipient codes](../how-to/look-up-codes.md). Code lookup techniques and error handling.
+- [Read the published columns unchanged](../how-to/read-published-columns.md). Compare `get_tossd_raw` with typed `get_tossd` outputs.
+- [Export](export.md). Write normalised parquet extracts with provenance manifests.

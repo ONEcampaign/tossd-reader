@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -33,7 +34,10 @@ _COMPRESSION = "zstd"
 
 
 def export(
-    path: str | Path, *, years: int | list[int] | None = None, refresh: bool = False
+    path: str | Path,
+    *,
+    years: int | Iterable[int] | None = None,
+    refresh: bool = False,
 ) -> Path:
     """Write the normalised, typed `get_tossd` pipeline output to parquet.
 

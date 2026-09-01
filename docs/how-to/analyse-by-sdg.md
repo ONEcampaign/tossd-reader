@@ -4,7 +4,7 @@ Turn a `get_tossd` frame into per-goal disbursement totals, with multi-tagged ac
 
 ## Steps
 
-1. **Query with the `"analysis"` column preset.** `explode_sdg` reads `sdg_codes_raw`, which ships in `"analysis"` but not `"minimal"`.
+1. **Query with the `"analysis"` column preset.** `explode_sdg` reads `sdg_codes_raw`, which ships in the `"analysis"` preset. The `"minimal"` preset omits it.
 
    ```python
    import tossd_reader as tossd
@@ -14,7 +14,7 @@ Turn a `get_tossd` frame into per-goal disbursement totals, with multi-tagged ac
    )
    ```
 
-2. **Explode the SDG codes.** `sdg_codes_raw` packs one or more `;`-delimited codes per activity, goals (`4`) and targets (`4.1`) mixed together. `explode_sdg` gives each code its own row and adds a `sdg_weight` of `1/n` for the `n` codes that row carried.
+2. **Explode the SDG codes.** `sdg_codes_raw` packs one or more semicolon-delimited codes per activity, combining goals (`4`) and targets (`4.1`). Under the TOSSD Reporting Instructions, activities report up to 10 SDG focus areas. `explode_sdg` gives each code its own row and assigns an equal weight `sdg_weight` of `1/n` across the `n` reported codes.
 
    ```python
    sdg = tossd.explode_sdg(sen_a)
@@ -30,9 +30,9 @@ Turn a `get_tossd` frame into per-goal disbursement totals, with multi-tagged ac
    4       10        10          False    0.333333
    ```
 
-`sdg_goal` is the code's integer goal part, so a target like `4.1` and a goal-level tag like `4` group together.
+   `sdg_goal` extracts the integer goal number, grouping target-level tags like `4.1` and goal-level tags like `4` under goal 4.
 
-3. **Sum `usd_disbursement * sdg_weight`, grouped by `sdg_goal`.** The weighted amounts for one activity's codes sum back to that activity's original disbursement.
+3. **Sum `usd_disbursement * sdg_weight`, grouped by `sdg_goal`.** The weighted amounts for an activity's reported codes sum back to that activity's total disbursement.
 
    ```python
    sdg["usd_weighted"] = sdg["usd_disbursement"] * sdg["sdg_weight"]
@@ -55,8 +55,8 @@ Turn a `get_tossd` frame into per-goal disbursement totals, with multi-tagged ac
    ```
 
 <!-- prettier-ignore -->
-!!! warning "SDG goal totals do not sum to recipient total"
-    Activities with no SDG tag (`sdg_codes_raw` empty or null) are dropped from `sdg`, so the goal totals above sum to the SDG-tagged subset of `sen_a`. On this Senegal 2024 slice the tagged subset is 65.4% of the frame's disbursements.
+!!! warning "Heads up"
+    Activities with no SDG tag (`sdg_codes_raw` empty or null) drop out of `sdg`. Goal totals sum to the SDG-tagged subset of `sen_a`. On this Senegal 2024 query, tagged activities account for 65.4% of total disbursements.
 
 ## Verify it worked
 
@@ -72,9 +72,9 @@ round(sdg["usd_weighted"].sum() / sen_a["usd_disbursement"].sum() * 100, 1)
 
 ## Troubleshooting
 
-**`ValueError` naming `sdg_code`, `sdg_goal`, `sdg_is_target`, or `sdg_weight`.** `explode_sdg` refuses a frame that already carries one of its own output columns, so a second pass can't silently duplicate them. Pass it the original `get_tossd` frame, not an earlier `explode_sdg` result.
+**`ValueError` naming `sdg_code`, `sdg_goal`, `sdg_is_target`, or `sdg_weight`.** `explode_sdg` rejects frames that already contain its output columns to prevent accidental duplicate weighting. Pass the original `get_tossd` frame.
 
 ## See also
 
-- [Helpers reference](../reference/helpers.md) for `explode_sdg`'s full contract, and the other helpers that operate on `get_tossd` output.
-- [Columns, presets, and units](../reference/columns.md) for what each preset carries and how to pick between them.
+- [Helpers reference](../reference/helpers.md) for `explode_sdg` parameter definitions and weighting rules.
+- [Columns, presets, and units](../reference/columns.md) for columns included in the `"analysis"` preset.
