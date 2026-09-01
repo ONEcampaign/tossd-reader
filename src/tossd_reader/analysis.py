@@ -1,6 +1,6 @@
 """Post-query analysis toolkit for `get_tossd()` output.
 
-`explode_sdg`, `add_iso3`, `extract_keywords`, and `pillar2_provider_costs`
+`explode_sdg`, `add_iso3`, `extract_keywords`, and `filter_provider_costs`
 each operate on a `pandas.DataFrame` already shaped like `get_tossd()`'s
 output (snake_case columns) and raise a `ValueError` naming any column they
 need but don't find, rather than a bare `KeyError`. Each returns a new
@@ -45,7 +45,7 @@ _ISO3_LINKS: dict[str, tuple[str, str]] = {
 _PROVIDER_COST_SECTOR_CODES = (910, 930)
 """Verified against the 2026-04 archive's 2024 vintage (`sector_code`/
 `sector`): 910 = "Administrative Costs of Donors", 930 = "Domestic
-expenditures for refugees/asylum seekers". See `pillar2_provider_costs`
+expenditures for refugees/asylum seekers". See `filter_provider_costs`
 for what this carve-out measures and why sector 720 is excluded."""
 
 
@@ -344,10 +344,10 @@ def get_structural_breaks(*, years: int | Iterable[int] | None = None) -> pd.Dat
     return breaks.loc[mask].reset_index(drop=True)
 
 
-# --- pillar2_provider_costs -------------------------------------------------------
+# --- filter_provider_costs -------------------------------------------------------
 
 
-def pillar2_provider_costs(df: pd.DataFrame) -> pd.DataFrame:
+def filter_provider_costs(df: pd.DataFrame) -> pd.DataFrame:
     """Filter pillar-2 rows to the provider-costs carve-out.
 
     Sector family 930 ("Domestic expenditures for refugees/asylum seekers")
@@ -388,7 +388,7 @@ def pillar2_provider_costs(df: pd.DataFrame) -> pd.DataFrame:
         ValueError: `df` is missing `tossd_pillar` or `sector_code`.
     """
     _require_columns(
-        df, "tossd_pillar", "sector_code", func_name="pillar2_provider_costs"
+        df, "tossd_pillar", "sector_code", func_name="filter_provider_costs"
     )
     mask = (df["tossd_pillar"] == 2) & df["sector_code"].isin(
         _PROVIDER_COST_SECTOR_CODES

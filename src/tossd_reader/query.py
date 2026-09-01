@@ -1,17 +1,17 @@
 """The typed, filtered `get_tossd` query layer.
 
-Per requested year: `fetch.resolve_year` → a column-projected pyarrow read
-(only the output columns plus internal-only needs -- `is_aggregate`'s
-`provider_code`, a row filter's `recipient_code`, the decode join's
-`parent_channel_code` -- unless `columns="all"`, which reads every column) →
-`_schema.apply_schema` (given the file's full column list from the cheap,
-data-free `pq.read_schema`, so the projection never masquerades as publisher
-drift) → arrow-level row filters (provider/recipient/pillar). Then, once
-across every year: `pa.concat_tables(...).unify_dictionaries()` (a
-categorical column stays dictionary-encoded across a multi-year query),
-a categorical strip (only when at least one row filter ran -- see
-`_strip_unused_categories`), derived columns (`is_aggregate`, `unit`, the
-`parent_channel_code` decode -- skipped entirely when `parent_channel_name`
+Per requested year: `fetch.resolve_year` → a column-projected pyarrow read (only the
+output columns plus internal-only needs -- `is_aggregate`'s `provider_code`, a row
+filter's `recipient_code`, the decode join's `parent_channel_code` -- unless
+`columns="all"`, which reads every column) → `_schema.apply_schema` (given the file's
+full column list from the cheap, data-free `pq.read_schema`, so the projection never
+masquerades as publisher drift) → `_mask_subpillar_sentinels` (folds every
+`tossd_subpillar` value that isn't a real `"21"`/`"22"` tag to null) → arrow-level row
+filters (provider/recipient/pillar). Then, once across every year:
+`pa.concat_tables(...).unify_dictionaries()` (a categorical column stays
+dictionary-encoded across a multi-year query), a categorical strip (only when at least
+one row filter ran -- see `_strip_unused_categories`), derived columns (`is_aggregate`,
+`unit`, the `parent_channel_code` decode -- skipped entirely when `parent_channel_name`
 isn't requested), preset/column projection, units conversion, and exactly one
 `.to_pandas()` call at the very end.
 
@@ -52,7 +52,7 @@ ARROW_TO_PANDAS_INT: dict[pa.DataType, pd.api.extensions.ExtensionDtype] = {
     pa.int32(): pd.Int32Dtype(),
 }
 
-_VALID_UNITS = ("usd_thousand", "usd_million")
+_VALID_UNITS = ("usd_thousand", "usd_million", "usd")
 
 # Columns `get_tossd` (and `export`) always include, regardless of `columns=`.
 # Public (re-exported from `tossd_reader` via `__init__.py`'s lazy-attr map)
@@ -76,7 +76,7 @@ def get_tossd(
     recipients: int | str | Iterable[int | str] | None = None,
     pillars: int | str | None = None,
     columns: Literal["all", "minimal", "analysis"] | list[str] = "all",
-    units: Literal["usd_thousand", "usd_million"] = "usd_thousand",
+    units: Literal["usd_thousand", "usd_million", "usd"] = "usd_thousand",
     refresh: bool = False,
 ) -> pd.DataFrame:
     """Return typed, filtered TOSSD activity-level data.
@@ -107,15 +107,21 @@ def get_tossd(
             `InvalidPillarError` (sub-pillar tagging did not exist yet,
             bar a 24-row 2022 trace); with the default `years=None` it
             instead silently narrows to years >= 2023, with one warning.
+            Independent of this filter, the output `tossd_subpillar` column is `NA`
+            unless a row carries a real `"21"`/`"22"` tag -- pillar-1 rows, untagged
+            pillar-2 rows, and pillar-0 rows all read `NA`, so `.notna()` identifies
+            sub-pillar-tagged rows specifically, a narrower set than pillar-2 rows
+            overall.
         columns: `"all"` (default, every packaged column), `"minimal"`,
             `"analysis"` (see `_schema.preset_columns`), or an explicit
             `list[str]` of snake_case column names. `FORCED_COLUMNS`
             (`year`, `tossd_pillar`, `tossd_subpillar`, `is_aggregate`, and
             `unit`) are always present in the result regardless of this
             selection.
-        units: `"usd_thousand"` (default, as published) or `"usd_million"`,
-            which divides every `schema.csv` `is_usd_thousand_amount`
-            column by 1000.
+        units: `"usd_thousand"` (default, as published), `"usd_million"`
+            (divides every `schema.csv` `is_usd_thousand_amount` column by
+            1000), or `"usd"` (multiplies the same columns by 1000, since
+            the published scale is thousands).
         refresh: Re-run discovery's HEAD sweep and force a readerkit
             conditional GET for every requested year. An enclosing
             `readerkit.refresh_scope()` has the same effect.
@@ -126,7 +132,7 @@ def get_tossd(
         still comes back correctly typed, with one warning.
 
     Raises:
-        ValueError: `units` is not `"usd_thousand"`/`"usd_million"`;
+        ValueError: `units` is not `"usd_thousand"`/`"usd_million"`/`"usd"`;
             `columns` names an unknown column (or an unrecognised preset);
             `years` resolves to an empty set of years; or a requested year
             is not currently published and nothing is cached for it.
@@ -159,7 +165,7 @@ def build_table(
     recipients: int | str | Iterable[int | str] | None,
     pillars: int | str | None,
     columns: Literal["all", "minimal", "analysis"] | list[str],
-    units: Literal["usd_thousand", "usd_million"],
+    units: Literal["usd_thousand", "usd_million", "usd"],
     refresh: bool,
     op_name: str,
 ) -> tuple[pa.Table, dict[int, Path]]:
@@ -229,6 +235,7 @@ def build_table(
             )
             raw = pq.read_table(path, columns=read_columns)
         typed = _schema.apply_schema(raw, file_column_names=file_column_names)
+        typed = _mask_subpillar_sentinels(typed)
         filtered = _apply_row_filters(
             typed,
             provider_codes=provider_codes,
@@ -340,6 +347,37 @@ def _filter_pillar(
         subpillar_mask = pc.equal(table.column("tossd_subpillar"), pillar_sub)  # ty: ignore[unresolved-attribute]
         mask = pc.and_(mask, subpillar_mask)  # ty: ignore[unresolved-attribute]
     return table.filter(mask)
+
+
+_REAL_SUBPILLAR_TAGS = ("21", "22")
+
+
+def _mask_subpillar_sentinels(table: pa.Table) -> pa.Table:
+    """Null out `tossd_subpillar` unless the row carries a real II.A/II.B tag.
+
+    The published column also carries `"1"` (every pillar-1 row), `"2"`
+    (untagged pillar-2 rows), and whatever placeholder value pillar-0 rows
+    hold -- none of those is a sub-pillar tag, so `.notna()` on the raw
+    column would be a false positive on most of the file. Only `"21"`/`"22"`
+    survive; every other value (already-null included) becomes null, so
+    `tossd_subpillar`'s categories become exactly `{"21", "22"}`. Applied
+    per year, right after `_schema.apply_schema`, before the row filters --
+    `_filter_pillar`'s own `"21"`/`"22"` equality checks are unaffected
+    either way, since this never touches those two values.
+
+    `get_tossd_raw()` never runs through this (or any) schema/derived step,
+    so the published sentinels stay reachable there, verbatim.
+    """
+    index = table.column_names.index("tossd_subpillar")
+    field = table.schema.field(index)
+    column = table.column(index)
+    decoded = pc.cast(column, field.type.value_type)
+    real_tags = pa.array(_REAL_SUBPILLAR_TAGS, type=field.type.value_type)
+    is_real_tag = pc.is_in(decoded, value_set=real_tags)  # ty: ignore[unresolved-attribute]
+    masked = pc.if_else(  # ty: ignore[unresolved-attribute]
+        is_real_tag, decoded, pa.scalar(None, type=field.type.value_type)
+    )
+    return table.set_column(index, "tossd_subpillar", pc.dictionary_encode(masked))  # ty: ignore[unresolved-attribute]
 
 
 def _strip_unused_categories(table: pa.Table) -> pa.Table:
@@ -553,7 +591,11 @@ def _unknown_column_message(name: str, valid_names: set[str]) -> str:
 
 
 def _convert_units(table: pa.Table, *, units: str) -> pa.Table:
-    """Divide every `is_usd_thousand_amount` column by 1000 when units="usd_million"."""
+    """Scale every `is_usd_thousand_amount` column: divide by 1000 for "usd_million", multiply for "usd".
+
+    The published scale is already USD thousands, so "usd" (plain dollars)
+    multiplies rather than divides.
+    """
     if units == "usd_thousand":
         return table
     amount_columns = {
@@ -564,7 +606,12 @@ def _convert_units(table: pa.Table, *, units: str) -> pa.Table:
     for name in table.column_names:
         if name not in amount_columns:
             continue
-        converted = pc.divide(table.column(name), 1000)  # ty: ignore[unresolved-attribute]
+        column = table.column(name)
+        converted = (
+            pc.divide(column, 1000)  # ty: ignore[unresolved-attribute]
+            if units == "usd_million"
+            else pc.multiply(column, 1000)  # ty: ignore[unresolved-attribute]
+        )
         table = table.set_column(table.column_names.index(name), name, converted)
     return table
 

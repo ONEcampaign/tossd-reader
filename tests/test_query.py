@@ -14,7 +14,7 @@ import pytest
 import tossd_reader
 from tests.factories import _load_schema, build_tossd_table
 from tests.fakes import patch_discovery, patch_fetcher_by_url, url_for
-from tossd_reader import _discovery, _matching, _pillars, query
+from tossd_reader import _discovery, _matching, _pillars, fetch, query
 from tossd_reader._discovery import VintageInfo
 from tossd_reader.exceptions import (
     InvalidPillarError,
@@ -423,6 +423,85 @@ def test_warn_once_per_session_and_reset_hook(
     assert any("narrowing" in str(warning.message) for warning in record)
 
 
+# --- sub-pillar NA semantics (tossd_subpillar) -----------------------------------
+
+
+def test_subpillar_na_unless_real_tag_pinned_counts(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Pillar-1, untagged pillar-2, and pillar-0 rows all read NA; only a real tag survives.
+
+    Pinned against the deterministic n_rows=200/seed=0 fixture for 2022
+    (carries pillar-0 rows and the 2022 sub-pillar trace): 99 pillar-1 rows
+    (published '1'), 97 untagged pillar-2 rows (published '2'), and 2
+    pillar-0 rows (published '0') all collapse to NA -- 198 of 200 rows;
+    only the 2 real '21' trace rows survive.
+    """
+    _setup_default_years(monkeypatch, tmp_path, [2022], n_rows=200)
+
+    df = query.get_tossd(years=2022)
+
+    assert df["tossd_subpillar"].isna().sum() == 198
+    assert df["tossd_subpillar"].notna().sum() == 2
+    assert set(df.loc[df["tossd_subpillar"].notna(), "tossd_subpillar"]) == {"21"}
+    assert (df.loc[df["tossd_subpillar"].notna(), "tossd_pillar"] == 2).all()
+
+
+def test_subpillar_notna_means_real_tag_not_pillar_two(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """.notna() on tossd_subpillar picks out only tagged rows, strictly narrower than tossd_pillar==2.
+
+    Pinned against the deterministic n_rows=200/seed=0 fixture for 2024: 46
+    untagged pillar-2 rows (published '2') read NA even though they're
+    pillar 2, alongside every pillar-1 row.
+    """
+    _setup_default_years(monkeypatch, tmp_path, [2024], n_rows=200)
+
+    df = query.get_tossd(years=2024)
+
+    untagged_pillar_two = df.loc[
+        (df["tossd_pillar"] == 2) & df["tossd_subpillar"].isna()
+    ]
+    assert len(untagged_pillar_two) == 46
+    assert df["tossd_subpillar"].notna().sum() == 29 + 25
+
+
+def test_subpillar_categories_are_exactly_21_and_22(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The delivered tossd_subpillar category set is {"21", "22"} -- every sentinel dropped."""
+    _setup_default_years(monkeypatch, tmp_path, [2024], n_rows=200)
+
+    df = query.get_tossd(years=2024)
+
+    assert set(df["tossd_subpillar"].cat.categories) == {"21", "22"}
+
+
+def test_subpillar_ii_b_filter_still_matches_only_that_subpillar(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """pillars=22/'II.B' still matches only tossd_subpillar=='22' rows, unaffected by the NA remap."""
+    _setup_default_years(monkeypatch, tmp_path, [2024], n_rows=200)
+
+    df = query.get_tossd(years=2024, pillars="II.B")
+
+    assert not df.empty
+    assert (df["tossd_subpillar"] == "22").all()
+    assert (df["tossd_pillar"] == 2).all()
+
+
+def test_get_tossd_raw_still_shows_published_subpillar_sentinels(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """get_tossd_raw() stays verbatim: every published sentinel survives, untouched by the NA remap."""
+    _setup_default_years(monkeypatch, tmp_path, [2022], n_rows=200)
+
+    raw = fetch.get_tossd_raw(years=2022)
+
+    assert set(raw["Tossdpillar2"]) == {"0", "1", "2", "21"}
+
+
 # --- columns / presets ----------------------------------------------------------
 
 
@@ -700,6 +779,35 @@ def test_units_usd_million_divides_exact_8_amount_columns(
     )
 
 
+def test_units_usd_multiplies_exact_8_amount_columns(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """units='usd' multiplies the 8 is_usd_thousand_amount columns by 1000 (published scale is thousands)."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=30)
+
+    thousands = query.get_tossd(years=2019, units="usd_thousand")
+    dollars = query.get_tossd(years=2019, units="usd")
+
+    amount_columns = [
+        "usd_commitment",
+        "usd_commitment_deflated",
+        "usd_disbursement",
+        "usd_disbursement_deflated",
+        "usd_reflow",
+        "usd_reflow_deflated",
+        "usd_amount_mobilised",
+        "usd_amount_mobilised_deflated",
+    ]
+    for name in amount_columns:
+        pd.testing.assert_series_equal(
+            dollars[name], thousands[name] * 1000, check_names=False
+        )
+    # A non-amount numeric column is untouched.
+    pd.testing.assert_series_equal(
+        dollars["salary_cost"], thousands["salary_cost"], check_names=False
+    )
+
+
 def test_unit_column_travels_and_survives_minimal_preset(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -712,10 +820,45 @@ def test_unit_column_travels_and_survives_minimal_preset(
     assert isinstance(df["unit"].dtype, pd.CategoricalDtype)
 
 
+def test_unit_column_carries_usd(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The derived `unit` column carries "usd" when requested, surviving columns='minimal'."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=5)
+
+    df = query.get_tossd(years=2019, units="usd", columns="minimal")
+
+    assert set(df["unit"]) == {"usd"}
+    assert isinstance(df["unit"].dtype, pd.CategoricalDtype)
+
+
+def test_units_usd_flows_through_a_multi_year_query(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """units='usd' scales correctly across a multi-year query, not just a single year."""
+    _setup_default_years(monkeypatch, tmp_path, [2019, 2020], n_rows=20)
+
+    thousands = query.get_tossd(years=[2019, 2020], units="usd_thousand")
+    dollars = query.get_tossd(years=[2019, 2020], units="usd")
+
+    assert set(dollars["year"]) == {2019, 2020}
+    pd.testing.assert_series_equal(
+        dollars["usd_disbursement"],
+        thousands["usd_disbursement"] * 1000,
+        check_names=False,
+    )
+    assert set(dollars["unit"]) == {"usd"}
+
+
 def test_invalid_units_raises_value_error() -> None:
-    """An unrecognised units= value raises ValueError before any fetch happens."""
-    with pytest.raises(ValueError, match="units"):
+    """An unrecognised units= value raises ValueError naming all three valid options."""
+    with pytest.raises(ValueError, match="units") as excinfo:
         query.get_tossd(units="usd_billion")
+
+    message = str(excinfo.value)
+    assert "usd_thousand" in message
+    assert "usd_million" in message
+    assert "usd" in message
 
 
 # --- is_aggregate ------------------------------------------------------------

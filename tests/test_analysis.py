@@ -299,7 +299,7 @@ def test_resolvekit_is_imported_lazily_only_by_add_iso3() -> None:
         "tossd_reader.explode_sdg(pd.DataFrame({'sdg_codes_raw': ['5']}))\n"
         "tossd_reader.extract_keywords(pd.DataFrame({'keywords_raw': ['#GENDER']}))\n"
         "tossd_reader.get_structural_breaks()\n"
-        "tossd_reader.pillar2_provider_costs(\n"
+        "tossd_reader.filter_provider_costs(\n"
         "    pd.DataFrame({'tossd_pillar': [2], 'sector_code': [910]})\n"
         ")\n"
         "assert 'resolvekit' not in sys.modules\n"
@@ -574,17 +574,17 @@ def test_get_structural_breaks_years_filter_does_not_mutate_the_cache() -> None:
     assert "corrupted" not in fresh["dimension"].tolist()
 
 
-# --- pillar2_provider_costs -------------------------------------------------------
+# --- filter_provider_costs -------------------------------------------------------
 
 
-def test_pillar2_provider_costs_missing_columns_raises() -> None:
+def test_filter_provider_costs_missing_columns_raises() -> None:
     """Raises naming whichever of `tossd_pillar`/`sector_code` is absent."""
     df = pd.DataFrame({"tossd_pillar": [2]})
     with pytest.raises(ValueError, match="sector_code"):
-        analysis.pillar2_provider_costs(df)
+        analysis.filter_provider_costs(df)
 
 
-def test_pillar2_provider_costs_filters_to_carveout_sectors() -> None:
+def test_filter_provider_costs_filters_to_carveout_sectors() -> None:
     """Keeps only pillar-2 rows whose sector_code is 910 or 930."""
     df = pd.DataFrame(
         {
@@ -594,12 +594,12 @@ def test_pillar2_provider_costs_filters_to_carveout_sectors() -> None:
         }
     )
 
-    result = analysis.pillar2_provider_costs(df)
+    result = analysis.filter_provider_costs(df)
 
     assert sorted(result["tossd_id"].tolist()) == ["a", "b"]
 
 
-def test_pillar2_provider_costs_excludes_null_sector_code_rows() -> None:
+def test_filter_provider_costs_excludes_null_sector_code_rows() -> None:
     """A null `sector_code` is excluded, not a crash."""
     df = pd.DataFrame(
         {
@@ -609,16 +609,16 @@ def test_pillar2_provider_costs_excludes_null_sector_code_rows() -> None:
         }
     )
 
-    result = analysis.pillar2_provider_costs(df)
+    result = analysis.filter_provider_costs(df)
 
     assert result["tossd_id"].tolist() == ["a"]
 
 
-def test_pillar2_provider_costs_does_not_mutate_input() -> None:
+def test_filter_provider_costs_does_not_mutate_input() -> None:
     """Filtering leaves the caller's original frame unchanged."""
     df = pd.DataFrame({"tossd_pillar": [2, 1], "sector_code": [910, 110]})
     original = df.copy()
 
-    analysis.pillar2_provider_costs(df)
+    analysis.filter_provider_costs(df)
 
     pd.testing.assert_frame_equal(df, original)
