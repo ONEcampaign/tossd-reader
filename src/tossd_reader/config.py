@@ -10,6 +10,7 @@ with hardcoded size/count bounds and no user-facing config surface.
 
 from __future__ import annotations
 
+import enum
 from pathlib import Path
 from typing import Final
 
@@ -27,16 +28,22 @@ _KEEP_N: Final = 24
 _MAX_BYTES: Final = 4 * 1024**3  # 4 GB, hardcoded (no user config surface)
 
 
-class _Unset:
-    """Sentinel: `set_cache_dir` has never been called."""
+class _Sentinel(enum.Enum):
+    """Sentinel values for `_CacheState.dir_override`/`built_for`.
 
+    `None` can't serve as the "not set" marker here because `None` is
+    itself a meaningful user-supplied value: `set_cache_dir(None)` requests
+    ephemeral bypass mode, which must stay distinguishable from `set_cache_dir`
+    never having been called at all. Members compare by `is` identity, unlike
+    the `isinstance` checks a pair of sentinel classes would need (which would
+    also, wrongly, accept a subclass instance).
+    """
 
-class _Bypass:
-    """Sentinel: `set_cache_dir(None)` requested ephemeral bypass mode."""
+    UNSET = enum.auto()
+    """`set_cache_dir` has never been called."""
 
-
-_UNSET: Final = _Unset()
-_BYPASS: Final = _Bypass()
+    BYPASS = enum.auto()
+    """`set_cache_dir(None)` requested ephemeral bypass mode."""
 
 
 class _CacheState:
@@ -47,9 +54,9 @@ class _CacheState:
     """
 
     def __init__(self) -> None:
-        self.dir_override: _Unset | _Bypass | Path = _UNSET
+        self.dir_override: _Sentinel | Path = _Sentinel.UNSET
         self.cache: ArtifactCache | None = None
-        self.built_for: _Unset | Path | None = _UNSET
+        self.built_for: _Sentinel | Path | None = _Sentinel.UNSET
 
 
 _state = _CacheState()
@@ -67,9 +74,9 @@ def get_cache_dir() -> Path | None:
         `set_cache_dir(None)` put the module into ephemeral bypass mode.
     """
     override = _state.dir_override
-    if isinstance(override, _Bypass):
+    if override is _Sentinel.BYPASS:
         return None
-    if isinstance(override, _Unset):
+    if override is _Sentinel.UNSET:
         return resolve_cache_dir(
             app=_APP_NAME, app_version=_CACHE_GENERATION, cache_dir=None
         )
@@ -91,8 +98,8 @@ def set_cache_dir(path: str | Path | None) -> None:
     if _state.cache is not None:
         _state.cache.close()
     _state.cache = None
-    _state.built_for = _UNSET
-    _state.dir_override = _BYPASS if path is None else Path(path)
+    _state.built_for = _Sentinel.UNSET
+    _state.dir_override = _Sentinel.BYPASS if path is None else Path(path)
 
 
 def get_cache() -> ArtifactCache:
@@ -132,5 +139,5 @@ def _reset_for_tests() -> None:
     if _state.cache is not None:
         _state.cache.close()
     _state.cache = None
-    _state.built_for = _UNSET
-    _state.dir_override = _UNSET
+    _state.built_for = _Sentinel.UNSET
+    _state.dir_override = _Sentinel.UNSET
