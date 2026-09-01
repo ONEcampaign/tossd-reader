@@ -156,27 +156,6 @@ def test_get_tossd_multi_year_refresh_sweeps_discovery_exactly_once(
     assert len(calls) == 1
 
 
-def test_export_multi_year_refresh_sweeps_discovery_exactly_once(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """A multi-year export(refresh=True) call sweeps discovery once, not once per year."""
-    years = [2019, 2020, 2021]
-    _setup_default_years(monkeypatch, tmp_path, years, n_rows=5)
-
-    calls: list[bool] = []
-    real_discover = _discovery.discover
-
-    def _spy(*, refresh: bool = False) -> dict:
-        calls.append(refresh)
-        return real_discover(refresh=refresh)
-
-    monkeypatch.setattr(_discovery, "discover", _spy)
-
-    tossd_reader.export(tmp_path / "out", years=years, refresh=True)
-
-    assert len(calls) == 1
-
-
 # --- providers / recipients: code / name / digit-string / miss ----------------
 
 

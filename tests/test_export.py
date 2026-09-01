@@ -21,7 +21,7 @@ import pytest
 import tossd_reader
 from tests.factories import build_tossd_table
 from tests.fakes import patch_discovery, patch_fetcher_by_url, url_for
-from tossd_reader import fetch, query
+from tossd_reader import _discovery, fetch, query
 from tossd_reader._discovery import VintageInfo
 
 # --- shared fetch/discovery patching (see tests/fakes.py) ---------------------
@@ -218,3 +218,27 @@ def test_export_refresh_passthrough(
     tossd_reader.export(tmp_path, years=2019, refresh=True)
 
     assert calls == [("tossd_reader:export", True)]
+
+
+# --- one discovery sweep per call, not once per requested year ----------------
+
+
+def test_export_multi_year_refresh_sweeps_discovery_exactly_once(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A multi-year export(refresh=True) call sweeps discovery once, not once per year."""
+    years = [2019, 2020, 2021]
+    _setup_default_years(monkeypatch, tmp_path, years, n_rows=5)
+
+    calls: list[bool] = []
+    real_discover = _discovery.discover
+
+    def _spy(*, refresh: bool = False) -> dict:
+        calls.append(refresh)
+        return real_discover(refresh=refresh)
+
+    monkeypatch.setattr(_discovery, "discover", _spy)
+
+    tossd_reader.export(tmp_path / "out", years=years, refresh=True)
+
+    assert len(calls) == 1
