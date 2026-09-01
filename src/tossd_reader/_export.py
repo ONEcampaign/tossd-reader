@@ -152,7 +152,12 @@ def _vintage_provenance(path: Path) -> dict[str, str | None]:
 
 
 def _schema_hash() -> str:
-    """Sha256 of the packaged `_data/schema.csv`, CRLF-normalised for OS-stability."""
+    """Sha256 of the packaged `_data/schema.csv`, CRLF-normalised for OS-stability.
+
+    Every byte of that file counts, including columns no code reads. The
+    documentation quotes this hash literally, so `tests/test_infra.py` pins
+    it: an edit to schema.csv cannot change it silently.
+    """
     with _resources.data_path("schema.csv") as schema_path:
         data = schema_path.read_bytes()
     return hashlib.sha256(data.replace(b"\r\n", b"\n")).hexdigest()

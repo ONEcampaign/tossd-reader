@@ -8,6 +8,7 @@ import pyarrow.parquet as pq
 
 import tossd_reader
 from tests.factories import build_tossd_table, write_tossd_fixture
+from tossd_reader import _export
 
 
 def test_import_exposes_version() -> None:
@@ -77,3 +78,19 @@ def test_schema_csv_sanity() -> None:
     assert (schema_df["preset_analysis"] == "true").sum() == 42
     assert schema_df["snake_name"].is_unique
     assert schema_df["published_name"].is_unique
+
+
+def test_schema_hash_matches_the_published_literal() -> None:
+    """schema.csv's exact bytes are published as a hash in the documentation.
+
+    Every byte of the file feeds `_export._schema_hash`, whose value each
+    export manifest carries and four documentation pages quote literally.
+    That includes the `nullable` column, which no code reads. Changing
+    schema.csv means updating this literal alongside
+    docs/about/reproducibility.md, docs/how-to/reconcile-a-figure.md,
+    docs/tutorials/reproducible-extract.md, and docs/reference/export.md.
+    """
+    assert (
+        _export._schema_hash()
+        == "0a95f2c54852817a9db1a2174cffa5bd371d601e5d137a37cb27491182367df9"
+    )
