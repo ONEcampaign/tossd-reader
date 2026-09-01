@@ -933,6 +933,72 @@ def test_provider_filter_strips_unused_categories_from_provider_name(
     assert list(df["provider_name"].cat.categories) == ["Provider Alpha"]
 
 
+# --- include_aggregates ---------------------------------------------------------
+
+
+def test_get_tossd_include_aggregates_defaults_to_true(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The default (`include_aggregates=True`) matches an un-flagged call byte for byte."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=20)
+
+    default_call = query.get_tossd(years=2019)
+    explicit_call = query.get_tossd(years=2019, include_aggregates=True)
+
+    pd.testing.assert_frame_equal(default_call, explicit_call)
+
+
+def test_get_tossd_include_aggregates_false_drops_aggregate_rows(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`include_aggregates=False` drops every `provider_code == 0` row; none remain."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    with_aggregates = query.get_tossd(years=2019)
+    n_aggregate_rows = int(with_aggregates["is_aggregate"].sum())
+    assert n_aggregate_rows > 0, (
+        "fixture must carry at least one aggregate row for this test to mean anything"
+    )
+
+    without_aggregates = query.get_tossd(years=2019, include_aggregates=False)
+
+    assert not without_aggregates["is_aggregate"].any()
+    assert len(without_aggregates) == len(with_aggregates) - n_aggregate_rows
+
+
+def test_include_aggregates_false_runs_the_categorical_strip_exactly_once(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`include_aggregates=False` counts as a row filter for the wave-0 categorical strip."""
+    _setup_default_years(monkeypatch, tmp_path, [2019, 2020], n_rows=20)
+    calls = _spy_on_strip_unused_categories(monkeypatch)
+
+    query.get_tossd(years=[2019, 2020], include_aggregates=False)
+
+    assert len(calls) == 1
+
+
+def test_build_table_include_aggregates_default_keeps_export_unaffected(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`build_table` called without `include_aggregates=` (as `export()` does) keeps every row."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=20)
+
+    combined, _paths = query.build_table(
+        years=2019,
+        providers=None,
+        recipients=None,
+        pillars=None,
+        columns="all",
+        units="usd_thousand",
+        refresh=False,
+        op_name="test:include_aggregates_default",
+    )
+
+    is_aggregate = combined.column("is_aggregate").to_pylist()
+    assert any(is_aggregate)
+
+
 # --- empty result --------------------------------------------------------------
 
 

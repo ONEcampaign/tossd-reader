@@ -14,10 +14,18 @@ if TYPE_CHECKING:
     from tossd_reader._export import export as export
     from tossd_reader._export import load_export as load_export
     from tossd_reader._export import verify_export as verify_export
+    from tossd_reader.analysis import add_instrument_group as add_instrument_group
     from tossd_reader.analysis import add_iso3 as add_iso3
+    from tossd_reader.analysis import add_recipient_group as add_recipient_group
     from tossd_reader.analysis import explode_sdg as explode_sdg
     from tossd_reader.analysis import extract_keywords as extract_keywords
     from tossd_reader.analysis import filter_provider_costs as filter_provider_costs
+    from tossd_reader.analysis import (
+        get_instrument_groups_version as get_instrument_groups_version,
+    )
+    from tossd_reader.analysis import (
+        get_recipient_groups_version as get_recipient_groups_version,
+    )
     from tossd_reader.analysis import get_structural_breaks as get_structural_breaks
     from tossd_reader.codelists import get_available_filters as get_available_filters
     from tossd_reader.codelists import get_codelists_version as get_codelists_version
@@ -33,6 +41,11 @@ if TYPE_CHECKING:
     from tossd_reader.fetch import get_tossd_raw as get_tossd_raw
     from tossd_reader.query import FORCED_COLUMNS as FORCED_COLUMNS
     from tossd_reader.query import get_tossd as get_tossd
+    from tossd_reader.verbs import compare_years as compare_years
+    from tossd_reader.verbs import keyword_totals as keyword_totals
+    from tossd_reader.verbs import rank_entities as rank_entities
+    from tossd_reader.verbs import sdg_totals as sdg_totals
+    from tossd_reader.verbs import subpillar_breakdown as subpillar_breakdown
 
 __all__ = [
     "FORCED_COLUMNS",
@@ -44,7 +57,10 @@ __all__ = [
     "UnknownCodeError",
     "VintageValidationError",
     "__version__",
+    "add_instrument_group",
     "add_iso3",
+    "add_recipient_group",
+    "compare_years",
     "explode_sdg",
     "export",
     "extract_keywords",
@@ -52,11 +68,17 @@ __all__ = [
     "get_available_filters",
     "get_cache_dir",
     "get_codelists_version",
+    "get_instrument_groups_version",
+    "get_recipient_groups_version",
     "get_structural_breaks",
     "get_tossd",
     "get_tossd_raw",
+    "keyword_totals",
     "load_export",
+    "rank_entities",
+    "sdg_totals",
     "set_cache_dir",
+    "subpillar_breakdown",
     "verify_export",
 ]
 
@@ -83,6 +105,21 @@ _LAZY_ATTRS: dict[str, tuple[str, str]] = {
     "extract_keywords": ("tossd_reader.analysis", "extract_keywords"),
     "get_structural_breaks": ("tossd_reader.analysis", "get_structural_breaks"),
     "filter_provider_costs": ("tossd_reader.analysis", "filter_provider_costs"),
+    "add_recipient_group": ("tossd_reader.analysis", "add_recipient_group"),
+    "add_instrument_group": ("tossd_reader.analysis", "add_instrument_group"),
+    "get_recipient_groups_version": (
+        "tossd_reader.analysis",
+        "get_recipient_groups_version",
+    ),
+    "get_instrument_groups_version": (
+        "tossd_reader.analysis",
+        "get_instrument_groups_version",
+    ),
+    "rank_entities": ("tossd_reader.verbs", "rank_entities"),
+    "compare_years": ("tossd_reader.verbs", "compare_years"),
+    "sdg_totals": ("tossd_reader.verbs", "sdg_totals"),
+    "keyword_totals": ("tossd_reader.verbs", "keyword_totals"),
+    "subpillar_breakdown": ("tossd_reader.verbs", "subpillar_breakdown"),
 }
 
 

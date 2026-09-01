@@ -1,0 +1,7 @@
+{
+  "version": "oecd-dac-cl15-2026-09-01/instrument-groups-methodology-v2",
+  "fetched_at": "2026-09-01T00:00:00+00:00",
+  "source_url": "https://development-finance-codelists.oecd.org/CodesList.aspx",
+  "codelist_id": "15",
+  "notes": "v2 additionally maps 0, 1101, 1102, 4221, 4222 -- codes observed in real 2023-2024 TOSSD submissions that OECD's own live List 15 still flags tossd=\"0\" (CRS-only) as of this fetch date, so a codelist refresh alone can never add them. See analysis.py's add_instrument_group docstring."
+}

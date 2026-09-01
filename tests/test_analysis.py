@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import warnings
 
 import pandas as pd
 import pytest
 
-from tossd_reader import analysis, codelists
+from tossd_reader import analysis, codelists, exceptions
 
 # --- _require_columns hint (missing analysis-preset column names the fix) -----
 
@@ -196,6 +197,155 @@ def test_explode_sdg_non_empty_output_dtypes() -> None:
     assert result["sdg_goal"].dtype == "Int8"
     assert result["sdg_is_target"].dtype == "bool"
     assert result["sdg_weight"].dtype == "float64"
+
+
+# --- explode_sdg value= ------------------------------------------------------------
+
+
+def test_explode_sdg_value_none_is_byte_identical_to_the_default() -> None:
+    """`value=None` (the default) leaves output columns and content unchanged."""
+    df = pd.DataFrame(
+        {
+            "tossd_id": ["a", "b"],
+            "usd_commitment": [90.0, 60.0],
+            "sdg_codes_raw": ["1;4;13", ""],
+        }
+    )
+
+    explicit = analysis.explode_sdg(df, value=None)
+    default = analysis.explode_sdg(df)
+
+    pd.testing.assert_frame_equal(explicit, default)
+    assert "usd_commitment_weighted" not in explicit.columns
+
+
+def test_explode_sdg_value_adds_weighted_column_alongside_the_original() -> None:
+    """`{value}_weighted` sits beside the untouched original `value` column."""
+    df = pd.DataFrame(
+        {
+            "tossd_id": ["a"],
+            "usd_commitment": [90.0],
+            "sdg_codes_raw": ["1;4;13"],
+        }
+    )
+
+    result = analysis.explode_sdg(df, value="usd_commitment")
+
+    assert (result["usd_commitment"] == 90.0).all()
+    assert result["usd_commitment_weighted"].tolist() == pytest.approx([30.0] * 3)
+
+
+def test_explode_sdg_value_weighted_column_hand_computed() -> None:
+    """`{value}_weighted` equals `value * sdg_weight` row by row, hand-checked."""
+    df = pd.DataFrame(
+        {
+            "tossd_id": ["a", "b"],
+            "usd_commitment": [100.0, 40.0],
+            "sdg_codes_raw": ["5", "4.2;6.b"],
+        }
+    )
+
+    result = analysis.explode_sdg(df, value="usd_commitment")
+
+    by_row = result.set_index("sdg_code")["usd_commitment_weighted"]
+    assert by_row["5"] == pytest.approx(100.0)  # single tag: full weight
+    assert by_row["4.2"] == pytest.approx(20.0)  # two tags: half weight each
+    assert by_row["6.b"] == pytest.approx(20.0)
+
+
+def test_explode_sdg_value_renormalisation_identity_matches_named_column() -> None:
+    """A grouped sum of `{value}_weighted` equals the SDG-tagged subset's original total."""
+    df = pd.DataFrame(
+        {
+            "tossd_id": ["a", "b", "c"],
+            "usd_commitment": [90.0, 60.0, 1000.0],
+            "sdg_codes_raw": ["1;4;13", "5.2;6.b", ""],
+        }
+    )
+    sdg_tagged_total = 90.0 + 60.0  # row "c" carries no SDG tag.
+
+    result = analysis.explode_sdg(df, value="usd_commitment")
+
+    assert result["usd_commitment_weighted"].sum() == pytest.approx(sdg_tagged_total)
+    # Same identity the un-named ad hoc multiplication already gave.
+    ad_hoc = (result["usd_commitment"] * result["sdg_weight"]).sum()
+    assert result["usd_commitment_weighted"].sum() == pytest.approx(ad_hoc)
+
+
+def test_explode_sdg_value_missing_column_raises_with_analysis_hint() -> None:
+    """A `value=` column absent from `df` raises, with the analysis-preset hint."""
+    df = pd.DataFrame({"sdg_codes_raw": ["5"]})
+
+    with pytest.raises(ValueError, match="columns='analysis'") as excinfo:
+        analysis.explode_sdg(df, value="sector_code")
+    assert "sector_code" in str(excinfo.value)
+
+
+def test_explode_sdg_value_non_numeric_raises() -> None:
+    """A `value=` column that isn't numeric-dtyped raises, naming the dtype."""
+    df = pd.DataFrame(
+        {
+            "sdg_codes_raw": ["5"],
+            "provider_name": pd.Series(["Alpha"], dtype="category"),
+        }
+    )
+
+    with pytest.raises(ValueError, match="numeric") as excinfo:
+        analysis.explode_sdg(df, value="provider_name")
+    message = str(excinfo.value)
+    assert "provider_name" in message
+    assert "category" in message
+
+
+def test_explode_sdg_value_rejects_already_weighted_input() -> None:
+    """Re-running with the same `value=` on already-exploded output raises, not overwrites."""
+    df = pd.DataFrame(
+        {"tossd_id": ["a"], "usd_commitment": [90.0], "sdg_codes_raw": ["5"]}
+    )
+    once = analysis.explode_sdg(df, value="usd_commitment")
+
+    with pytest.raises(ValueError, match="usd_commitment_weighted"):
+        analysis.explode_sdg(once, value="usd_commitment")
+
+
+def test_explode_sdg_value_does_not_mutate_input() -> None:
+    """`explode_sdg(value=...)` leaves the caller's original frame unchanged."""
+    df = pd.DataFrame(
+        {"tossd_id": ["a"], "usd_commitment": [90.0], "sdg_codes_raw": ["5"]}
+    )
+    original = df.copy()
+
+    analysis.explode_sdg(df, value="usd_commitment")
+
+    pd.testing.assert_frame_equal(df, original)
+
+
+def test_explode_sdg_value_copies_attrs() -> None:
+    """`df.attrs` propagates onto the result with `value=` given, same as without it."""
+    df = pd.DataFrame(
+        {"tossd_id": ["a"], "usd_commitment": [90.0], "sdg_codes_raw": ["5"]}
+    )
+    df.attrs["source"] = "test"
+
+    result = analysis.explode_sdg(df, value="usd_commitment")
+
+    assert result.attrs == {"source": "test"}
+
+
+def test_explode_sdg_value_empty_input_has_documented_dtype() -> None:
+    """A 0-row input with `value=` yields a 0-row result; the weighted column is float64."""
+    df = pd.DataFrame(
+        {
+            "tossd_id": pd.Series([], dtype="object"),
+            "usd_commitment": pd.Series([], dtype="float64"),
+            "sdg_codes_raw": pd.Series([], dtype="object"),
+        }
+    )
+
+    result = analysis.explode_sdg(df, value="usd_commitment")
+
+    assert len(result) == 0
+    assert result["usd_commitment_weighted"].dtype == "float64"
 
 
 # --- add_iso3 --------------------------------------------------------------------
@@ -622,3 +772,301 @@ def test_filter_provider_costs_does_not_mutate_input() -> None:
     analysis.filter_provider_costs(df)
 
     pd.testing.assert_frame_equal(df, original)
+
+
+# --- add_recipient_group -----------------------------------------------------------
+
+# Real codes from src/tossd_reader/_data/codelists/recipient.csv, chosen for
+# their known recipient_groups.csv values (notes/incantation/recipient-groups-sources.md):
+# 225 Angola (LDC / Lower middle income / South of Sahara), 218 South Africa
+# (Other Developing / Upper middle income / South of Sahara), 276 Saint
+# Helena (Other Developing / Unclassified income -- non-self-governing
+# territory / South of Sahara), 89 "Europe, regional" (no iso3 -> Unallocated
+# under ldc/income, real "Europe" under region), 55 Türkiye (Other
+# Developing / Upper middle income / Europe).
+
+
+def test_add_recipient_group_missing_column_raises() -> None:
+    """`add_recipient_group` names the missing column when `recipient_code` is absent."""
+    df = pd.DataFrame({"other": [1]})
+    with pytest.raises(ValueError, match="recipient_code"):
+        analysis.add_recipient_group(df)
+
+
+def test_add_recipient_group_invalid_scheme_raises() -> None:
+    """An unrecognised `scheme=` raises, naming the valid options."""
+    df = pd.DataFrame({"recipient_code": [225]})
+    with pytest.raises(ValueError, match="'income'") as excinfo:
+        analysis.add_recipient_group(df, scheme="bogus")
+    message = str(excinfo.value)
+    assert "'ldc'" in message
+    assert "'region'" in message
+
+
+def test_add_recipient_group_rejects_already_grouped_input() -> None:
+    """Re-running `add_recipient_group` on its own output raises, not silently overwrites."""
+    df = pd.DataFrame({"recipient_code": [225]})
+    once = analysis.add_recipient_group(df)
+
+    with pytest.raises(ValueError, match="recipient_group"):
+        analysis.add_recipient_group(once)
+
+
+def test_add_recipient_group_ldc_scheme_real_codes() -> None:
+    """LDC, Other Developing, and the no-iso3 Unallocated bucket resolve correctly."""
+    df = pd.DataFrame({"recipient_code": [225, 218, 89]})
+
+    result = analysis.add_recipient_group(df, scheme="ldc")
+
+    assert result["recipient_group"].tolist() == [
+        "Least Developed Countries",
+        "Other Developing Countries",
+        "Regional / Multi-country Unallocated",
+    ]
+    assert isinstance(result["recipient_group"].dtype, pd.CategoricalDtype)
+
+
+def test_add_recipient_group_income_scheme_unclassified_territory() -> None:
+    """A non-self-governing territory gets 'Unclassified', distinct from Unallocated."""
+    df = pd.DataFrame({"recipient_code": [276, 89]})
+
+    result = analysis.add_recipient_group(df, scheme="income")
+
+    assert result["recipient_group"].tolist() == [
+        "Unclassified",
+        "Regional / Multi-country Unallocated",
+    ]
+
+
+def test_add_recipient_group_region_scheme_covers_regional_codes_too() -> None:
+    """Every code, including no-iso3 regional ones, resolves to a real region."""
+    df = pd.DataFrame({"recipient_code": [55, 89]})
+
+    result = analysis.add_recipient_group(df, scheme="region")
+
+    assert result["recipient_group"].tolist() == ["Europe", "Europe"]
+
+
+def test_add_recipient_group_unknown_code_warns_once_and_returns_na() -> None:
+    """A recipient_code absent from the packaged table -> NA, warned once, then quiet."""
+    analysis._reset_for_tests()
+    df = pd.DataFrame({"recipient_code": [225, 999999]})
+
+    with pytest.warns(UserWarning, match="999999"):
+        result = analysis.add_recipient_group(df)
+    assert result["recipient_group"].tolist()[0] == "Least Developed Countries"
+    assert pd.isna(result["recipient_group"].tolist()[1])
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        analysis.add_recipient_group(df)  # same unknown code again: no warning
+
+
+def test_add_recipient_group_does_not_mutate_input() -> None:
+    """`add_recipient_group` leaves the caller's original frame unchanged."""
+    df = pd.DataFrame({"recipient_code": [225]})
+    original = df.copy()
+
+    analysis.add_recipient_group(df)
+
+    pd.testing.assert_frame_equal(df, original)
+
+
+def test_add_recipient_group_copies_attrs() -> None:
+    """`df.attrs` propagates onto the result (A7)."""
+    df = pd.DataFrame({"recipient_code": [225]})
+    df.attrs["source"] = "test"
+
+    result = analysis.add_recipient_group(df)
+
+    assert result.attrs == {"source": "test"}
+
+
+def test_add_recipient_group_empty_input_returns_empty_correctly_typed() -> None:
+    """A 0-row input yields a 0-row, category-dtyped result, silently."""
+    df = pd.DataFrame({"recipient_code": pd.Series([], dtype="Int16")})
+
+    result = analysis.add_recipient_group(df)
+
+    assert result.empty
+    assert isinstance(result["recipient_group"].dtype, pd.CategoricalDtype)
+
+
+def test_get_recipient_groups_version_names_both_sources() -> None:
+    """The version stamp independently names the LDC-list and WB-income vintages."""
+    version = analysis.get_recipient_groups_version()
+    assert "ldc" in version
+    assert "wb-fy27" in version
+
+
+def test_get_recipient_groups_version_is_cached() -> None:
+    """Repeated calls return the identical cached string object."""
+    assert (
+        analysis.get_recipient_groups_version()
+        is analysis.get_recipient_groups_version()
+    )
+
+
+# --- add_instrument_group -----------------------------------------------------------
+
+# Real codes from src/tossd_reader/_data/codelists/finance_instrument.csv,
+# chosen for their known instrument_groups.csv values
+# (notes/incantation/instrument-groups-spec.md): 110 Standard grant (Grants),
+# 421 Standard loan (loan family -- concessionality_flag decides), 510 Common
+# equity (Equity), 1100 Guarantees/insurance (Guarantees), 2100 Direct
+# provider spending (its own group), 431 Subordinated loan (Hybrid/Mezzanine,
+# per the ORCHESTRATOR RULING keeping the mezzanine family out of the loan
+# split), 310 Capital subscription on deposit basis (Other Instruments).
+
+
+def _instrument_df(codes: list[int | None], flags: list[int | None]) -> pd.DataFrame:
+    """Build a minimal analysis-shaped frame with nullable Int dtypes, like get_tossd()."""
+    return pd.DataFrame(
+        {
+            "finance_instrument_code": pd.array(codes, dtype="Int16"),
+            "concessionality_flag": pd.array(flags, dtype="Int8"),
+        }
+    )
+
+
+def test_add_instrument_group_missing_columns_raises() -> None:
+    """Raises naming whichever of the two required columns is absent, with the analysis hint."""
+    df = pd.DataFrame({"other": [1]})
+    with pytest.raises(ValueError, match="columns='analysis'") as excinfo:
+        analysis.add_instrument_group(df)
+    message = str(excinfo.value)
+    assert "finance_instrument_code" in message
+    assert "concessionality_flag" in message
+
+
+def test_add_instrument_group_rejects_already_grouped_input() -> None:
+    """Re-running `add_instrument_group` on its own output raises, not silently overwrites."""
+    df = _instrument_df([110], [None])
+    once = analysis.add_instrument_group(df)
+
+    with pytest.raises(ValueError, match="instrument_group"):
+        analysis.add_instrument_group(once)
+
+
+def test_add_instrument_group_grants_equity_and_direct_provider_spending() -> None:
+    """Codes outside the loan family classify from `finance_instrument_code` alone."""
+    df = _instrument_df([110, 510, 2100, 1100, 431, 310], [None] * 6)
+
+    result = analysis.add_instrument_group(df)
+
+    assert result["instrument_group"].tolist() == [
+        "Grants",
+        "Equity",
+        "Direct Provider Spending",
+        "Guarantees",
+        "Hybrid/Mezzanine",
+        "Other Instruments",
+    ]
+    assert isinstance(result["instrument_group"].dtype, pd.CategoricalDtype)
+
+
+def test_add_instrument_group_concessionality_flag_splits_the_loan_family() -> None:
+    """Code 421 (Standard loan) splits on `concessionality_flag` alone."""
+    df = _instrument_df([421, 421], [1, 0])
+
+    result = analysis.add_instrument_group(df)
+
+    assert result["instrument_group"].tolist() == [
+        "Concessional Loans",
+        "Non-concessional Loans",
+    ]
+
+
+def test_add_instrument_group_observed_codes_classify_without_raising() -> None:
+    """The 5 codes real 2023-2024 data carries but OECD's live codelist doesn't -- all mapped.
+
+    0 "NON FLOW ITEMS" -> Other Instruments (real, non-blank code on real
+    rows with real dollar amounts -- an honest bucket, not NA). 1101/1102
+    (loan/portfolio guarantees) -> Guarantees, same as 1100. 4221/4222
+    (reimbursable-grant sub-variants of the 422 loan-family code) join the
+    debt family and split on concessionality_flag exactly like 421/422.
+    """
+    df = _instrument_df([0, 1101, 1102, 4221, 4221], [None, None, None, 1, 0])
+
+    result = analysis.add_instrument_group(df)
+
+    assert result["instrument_group"].tolist() == [
+        "Other Instruments",
+        "Guarantees",
+        "Guarantees",
+        "Concessional Loans",
+        "Non-concessional Loans",
+    ]
+
+
+def test_add_instrument_group_blank_concessionality_flag_on_loan_code_is_na() -> None:
+    """A blank `concessionality_flag` on a loan-family code -> NA, not a default."""
+    df = _instrument_df([421], [None])
+
+    result = analysis.add_instrument_group(df)
+
+    assert pd.isna(result["instrument_group"].tolist()[0])
+
+
+def test_add_instrument_group_blank_instrument_code_is_na() -> None:
+    """A blank/NA `finance_instrument_code` (pseudo-aggregate rows) -> NA, never a raise."""
+    df = _instrument_df([None, 110], [None, None])
+
+    result = analysis.add_instrument_group(df)
+
+    assert pd.isna(result["instrument_group"].tolist()[0])
+    assert result["instrument_group"].tolist()[1] == "Grants"
+
+
+def test_add_instrument_group_unmapped_code_raises_unknown_code_error() -> None:
+    """A non-null code absent from the table raises `UnknownCodeError`, naming it and the version."""
+    df = _instrument_df([9999], [None])
+
+    with pytest.raises(exceptions.UnknownCodeError, match="9999") as excinfo:
+        analysis.add_instrument_group(df)
+    assert analysis.get_instrument_groups_version() in str(excinfo.value)
+
+
+def test_add_instrument_group_does_not_mutate_input() -> None:
+    """`add_instrument_group` leaves the caller's original frame unchanged."""
+    df = _instrument_df([110], [None])
+    original = df.copy()
+
+    analysis.add_instrument_group(df)
+
+    pd.testing.assert_frame_equal(df, original)
+
+
+def test_add_instrument_group_copies_attrs() -> None:
+    """`df.attrs` propagates onto the result (A7)."""
+    df = _instrument_df([110], [None])
+    df.attrs["source"] = "test"
+
+    result = analysis.add_instrument_group(df)
+
+    assert result.attrs == {"source": "test"}
+
+
+def test_add_instrument_group_empty_input_returns_empty_correctly_typed() -> None:
+    """A 0-row input yields a 0-row, category-dtyped result, silently."""
+    df = _instrument_df([], [])
+
+    result = analysis.add_instrument_group(df)
+
+    assert result.empty
+    assert isinstance(result["instrument_group"].dtype, pd.CategoricalDtype)
+
+
+def test_get_instrument_groups_version_names_both_components() -> None:
+    """The version stamp independently names the OECD list vintage and this repo's methodology."""
+    version = analysis.get_instrument_groups_version()
+    assert "oecd-dac-cl15" in version
+    assert "instrument-groups-methodology" in version
+
+
+def test_get_instrument_groups_version_is_cached() -> None:
+    """Repeated calls return the identical cached string object."""
+    assert (
+        analysis.get_instrument_groups_version()
+        is analysis.get_instrument_groups_version()
+    )

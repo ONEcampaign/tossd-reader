@@ -1,29 +1,40 @@
 """Post-query analysis toolkit for `get_tossd()` output.
 
-`explode_sdg`, `add_iso3`, `extract_keywords`, and `filter_provider_costs`
-each operate on a `pandas.DataFrame` already shaped like `get_tossd()`'s
-output (snake_case columns) and raise a `ValueError` naming any column they
-need but don't find, rather than a bare `KeyError`. Each returns a new
-frame, leaving the caller's frame untouched. `get_structural_breaks` takes no
-frame at all: it returns the packaged structural-breaks reference table.
+`explode_sdg`, `add_iso3`, `extract_keywords`, `filter_provider_costs`,
+`add_recipient_group`, and `add_instrument_group` each operate on a
+`pandas.DataFrame` already shaped like `get_tossd()`'s output (snake_case
+columns) and raise a `ValueError` naming any column they need but don't
+find, rather than a bare `KeyError` -- `add_instrument_group` additionally
+raises `UnknownCodeError` for a `finance_instrument_code` value the packaged
+table doesn't cover (never a `ValueError`; see its own docstring). Each
+returns a new frame, leaving the caller's frame untouched and copying its
+`attrs`. `get_structural_breaks` takes no frame at all: it returns the
+packaged structural-breaks reference table.
 
 `add_iso3` is the one helper here that touches `resolvekit`: `import
 resolvekit` happens lazily, inside `_iso3_resolver`'s own body, never at
 module scope -- a package-level import stays banned project-wide (see
 `_matching.py`'s `_suggest_with_resolvekit`), so a bare `import tossd_reader`,
-or calling any of this module's other four helpers, never pulls resolvekit
-into `sys.modules`.
+or calling any of this module's other helpers, never pulls resolvekit into
+`sys.modules`.
 """
 
 from __future__ import annotations
 
+import json
+import warnings
 from collections.abc import Iterable
 from functools import lru_cache
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import pandas as pd
 
-from tossd_reader import _resources, _schema
+from tossd_reader import (
+    _accessor,  # noqa: F401 - registers df.tossd
+    _resources,
+    _schema,
+)
+from tossd_reader.exceptions import UnknownCodeError
 
 if TYPE_CHECKING:
     import resolvekit
@@ -105,11 +116,33 @@ def _parse_sdg_token(token: str) -> tuple[int, bool]:
     return int(goal_part), True
 
 
-def explode_sdg(df: pd.DataFrame) -> pd.DataFrame:
+def _require_numeric_column(df: pd.DataFrame, value: str, *, func_name: str) -> None:
+    """Raise `ValueError` naming `value` if `df[value]` isn't numeric-dtyped.
+
+    Only called after the column's presence is already confirmed (e.g. via
+    `_require_columns`), so `df[value]` is safe to access here. Mirrors
+    `verbs.py`'s own `_require_numeric_value` message shape -- kept as a
+    local copy rather than a shared import, since `verbs.py` imports
+    `analysis`, not the other way around.
+    """
+    if not pd.api.types.is_numeric_dtype(df[value]):
+        raise ValueError(
+            f"{func_name}() needs value={value!r} to be numeric; df[{value!r}] "
+            f"is {df[value].dtype} dtype."
+        )
+
+
+def explode_sdg(df: pd.DataFrame, *, value: str | None = None) -> pd.DataFrame:
     """Explode `sdg_codes_raw` into one row per SDG code token.
 
     Args:
         df: A `get_tossd()`-shaped frame carrying `sdg_codes_raw`.
+        value: An amount column name. When given, the result gains a sibling
+            `{value}_weighted` column (`df[value] * sdg_weight`) alongside
+            the untouched original `value` column -- never overwriting it,
+            since the same column name would mean a different thing
+            depending on what last touched the frame. `None` (the default):
+            today's behaviour, byte-identical output.
 
     Returns:
         A new frame: every input column, plus one row per `;`-delimited SDG
@@ -119,19 +152,35 @@ def explode_sdg(df: pd.DataFrame) -> pd.DataFrame:
         rather than the goal as a whole), and `sdg_weight` (`float64`,
         `1 / n` for the `n` tokens that source row carried, so a grouped sum
         of `amount * sdg_weight` renormalises to that row's original
-        amount). Rows with no SDG tag at all (an empty or null
-        `sdg_codes_raw`) contribute nothing to the result: the exploded
-        frame's weighted total equals only the SDG-tagged subset of `df`'s
-        totals, never `df`'s grand total. Row order is otherwise preserved.
+        amount). When `value` is given, also `{value}_weighted`
+        (`df[value] * sdg_weight`, `float64`) -- a grouped sum of it equals
+        the SDG-tagged subset's original `value` total, the same
+        renormalisation identity `sdg_weight` already gives any ad hoc
+        `amount * sdg_weight` multiplication, just precomputed and named.
+        Rows with no SDG tag at all (an empty or null `sdg_codes_raw`)
+        contribute nothing to the result: the exploded frame's weighted
+        total equals only the SDG-tagged subset of `df`'s totals, never
+        `df`'s grand total. Row order is otherwise preserved.
 
     Raises:
-        ValueError: `df` has no `sdg_codes_raw` column, or already carries one
-            of this function's own output columns (`sdg_code`, `sdg_goal`,
-            `sdg_is_target`, `sdg_weight`) -- re-running `explode_sdg` on its
-            own output would otherwise silently duplicate them.
+        ValueError: `df` has no `sdg_codes_raw` column (or, when `value` is
+            given, no `value` column); `value` is given but `df[value]` isn't
+            numeric-dtyped; or `df` already carries one of this function's
+            own output columns (`sdg_code`, `sdg_goal`, `sdg_is_target`,
+            `sdg_weight`, and `{value}_weighted` when `value` is given) --
+            re-running `explode_sdg` on its own output would otherwise
+            silently duplicate them.
     """
     _require_columns(df, "sdg_codes_raw", func_name="explode_sdg")
-    already_exploded = [name for name in _SDG_DERIVED_COLUMNS if name in df.columns]
+    weighted_column = None
+    derived_columns = list(_SDG_DERIVED_COLUMNS)
+    if value is not None:
+        _require_columns(df, value, func_name="explode_sdg")
+        _require_numeric_column(df, value, func_name="explode_sdg")
+        weighted_column = f"{value}_weighted"
+        derived_columns.append(weighted_column)
+
+    already_exploded = [name for name in derived_columns if name in df.columns]
     if already_exploded:
         raise ValueError(
             f"explode_sdg() found column(s) {', '.join(already_exploded)} already "
@@ -157,9 +206,18 @@ def explode_sdg(df: pd.DataFrame) -> pd.DataFrame:
         [is_target for _, is_target in parsed], index=exploded.index, dtype="bool"
     )
 
-    return exploded[
-        [*df.columns, "sdg_code", "sdg_goal", "sdg_is_target", "sdg_weight"]
+    output_columns = [
+        *df.columns,
+        "sdg_code",
+        "sdg_goal",
+        "sdg_is_target",
+        "sdg_weight",
     ]
+    if weighted_column is not None:
+        exploded[weighted_column] = exploded[value] * exploded["sdg_weight"]
+        output_columns.append(weighted_column)
+
+    return exploded[output_columns]
 
 
 # --- add_iso3 --------------------------------------------------------------------
@@ -394,3 +452,313 @@ def filter_provider_costs(df: pd.DataFrame) -> pd.DataFrame:
         _PROVIDER_COST_SECTOR_CODES
     )
     return df.loc[mask].copy()
+
+
+# --- add_recipient_group -----------------------------------------------------------
+
+
+_RECIPIENT_GROUP_COLUMN = "recipient_group"
+_RECIPIENT_GROUP_SCHEME_COLUMNS: dict[str, str] = {
+    "ldc": "ldc_group",
+    "income": "income_group",
+    "region": "region",
+}
+"""`scheme= -> the packaged recipient_groups.csv column it reads."""
+
+_warned_unknown_recipient_codes: set[str] = set()
+"""Warn-once state for `add_recipient_group`, the analysis-side counterpart
+of `query.py`'s `_warned_unknown_codes` (a `dict[str, set[str]]` there
+because it covers several decode columns; a flat `set[str]` here because
+every scheme reads the same `recipient_code` key from one packaged table, so
+a code is either in that table or it isn't, regardless of scheme)."""
+
+
+def _reset_for_tests() -> None:
+    """Clear this module's warn-once state (test isolation helper, not conftest-wired)."""
+    _warned_unknown_recipient_codes.clear()
+
+
+@lru_cache
+def _load_recipient_groups() -> pd.DataFrame:
+    """Load (once per process) the packaged recipient-groups table."""
+    with _resources.data_path("recipient_groups.csv") as path:
+        return pd.read_csv(path)
+
+
+@lru_cache
+def get_recipient_groups_version() -> str:
+    """Return the packaged recipient-groups table's version stamp.
+
+    Returns:
+        The composite stamp recorded in `_data/recipient_groups_version.json`
+        (its `"version"` field), e.g. `"ldc-2024review/wb-fy27"` --
+        independently naming the UN LDC-list vintage (`ldc`/`region` schemes
+        don't move on their own cadence) and the World Bank income
+        classification's fiscal year (`income` scheme) the packaged table
+        was built from.
+    """
+    with _resources.data_path("recipient_groups_version.json") as path:
+        payload = json.loads(path.read_text())
+    return payload["version"]
+
+
+def _warn_unknown_recipient_codes(missing_values: list[object]) -> None:
+    """Warn once (per never-before-seen `recipient_code`) that it has no packaged group.
+
+    Mirrors `query.py`'s `_warn_unknown_decode_codes`: only codes not already
+    warned about this session are reported, so a second call over the same
+    unmapped codes stays quiet.
+    """
+    new_missing = sorted(
+        {str(value) for value in missing_values} - _warned_unknown_recipient_codes,
+        key=str,
+    )
+    if not new_missing:
+        return
+    _warned_unknown_recipient_codes.update(new_missing)
+    warnings.warn(
+        f"{len(new_missing)} recipient_code value(s) not in the packaged "
+        f"recipient-groups table (version {get_recipient_groups_version()}, "
+        "vintage newer than snapshot?): "
+        f"{', '.join(new_missing)}. add_recipient_group() returns NA for these rows.",
+        stacklevel=3,
+    )
+
+
+def add_recipient_group(
+    df: pd.DataFrame, *, scheme: Literal["ldc", "income", "region"] = "ldc"
+) -> pd.DataFrame:
+    """Add `recipient_group`, joined from the packaged recipient-groups table.
+
+    Args:
+        df: A `get_tossd()`-shaped frame carrying `recipient_code`.
+        scheme: Which grouping to apply -- `"ldc"` (Least Developed
+            Countries / Other Developing Countries), `"income"` (World Bank
+            income group), or `"region"` (the UN region TOSSD itself
+            publishes per recipient, the same value `get_tossd()`'s own
+            `region_name` column carries).
+
+    Returns:
+        `df` plus `recipient_group` (`category`), one value per
+        `recipient_code` read from the table `get_recipient_groups_version()`
+        names.
+
+        Regional/multi-country recipient codes (e.g. "Europe, regional",
+        "Global" -- codes with no `iso3` in the packaged recipient codelist)
+        carry an explicit `"Regional / Multi-country Unallocated"` value under
+        `"ldc"`/`"income"`; `"region"` never produces it, since TOSSD
+        publishes a real region for these codes too. Six non-self-governing
+        territories the World Bank does not publish independent GNI data for
+        (Saint Helena, Montserrat, Cook Islands, Niue, Tokelau, Wallis and
+        Futuna) carry `"Unclassified"` under `"income"` -- distinct from
+        `"Regional / Multi-country Unallocated"`, since these are real,
+        single-territory codes, not aggregates.
+
+        A `recipient_code` absent from the packaged table (a TOSSD vintage
+        newer than the snapshot) resolves to `NA` and triggers a
+        once-per-code warning rather than an error, so a full-frame call
+        stays usable.
+
+        São Tomé and Príncipe (`recipient_code` 268) graduated from LDC
+        status on 2024-12-06. The packaged table reflects the *current* LDC
+        list, so it classifies STP as `"Other Developing Countries"` even
+        for 2024 rows reported before that date -- an analyst reconciling
+        against a 2024-vintage LDC classification should treat STP as LDC
+        for that year instead of trusting this column.
+
+    Raises:
+        ValueError: `df` has no `recipient_code` column, `scheme` is not one
+            of `"ldc"`/`"income"`/`"region"`, or `df` already carries a
+            `recipient_group` column.
+    """
+    _require_columns(df, "recipient_code", func_name="add_recipient_group")
+    if scheme not in _RECIPIENT_GROUP_SCHEME_COLUMNS:
+        valid = ", ".join(
+            repr(name) for name in sorted(_RECIPIENT_GROUP_SCHEME_COLUMNS)
+        )
+        raise ValueError(
+            f"add_recipient_group() scheme={scheme!r} is not one of {valid}."
+        )
+    if _RECIPIENT_GROUP_COLUMN in df.columns:
+        raise ValueError(
+            f"add_recipient_group() found column '{_RECIPIENT_GROUP_COLUMN}' "
+            "already present in df -- df looks already grouped."
+        )
+
+    table = _load_recipient_groups()
+    scheme_column = _RECIPIENT_GROUP_SCHEME_COLUMNS[scheme]
+    mapping = dict(zip(table["recipient_code"], table[scheme_column], strict=True))
+
+    codes = df["recipient_code"]
+    group = codes.map(mapping, na_action="ignore")
+
+    unmapped_mask = codes.notna() & group.isna()
+    if unmapped_mask.any():
+        _warn_unknown_recipient_codes(codes.loc[unmapped_mask].unique().tolist())
+
+    result = df.copy()
+    result[_RECIPIENT_GROUP_COLUMN] = group.astype("category")
+    result.attrs = dict(df.attrs)
+    return result
+
+
+# --- add_instrument_group -----------------------------------------------------------
+
+
+_INSTRUMENT_GROUP_COLUMN = "instrument_group"
+_LOAN_FAMILY_BASE_GROUP = "Non-concessional Loans"
+"""The packaged table's placeholder value for the debt-instrument code
+family (`420`-`425`, plus the observed `4221`/`4222`) -- not a fixed answer,
+a sentinel `add_instrument_group` overrides per-row via
+`concessionality_flag`. See that function's docstring."""
+
+_CONCESSIONAL_LOANS_GROUP = "Concessional Loans"
+
+
+@lru_cache
+def _load_instrument_groups() -> pd.DataFrame:
+    """Load (once per process) the packaged instrument-groups table."""
+    with _resources.data_path("instrument_groups.csv") as path:
+        return pd.read_csv(path)
+
+
+@lru_cache
+def get_instrument_groups_version() -> str:
+    """Return the packaged instrument-groups table's version stamp.
+
+    Returns:
+        The composite stamp recorded in `_data/instrument_groups_version.json`
+        (its `"version"` field), e.g.
+        `"oecd-dac-cl15-2026-09-01/instrument-groups-methodology-v2"` --
+        independently naming the OECD DAC CRS++ "List 15: Type of finance"
+        fetch date the packaged `finance_instrument` codelist (and this
+        table) were checked against, and this project's own group-assignment
+        methodology revision, which moves independently of the OECD list
+        (v2 additionally maps the codes real submissions carry that List 15
+        itself doesn't yet flag `tossd`-applicable -- see
+        `add_instrument_group`).
+    """
+    with _resources.data_path("instrument_groups_version.json") as path:
+        payload = json.loads(path.read_text())
+    return payload["version"]
+
+
+def add_instrument_group(df: pd.DataFrame) -> pd.DataFrame:
+    """Add `instrument_group`, joined from the packaged instrument-groups table.
+
+    `finance_instrument_code` alone decides every group except the
+    debt-instrument family (`420` "DEBT INSTRUMENTS" and its children `421`
+    "Standard loan" through `425` "Other debt securities", plus `4221`
+    "Loan-type reimbursable grant" and `4222` "Reflow-based reimbursable
+    grant" -- both `422` "Reimbursable grant" sub-variants by name and
+    real-data concessionality profile), which additionally needs
+    `concessionality_flag`: flag `1` -> `"Concessional Loans"`, flag `0` ->
+    `"Non-concessional Loans"`, a blank flag -> `NA` (17 rows in the 2024
+    vintage, concentrated in code `421`, the highest-volume debt instrument
+    -- there is no separate concessional/non-concessional code, only the one
+    flag column).
+
+    Groups: `"Grants"` (`100`/`110`), `"Non-concessional Loans"` /
+    `"Concessional Loans"` (the debt family, see above),
+    `"Hybrid/Mezzanine"` (`430`-`434`, the mezzanine-finance family),
+    `"Equity"` (`500`/`510`/`520`), `"Guarantees"` (`1000`/`1100`, plus
+    `1101` "Individual loan guarantee" and `1102` "Loan portfolio
+    guarantee" by name and real-data concessionality profile -- overwhelmingly
+    blank, matching `1100`, not the debt family's mixed split),
+    `"Direct Provider Spending"` (`2000`/`2100`, its own group -- not a
+    transfer to a recipient at all), `"Subsidies"` (`3000`/`3100`), and
+    `"Other Instruments"` (`310` "Capital subscription on deposit basis",
+    orphaned in the codelist's own header hierarchy -- no `300` parent row
+    exists unlike every other family; and `0` "NON FLOW ITEMS", 3 real rows
+    across 2019-2024, one provider (Korea, `provider_code` 742), each
+    carrying a real `usd_disbursement` -- OECD's own List 15 flags it
+    CRS-only, and its name argues for excluding it from a financing-flow
+    breakdown entirely, but it is a real, non-blank code on real rows with
+    real dollar amounts, not a structurally-blank pseudo-aggregate, so it
+    gets an honest bucket here rather than `NA`).
+
+    `100`, `110`, `310`, `420`-`425`, `430`-`434`, `500`, `510`, `520`,
+    `1000`, `1100`, `2000`, `2100`, `3000`, `3100` come from the packaged
+    `finance_instrument` codelist; `0`, `1101`, `1102`, `4221`, `4222` do
+    not -- OECD's own live List 15 still flags all five `tossd="0"` (CRS-only)
+    as of `get_instrument_groups_version()`'s fetch date, even though real
+    2023-2024 TOSSD submissions carry them, so a codelist refresh alone can
+    never add them (see `scripts/refresh_codelists.py`'s own `--check`,
+    which reports zero drift against the live source). They are mapped
+    directly here instead, from each code's official List-15 name and its
+    real-data profile, distinguished from the codelist-sourced rows by the
+    packaged table's own `source` column (`"codelist"`/`"observed"`) for
+    anyone auditing where a mapping came from.
+
+    Args:
+        df: A `get_tossd()`-shaped frame carrying `finance_instrument_code`
+            and `concessionality_flag`.
+
+    Returns:
+        `df` plus `instrument_group` (`category`). A blank/`NA`
+        `finance_instrument_code` (every pseudo-aggregate row --
+        `provider_code == 0` -- carries one) resolves to `NA`, not an error,
+        so a full-frame call including aggregates stays usable. `NA` rows
+        carry material dollar volume of their own (pseudo-aggregates plus
+        blank-concessionality debt rows, roughly 20% of 2024 disbursements
+        combined) and pandas' own `groupby` drops `NaN` keys by default, so
+        totalling by `instrument_group` needs `dropna=False` or excluding
+        aggregates first to avoid silently losing that share.
+
+    Raises:
+        ValueError: `df` is missing `finance_instrument_code` or
+            `concessionality_flag`, or already carries an `instrument_group`
+            column.
+        UnknownCodeError: A non-null `finance_instrument_code` value is
+            absent from the packaged table -- never silently grouped into
+            `"Other Instruments"`. Reserved for a genuinely new or malformed
+            code (a typo, or a future vintage's drift): every code observed
+            in the six cached 2019-2024 TOSSD vintages is mapped, whether or
+            not OECD's own codelist covers it yet.
+    """
+    _require_columns(
+        df,
+        "finance_instrument_code",
+        "concessionality_flag",
+        func_name="add_instrument_group",
+    )
+    if _INSTRUMENT_GROUP_COLUMN in df.columns:
+        raise ValueError(
+            f"add_instrument_group() found column '{_INSTRUMENT_GROUP_COLUMN}' "
+            "already present in df -- df looks already grouped."
+        )
+
+    table = _load_instrument_groups()
+    mapping = dict(
+        zip(table["finance_instrument_code"], table["instrument_group"], strict=True)
+    )
+
+    codes = df["finance_instrument_code"]
+    group = codes.map(mapping, na_action="ignore")
+
+    unmapped_mask = codes.notna() & group.isna()
+    if unmapped_mask.any():
+        unknown = sorted(
+            {str(code) for code in codes.loc[unmapped_mask].unique()}, key=str
+        )
+        raise UnknownCodeError(
+            "add_instrument_group() found finance_instrument_code value(s) "
+            f"{', '.join(unknown)} not in the packaged instrument-groups table "
+            f"(version {get_instrument_groups_version()}). This TOSSD vintage "
+            "carries a code the packaged snapshot doesn't cover yet -- refresh "
+            "it via scripts/refresh_codelists.py, or check "
+            "get_instrument_groups_version()."
+        )
+
+    is_loan_family = (group == _LOAN_FAMILY_BASE_GROUP).fillna(False)
+    flags = df["concessionality_flag"]
+    concessional_override = is_loan_family & (flags == 1).fillna(False)
+    blank_flag_override = is_loan_family & flags.isna()
+
+    group = group.mask(concessional_override, _CONCESSIONAL_LOANS_GROUP)
+    group = group.mask(blank_flag_override, pd.NA)
+
+    result = df.copy()
+    result[_INSTRUMENT_GROUP_COLUMN] = group.astype("category")
+    result.attrs = dict(df.attrs)
+    return result

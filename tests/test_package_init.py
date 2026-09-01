@@ -27,6 +27,15 @@ from tossd_reader import exceptions, query
         ("extract_keywords", "tossd_reader.analysis"),
         ("get_structural_breaks", "tossd_reader.analysis"),
         ("filter_provider_costs", "tossd_reader.analysis"),
+        ("add_recipient_group", "tossd_reader.analysis"),
+        ("add_instrument_group", "tossd_reader.analysis"),
+        ("get_recipient_groups_version", "tossd_reader.analysis"),
+        ("get_instrument_groups_version", "tossd_reader.analysis"),
+        ("rank_entities", "tossd_reader.verbs"),
+        ("compare_years", "tossd_reader.verbs"),
+        ("sdg_totals", "tossd_reader.verbs"),
+        ("keyword_totals", "tossd_reader.verbs"),
+        ("subpillar_breakdown", "tossd_reader.verbs"),
         ("TossdReaderError", exceptions.TossdReaderError),
         ("TossdNetworkError", exceptions.TossdNetworkError),
         ("VintageValidationError", exceptions.VintageValidationError),
@@ -84,6 +93,8 @@ def test_import_opens_no_socket_and_stays_light() -> None:
         "    'tossd_reader.query',\n"
         "    'tossd_reader._export',\n"
         "    'tossd_reader.analysis',\n"
+        "    'tossd_reader.verbs',\n"
+        "    'tossd_reader._accessor',\n"
         "]\n"
         "for name in lazy_submodules:\n"
         "    assert importlib.util.find_spec(name) is not None, f'{name} does not exist'\n"

@@ -38,7 +38,14 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from readerkit.refresh import effective_refresh
 
-from tossd_reader import _matching, _pillars, _schema, codelists, fetch
+from tossd_reader import (
+    _accessor,  # noqa: F401 - registers df.tossd
+    _matching,
+    _pillars,
+    _schema,
+    codelists,
+    fetch,
+)
 from tossd_reader.exceptions import UnknownCodeError
 
 # A bare `to_pandas()` widens any Arrow integer column holding nulls to
@@ -77,6 +84,7 @@ def get_tossd(
     pillars: int | str | None = None,
     columns: Literal["all", "minimal", "analysis"] | list[str] = "all",
     units: Literal["usd_thousand", "usd_million", "usd"] = "usd_thousand",
+    include_aggregates: bool = True,
     refresh: bool = False,
 ) -> pd.DataFrame:
     """Return typed, filtered TOSSD activity-level data.
@@ -122,6 +130,15 @@ def get_tossd(
             (divides every `schema.csv` `is_usd_thousand_amount` column by
             1000), or `"usd"` (multiplies the same columns by 1000, since
             the published scale is thousands).
+        include_aggregates: `True` (the default) keeps every row,
+            including the `provider_code == 0` pseudo-aggregate rows the
+            publisher includes alongside individual providers' own
+            activity-level records -- so the default output matches the
+            published records in full. `False` drops them (an arrow-level
+            `provider_code != 0` filter, applied per year, before the
+            cross-year concat). The `tossd_reader.verbs` aggregation
+            functions default the other way (`include_aggregates=False`),
+            since summing across both would double-count.
         refresh: Re-run discovery's HEAD sweep and force a readerkit
             conditional GET for every requested year. An enclosing
             `readerkit.refresh_scope()` has the same effect.
@@ -152,6 +169,7 @@ def get_tossd(
         pillars=pillars,
         columns=columns,
         units=units,
+        include_aggregates=include_aggregates,
         refresh=refresh,
         op_name="tossd_reader:get_tossd",
     )
@@ -166,6 +184,7 @@ def build_table(
     pillars: int | str | None,
     columns: Literal["all", "minimal", "analysis"] | list[str],
     units: Literal["usd_thousand", "usd_million", "usd"],
+    include_aggregates: bool = True,
     refresh: bool,
     op_name: str,
 ) -> tuple[pa.Table, dict[int, Path]]:
@@ -242,6 +261,7 @@ def build_table(
             recipient_codes=recipient_codes,
             pillar_main=pillar_main,
             pillar_sub=pillar_sub,
+            include_aggregates=include_aggregates,
         )
         tables.append(filtered)
 
@@ -250,6 +270,7 @@ def build_table(
         provider_codes is not None
         or recipient_codes is not None
         or pillar_main is not None
+        or not include_aggregates
     )
     if row_filter_ran:
         combined = _strip_unused_categories(combined)
@@ -281,6 +302,7 @@ def _apply_row_filters(
     recipient_codes: tuple[int, ...] | None,
     pillar_main: str | None,
     pillar_sub: str | None,
+    include_aggregates: bool,
 ) -> pa.Table:
     """Apply every requested filter to one year's already-typed table."""
     if provider_codes is not None:
@@ -291,7 +313,20 @@ def _apply_row_filters(
         )
     if pillar_main is not None:
         table = _filter_pillar(table, pillar_main, pillar_sub)
+    if not include_aggregates:
+        table = _filter_aggregates(table)
     return table
+
+
+def _filter_aggregates(table: pa.Table) -> pa.Table:
+    """Keep only rows whose `provider_code` isn't the aggregate sentinel (`0`).
+
+    `provider_code` is always read regardless of `columns=` (the forced
+    `is_aggregate` derived column needs it too), so this needs no
+    projection change.
+    """
+    mask = pc.not_equal(table.column("provider_code"), 0)  # ty: ignore[unresolved-attribute]
+    return table.filter(mask)
 
 
 def _filter_codes(

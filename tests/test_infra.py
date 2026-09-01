@@ -1,6 +1,8 @@
 """Smoke tests for infra: package import, fixture generator, schema.csv sanity."""
 
 import importlib.resources
+import json
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -8,7 +10,7 @@ import pyarrow.parquet as pq
 
 import tossd_reader
 from tests.factories import build_tossd_table, write_tossd_fixture
-from tossd_reader import _export
+from tossd_reader import _export, codelists
 
 
 def test_import_exposes_version() -> None:
@@ -94,3 +96,118 @@ def test_schema_hash_matches_the_published_literal() -> None:
         _export._schema_hash()
         == "0a95f2c54852817a9db1a2174cffa5bd371d601e5d137a37cb27491182367df9"
     )
+
+
+# --- packaged group tables: recipient_groups.csv, instrument_groups.csv -------------
+
+
+def _read_data_csv(*parts: str) -> pd.DataFrame:
+    resource = importlib.resources.files("tossd_reader") / "_data"
+    for part in parts:
+        resource = resource / part
+    with importlib.resources.as_file(resource) as path:
+        return pd.read_csv(path)
+
+
+def _read_data_json(*parts: str) -> dict[str, object]:
+    resource = importlib.resources.files("tossd_reader") / "_data"
+    for part in parts:
+        resource = resource / part
+    with importlib.resources.as_file(resource) as path:
+        return json.loads(path.read_text())
+
+
+def test_recipient_groups_covers_every_packaged_recipient_code_exactly_once() -> None:
+    """Every packaged recipient code is classified exactly once -- no missing, no extra."""
+    recipient_codes = set(codelists.load_codelist("recipient")["code"].astype(int))
+    groups_df = _read_data_csv("recipient_groups.csv")
+
+    assert groups_df["recipient_code"].is_unique
+    assert set(groups_df["recipient_code"]) == recipient_codes
+
+
+def test_recipient_groups_scheme_columns_only_carry_documented_values() -> None:
+    """Each scheme column only carries a value from its documented vocabulary."""
+    groups_df = _read_data_csv("recipient_groups.csv")
+
+    valid_ldc = {
+        "Least Developed Countries",
+        "Other Developing Countries",
+        "Regional / Multi-country Unallocated",
+    }
+    valid_income = {
+        "Low income",
+        "Lower middle income",
+        "Upper middle income",
+        "High income",
+        "Unclassified",
+        "Regional / Multi-country Unallocated",
+    }
+    assert set(groups_df["ldc_group"]) <= valid_ldc
+    assert set(groups_df["income_group"]) <= valid_income
+
+
+def test_recipient_groups_no_row_is_blank_in_any_scheme_column() -> None:
+    """No packaged row leaves any of the three scheme columns blank."""
+    groups_df = _read_data_csv("recipient_groups.csv")
+    assert not groups_df[["ldc_group", "income_group", "region"]].isna().any().any()
+
+
+def test_recipient_groups_income_unclassified_is_disjoint_from_unallocated() -> None:
+    """The six-territory 'Unclassified' bucket never coincides with the no-iso3 Unallocated one."""
+    groups_df = _read_data_csv("recipient_groups.csv")
+    unclassified = groups_df.loc[groups_df["income_group"] == "Unclassified"]
+    assert (unclassified["ldc_group"] != "Regional / Multi-country Unallocated").all()
+
+
+_OBSERVED_FINANCE_INSTRUMENT_CODES = frozenset({0, 1101, 1102, 4221, 4222})
+"""Codes seen on real rows in the six cached TOSSD vintages (2019-2024) but
+absent from OECD's own live List 15 `tossd`-applicable flag as of
+2026-09-01 (verified via a direct fetch of codelist_id "15" -- a codelist
+refresh can never add them on its own, see
+notes/incantation/instrument-groups-spec.md §3 and analysis.py's
+add_instrument_group docstring). Pinned here, offline, independent of the
+packaged CSV's own `source` column, so this test verifies that column
+rather than trusting it."""
+
+
+def test_instrument_groups_covers_the_codelist_and_the_observed_codes_exactly() -> None:
+    """The table maps every packaged codelist code plus every pinned observed code, no others."""
+    codelist_codes = set(
+        codelists.load_codelist("finance_instrument")["code"].astype(int)
+    )
+    groups_df = _read_data_csv("instrument_groups.csv")
+
+    assert groups_df["finance_instrument_code"].is_unique
+    assert set(groups_df["finance_instrument_code"]) == (
+        codelist_codes | _OBSERVED_FINANCE_INSTRUMENT_CODES
+    )
+    assert codelist_codes.isdisjoint(_OBSERVED_FINANCE_INSTRUMENT_CODES)
+
+
+def test_instrument_groups_source_column_matches_each_code_s_real_population() -> None:
+    """`source` reads 'codelist' for packaged-codelist codes, 'observed' for the pinned set."""
+    codelist_codes = set(
+        codelists.load_codelist("finance_instrument")["code"].astype(int)
+    )
+    groups_df = _read_data_csv("instrument_groups.csv")
+    by_code = groups_df.set_index("finance_instrument_code")["source"]
+
+    assert set(by_code.loc[list(codelist_codes)]) == {"codelist"}
+    assert set(by_code.loc[list(_OBSERVED_FINANCE_INSTRUMENT_CODES)]) == {"observed"}
+
+
+def test_recipient_groups_version_stamp_parses() -> None:
+    """The recipient-groups version JSON parses, with a non-empty version and fetched_at."""
+    payload = _read_data_json("recipient_groups_version.json")
+
+    assert payload["version"]
+    datetime.fromisoformat(payload["fetched_at"])  # round-trips without raising
+
+
+def test_instrument_groups_version_stamp_parses() -> None:
+    """The instrument-groups version JSON parses, with a non-empty version and fetched_at."""
+    payload = _read_data_json("instrument_groups_version.json")
+
+    assert payload["version"]
+    datetime.fromisoformat(payload["fetched_at"])  # round-trips without raising
