@@ -204,7 +204,7 @@ class _ScriptedSession:
 
 
 def test_make_fetcher_streams_body_and_captures_get_headers(tmp_path: Path) -> None:
-    """The real `_make_fetcher` writes the body and captures the GET's own ETag/size."""
+    """The real `_make_fetcher` writes the body and captures the GET's own ETag."""
     payload = b"PAR1-fake-body-bytes"
     response = _FakeGetResponse(
         headers={"ETag": '"e1"', "Content-Length": str(len(payload))},

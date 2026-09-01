@@ -2,9 +2,11 @@
 
 `test_fetch.py`, `test_query.py`, and `test_export.py` each need to make
 `_discovery` report a fixed set of published vintages and make `fetch`'s own
-GET fetcher serve fixture bytes for them, without touching the network. These
-plain functions (not fixtures -- they take `monkeypatch` as an explicit
-argument, same as `tests/script_loading.py`'s `import_script`) do that.
+GET fetcher serve fixture bytes for them, without touching the network.
+
+These are plain functions taking `monkeypatch` explicitly, rather than pytest
+fixtures — a test opts in by importing and calling one, the same way it uses
+`tests/script_loading.py`'s `import_script`.
 """
 
 from __future__ import annotations
