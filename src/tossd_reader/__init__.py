@@ -29,8 +29,12 @@ if TYPE_CHECKING:
     from tossd_reader.analysis import get_structural_breaks as get_structural_breaks
     from tossd_reader.codelists import get_available_filters as get_available_filters
     from tossd_reader.codelists import get_codelists_version as get_codelists_version
+    from tossd_reader.config import cache_info as cache_info
+    from tossd_reader.config import clear_cache as clear_cache
     from tossd_reader.config import get_cache_dir as get_cache_dir
+    from tossd_reader.config import get_offline as get_offline
     from tossd_reader.config import set_cache_dir as set_cache_dir
+    from tossd_reader.config import set_offline as set_offline
     from tossd_reader.exceptions import ExportIntegrityError as ExportIntegrityError
     from tossd_reader.exceptions import InvalidPillarError as InvalidPillarError
     from tossd_reader.exceptions import SchemaDriftError as SchemaDriftError
@@ -39,11 +43,14 @@ if TYPE_CHECKING:
     from tossd_reader.exceptions import UnknownCodeError as UnknownCodeError
     from tossd_reader.exceptions import VintageValidationError as VintageValidationError
     from tossd_reader.fetch import get_tossd_raw as get_tossd_raw
+    from tossd_reader.fetch import get_vintages as get_vintages
     from tossd_reader.query import FORCED_COLUMNS as FORCED_COLUMNS
     from tossd_reader.query import get_tossd as get_tossd
     from tossd_reader.verbs import compare_years as compare_years
+    from tossd_reader.verbs import get_provenance as get_provenance
     from tossd_reader.verbs import keyword_totals as keyword_totals
     from tossd_reader.verbs import rank_entities as rank_entities
+    from tossd_reader.verbs import reconcile as reconcile
     from tossd_reader.verbs import sdg_totals as sdg_totals
     from tossd_reader.verbs import subpillar_breakdown as subpillar_breakdown
 
@@ -60,6 +67,8 @@ __all__ = [
     "add_instrument_group",
     "add_iso3",
     "add_recipient_group",
+    "cache_info",
+    "clear_cache",
     "compare_years",
     "explode_sdg",
     "export",
@@ -69,21 +78,27 @@ __all__ = [
     "get_cache_dir",
     "get_codelists_version",
     "get_instrument_groups_version",
+    "get_offline",
+    "get_provenance",
     "get_recipient_groups_version",
     "get_structural_breaks",
     "get_tossd",
     "get_tossd_raw",
+    "get_vintages",
     "keyword_totals",
     "load_export",
     "rank_entities",
+    "reconcile",
     "sdg_totals",
     "set_cache_dir",
+    "set_offline",
     "subpillar_breakdown",
     "verify_export",
 ]
 
 _LAZY_ATTRS: dict[str, tuple[str, str]] = {
     "get_tossd_raw": ("tossd_reader.fetch", "get_tossd_raw"),
+    "get_vintages": ("tossd_reader.fetch", "get_vintages"),
     "get_tossd": ("tossd_reader.query", "get_tossd"),
     "FORCED_COLUMNS": ("tossd_reader.query", "FORCED_COLUMNS"),
     "export": ("tossd_reader._export", "export"),
@@ -91,6 +106,10 @@ _LAZY_ATTRS: dict[str, tuple[str, str]] = {
     "load_export": ("tossd_reader._export", "load_export"),
     "set_cache_dir": ("tossd_reader.config", "set_cache_dir"),
     "get_cache_dir": ("tossd_reader.config", "get_cache_dir"),
+    "set_offline": ("tossd_reader.config", "set_offline"),
+    "get_offline": ("tossd_reader.config", "get_offline"),
+    "cache_info": ("tossd_reader.config", "cache_info"),
+    "clear_cache": ("tossd_reader.config", "clear_cache"),
     "get_available_filters": ("tossd_reader.codelists", "get_available_filters"),
     "get_codelists_version": ("tossd_reader.codelists", "get_codelists_version"),
     "TossdReaderError": ("tossd_reader.exceptions", "TossdReaderError"),
@@ -120,6 +139,8 @@ _LAZY_ATTRS: dict[str, tuple[str, str]] = {
     "sdg_totals": ("tossd_reader.verbs", "sdg_totals"),
     "keyword_totals": ("tossd_reader.verbs", "keyword_totals"),
     "subpillar_breakdown": ("tossd_reader.verbs", "subpillar_breakdown"),
+    "reconcile": ("tossd_reader.verbs", "reconcile"),
+    "get_provenance": ("tossd_reader.verbs", "get_provenance"),
 }
 
 

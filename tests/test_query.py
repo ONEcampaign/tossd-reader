@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -14,7 +16,7 @@ import pytest
 import tossd_reader
 from tests.factories import _load_schema, build_tossd_table
 from tests.fakes import patch_discovery, patch_fetcher_by_url, url_for
-from tossd_reader import _discovery, _matching, _pillars, fetch, query
+from tossd_reader import _discovery, _matching, _pillars, config, fetch, query
 from tossd_reader._discovery import VintageInfo
 from tossd_reader.exceptions import (
     InvalidPillarError,
@@ -1130,3 +1132,104 @@ def test_unknown_decode_code_warning_points_at_the_caller(
         query.get_tossd(years=2019)
 
     assert record[0].filename.endswith("test_query.py")
+
+
+# --- attrs provenance -----------------------------------------------------------
+
+
+def test_get_tossd_attrs_shape_and_json_serializable(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`df.attrs["tossd_reader"]` carries package_version/created_at/query/years, all JSON-able."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=10)
+
+    df = query.get_tossd(years=2019, columns="minimal", units="usd_million")
+
+    provenance = df.attrs["tossd_reader"]
+    assert set(provenance) == {"package_version", "created_at", "query", "years"}
+    assert provenance["package_version"] == tossd_reader.__version__
+    datetime.fromisoformat(provenance["created_at"])
+
+    q = provenance["query"]
+    assert q == {
+        "years": (2019,),
+        "providers": None,
+        "recipients": None,
+        "pillars": None,
+        "columns": "minimal",
+        "units": "usd_million",
+        "include_aggregates": True,
+        "refresh": False,
+    }
+
+    assert set(provenance["years"]) == {"2019"}
+    year_entry = provenance["years"]["2019"]
+    assert year_entry["etag"] == '"e2019"'
+    assert year_entry["url"] == url_for(2019)
+    datetime.fromisoformat(year_entry["retrieved_at"])
+
+    json.dumps(provenance)  # never raises: every value is JSON-serializable
+
+
+def test_get_tossd_attrs_resolves_providers_and_recipients_to_codes(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`providers=`/`recipients=` land in the provenance `query` dict as resolved codes, not the raw token."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    # "Austria" is provider_code 1 in the packaged codelist (resolution reads that
+    # codelist, not the fixture's own synthetic provider_name column).
+    df = query.get_tossd(years=2019, providers="Austria", recipients=55)
+
+    q = df.attrs["tossd_reader"]["query"]
+    assert q["providers"] == (1,)
+    assert q["recipients"] == (55,)
+
+
+def test_get_tossd_attrs_multi_year_covers_every_requested_year(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A multi-year call's `"years"` provenance mapping carries one entry per requested year."""
+    _setup_default_years(monkeypatch, tmp_path, [2019, 2020], n_rows=10)
+
+    df = query.get_tossd(years=[2019, 2020])
+
+    provenance = df.attrs["tossd_reader"]
+    assert provenance["query"]["years"] == (2019, 2020)
+    assert set(provenance["years"]) == {"2019", "2020"}
+
+
+def test_get_tossd_attrs_include_aggregates_reflected_verbatim(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`include_aggregates=False` (a non-default value) is carried through unchanged."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=10)
+
+    df = query.get_tossd(years=2019, include_aggregates=False)
+
+    assert df.attrs["tossd_reader"]["query"]["include_aggregates"] is False
+
+
+# --- offline mode ------------------------------------------------------------------
+
+
+def test_get_tossd_offline_refresh_conflict_raises() -> None:
+    """`refresh=True` while offline mode is active raises before any fetch attempt."""
+    config.set_offline(True)
+    with pytest.raises(ValueError, match="get_tossd"):
+        query.get_tossd(years=2019, refresh=True)
+
+
+def test_get_tossd_offline_serves_cache_with_warning(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Offline mode makes `get_tossd` serve a cached vintage instead of touching the network."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=10)
+    query.get_tossd(years=2019)  # warm the cache
+
+    config.set_offline(True)
+
+    with pytest.warns(UserWarning, match="[Oo]ffline mode"):
+        df = query.get_tossd(years=2019)
+
+    assert len(df) == 10

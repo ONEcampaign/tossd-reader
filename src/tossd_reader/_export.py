@@ -48,6 +48,7 @@ def export(
     *,
     years: int | Iterable[int] | None = None,
     refresh: bool = False,
+    max_rows: int | None = None,
 ) -> Path:
     """Write the normalised, typed `get_tossd` pipeline output to parquet.
 
@@ -60,6 +61,10 @@ def export(
             iterable of years, or `None` (the default) for the packaged
             known-years set.
         refresh: Same semantics as `get_tossd`'s `refresh=`.
+        max_rows: Opt-in guard: once the table is built, raise `ValueError`
+            (naming the actual row count and this limit) before writing
+            anything, if it exceeds `max_rows`. `None` (the default)
+            applies no limit -- the historical behaviour, unchanged.
 
     Returns:
         The path the parquet file was written to. A sidecar
@@ -73,12 +78,17 @@ def export(
         `years=None` (the default) materialises the full packaged
         known-years set as one arrow table, all in memory, before it's
         ever written to disk (`columns="all"`, per this function's own
-        contract) -- measured at roughly 2.1GB+ resident for the full set.
-        Pass an explicit `years=` to export a smaller slice if that's a
-        concern.
+        contract) -- measured at roughly 4.4GB peak resident for the full
+        set (the finished table alone is ~2.1GB; per-year tables are
+        transiently alive alongside it).
+        Pass an explicit `years=` (or `max_rows=` to fail fast instead) to
+        export a smaller slice if that's a concern.
 
     Raises:
-        ValueError: `years` resolves to an empty set of years.
+        ValueError: `years` resolves to an empty set of years; `max_rows`
+            is given and the built table exceeds it; or `refresh=True`
+            while offline mode is active (`config.get_offline()` is
+            `True`).
         TossdNetworkError: Same conditions as `get_tossd`; export applies
             no provider/recipient/pillar filters, so only the fetch/schema
             layer's own failure modes apply in practice.
@@ -94,6 +104,12 @@ def export(
         refresh=refresh,
         op_name=_OP_NAME,
     )
+    if max_rows is not None and table.num_rows > max_rows:
+        raise ValueError(
+            f"export() would write {table.num_rows} rows, exceeding "
+            f"max_rows={max_rows}. Pass a larger max_rows=, or narrow years= to "
+            "export a smaller slice."
+        )
     resolved_years = tuple(paths)
 
     destination = _resolve_destination(Path(path), resolved_years)

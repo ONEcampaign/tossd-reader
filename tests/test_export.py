@@ -22,7 +22,7 @@ import pytest
 import tossd_reader
 from tests.factories import build_tossd_table
 from tests.fakes import patch_discovery, patch_fetcher_by_url, url_for
-from tossd_reader import _discovery, fetch, query
+from tossd_reader import _discovery, config, fetch, query
 from tossd_reader._discovery import VintageInfo
 from tossd_reader.exceptions import ExportIntegrityError
 
@@ -462,3 +462,73 @@ def test_load_export_verify_false_still_raises_on_missing_manifest(
 
     with pytest.raises(ExportIntegrityError, match="manifest"):
         tossd_reader.load_export(destination, verify=False)
+
+
+# --- max_rows guard ----------------------------------------------------------------
+
+
+def test_export_max_rows_none_applies_no_limit(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`max_rows=None` (the default) is unchanged behaviour: no guard at all."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=20)
+
+    destination = tossd_reader.export(tmp_path / "out", years=2019, max_rows=None)
+
+    assert pq.read_metadata(destination).num_rows == 20
+
+
+def test_export_max_rows_under_the_limit_writes_normally(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A table at or under `max_rows=` writes exactly as it would without the guard."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=20)
+
+    destination = tossd_reader.export(tmp_path / "out", years=2019, max_rows=20)
+
+    assert pq.read_metadata(destination).num_rows == 20
+
+
+def test_export_max_rows_exceeded_raises_before_writing_anything(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Exceeding `max_rows=` raises naming the actual count and the limit, writing nothing."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=20)
+    target = tmp_path / "out"
+
+    with pytest.raises(ValueError, match="20") as excinfo:
+        tossd_reader.export(target, years=2019, max_rows=5)
+
+    assert "max_rows=5" in str(excinfo.value)
+    assert not target.exists()
+
+
+# --- offline mode --------------------------------------------------------------------
+
+
+def test_export_offline_refresh_conflict_raises_before_any_fetch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`refresh=True` while offline mode is active raises, naming export(), before any fetch."""
+    config.set_offline(True)
+
+    with pytest.raises(ValueError, match="export") as excinfo:
+        tossd_reader.export(tmp_path / "out", years=2019, refresh=True)
+
+    assert "offline" in str(excinfo.value)
+    assert not (tmp_path / "out").exists()
+
+
+def test_export_offline_serves_cache_with_warning(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Offline mode (no refresh conflict) still exports, served from cache, with one warning."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=8)
+    fetch.fetch_year(2019)  # warm the cache
+
+    config.set_offline(True)
+
+    with pytest.warns(UserWarning, match="[Oo]ffline mode"):
+        destination = tossd_reader.export(tmp_path / "out", years=2019)
+
+    assert pq.read_metadata(destination).num_rows == 8

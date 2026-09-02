@@ -16,13 +16,14 @@ carries; a frame missing it raises, naming the column.
 
 from __future__ import annotations
 
+import copy
 import difflib
 from collections.abc import Iterable
 from typing import Literal
 
 import pandas as pd
 
-from tossd_reader import _matching, analysis
+from tossd_reader import _matching, _provenance, analysis
 
 _COHORT_MODES: tuple[str, ...] = ("consistent", "all")
 _SDG_LEVEL_GROUP_COLUMNS: dict[str, str] = {"goal": "sdg_goal", "code": "sdg_code"}
@@ -643,3 +644,202 @@ def subpillar_breakdown(
 
     result.attrs = dict(df.attrs)
     return result[["year", "subpillar", value, "share_pct", "coverage_pct"]]
+
+
+# --- get_provenance ------------------------------------------------------------
+
+
+def get_provenance(df: pd.DataFrame) -> dict[str, object]:
+    """Return a deep copy of `df.attrs["tossd_reader"]`, the query's own provenance record.
+
+    `get_tossd()`, `get_tossd_raw()`, and `load_export()` each set this key; every verb and
+    accessor method above copies `df.attrs` onto its own result (so it survives `rank_entities`,
+    `explode_sdg`, and so on), which is what makes reading it back through this function -- a
+    deep copy, never the live dict -- safer than reaching into `df.attrs["tossd_reader"]`
+    directly, where a caller mutating the returned dict would otherwise mutate `df`'s own attrs.
+
+    Args:
+        df: A frame carrying `df.attrs["tossd_reader"]`.
+
+    Returns:
+        A deep copy of the payload: `{"package_version", "created_at", "query", "years"}` for a
+        `get_tossd()`/`get_tossd_raw()` result (`"query"` holds the normalised call; `"years"`
+        maps each fetched year to `{"etag", "retrieved_at", "url"}`), or
+        `{"package_version", "created_at", "years"}` for a `load_export()` frame (no `"query"`
+        key -- an export is an unfiltered snapshot, not a query result; see that function's own
+        docstring for its `"years"` shape).
+
+    Raises:
+        ValueError: `df.attrs` carries no `"tossd_reader"` key -- naming the three functions
+            that set it.
+    """
+    if _provenance.ATTRS_KEY not in df.attrs:
+        raise ValueError(
+            "get_provenance() found no df.attrs['tossd_reader'] -- that key is set by "
+            "get_tossd(), get_tossd_raw(), and load_export(); a frame built some other way "
+            "(or a plain pandas operation that dropped attrs along the way) carries none."
+        )
+    return copy.deepcopy(df.attrs[_provenance.ATTRS_KEY])
+
+
+# --- reconcile -------------------------------------------------------------------
+
+_RECONCILE_REQUIRED_COLUMNS = (
+    "unit",
+    "is_aggregate",
+    "year",
+    "tossd_pillar",
+    "usd_disbursement",
+)
+_B02_MODALITY_CODE = "B02"
+_ESTIMATE_TOKEN = "estimate"
+
+
+def _safe_share_pct(numerator: float, denominator: float) -> float:
+    """`numerator / denominator * 100`, or `NaN` when `denominator` is 0 or itself `NaN`.
+
+    A guarded conditional, never an unconditional division -- dividing by an actual `0`/`NaN`
+    denominator would otherwise raise numpy's own runtime warning, and `reconcile` never warns.
+    """
+    if denominator == 0 or pd.isna(denominator):
+        return float("nan")
+    return numerator / denominator * 100
+
+
+def _optional_share(numerator: float | None, total: float) -> tuple[object, object]:
+    """`(value, share_pct)`, or `(pd.NA, pd.NA)` when `numerator` is `None`.
+
+    `numerator=None` means the column needed to compute it wasn't present in `df` at all --
+    distinct from a present-but-zero numerator, which still gets a real (if `NaN`) share via
+    `_safe_share_pct`.
+    """
+    if numerator is None:
+        return pd.NA, pd.NA
+    return numerator, _safe_share_pct(numerator, total)
+
+
+def reconcile(df: pd.DataFrame) -> pd.Series:
+    """Describe `df` against the six manual checks in "How to check a figure against the
+    published total", plus a few figures that guide doesn't cover.
+
+    A read-out, not a validator: every entry is `df`'s own data, described -- never a warning,
+    never a raise triggered by what the data happens to say (only by `df` not being
+    `get_tossd()`-shaped at all). Every share is of `df`'s *own* `usd_disbursement` total,
+    aggregate rows included -- `reconcile` takes no `include_aggregates=` (unlike every other
+    verb here): dropping them first would make `aggregate_share_pct` describe nothing.
+
+    Args:
+        df: A `get_tossd()`-shaped frame carrying `unit`, `is_aggregate`, `year`,
+            `tossd_pillar`, and `usd_disbursement` -- the one required column set, kept minimal.
+            `usd_disbursement_deflated`, `modality_code`, `source_name`, and `recipient_code`
+            are each optional: when one is missing, the entries that need it read `pd.NA`
+            instead of raising.
+
+    Returns:
+        A `pandas.Series` (object-dtype, one entry per check):
+
+        - `unit`: `df`'s own `unit` value (a tuple of every distinct value present, when
+          there's more than one).
+        - `n_aggregate_rows`, `aggregate_value`, `aggregate_share_pct`: the `is_aggregate` rows'
+          own count and `usd_disbursement` share of `df`'s total.
+        - `usd_disbursement_total`, `usd_disbursement_deflated_total` (`pd.NA` if
+          `usd_disbursement_deflated` isn't in `df`): the two price bases' own totals, to match
+          against whichever basis an external figure used.
+        - `pillars_present`: the sorted, distinct `tossd_pillar` values in `df`.
+        - `year_min`, `year_max`, `n_years`: `df`'s own year coverage.
+        - `has_provenance`: whether `df.attrs["tossd_reader"]` is set (`get_provenance(df)`
+          reads it).
+        - `b02_core_contribution_value`, `b02_core_contribution_share_pct` (`pd.NA` if
+          `modality_code` isn't in `df`): `usd_disbursement` on `modality_code == "B02"` rows
+          (core contributions to multilateral institutions).
+        - `estimate_derived_value`, `estimate_derived_share_pct` (`pd.NA` if `source_name` isn't
+          in `df`): `usd_disbursement` on rows whose `source_name` contains "estimate"
+          (case-insensitive) -- a heuristic naming convention, not a packaged flag.
+        - `iso3_unmatched_value`, `iso3_unmatched_share_pct` (`pd.NA` if `recipient_code` isn't
+          in `df`): `usd_disbursement` on rows whose `recipient_code` has no `add_iso3` match
+          (regional/multi-country codes, TOSSD-only entities).
+
+    Raises:
+        ValueError: `df` is missing `unit`, `is_aggregate`, `year`, `tossd_pillar`, or
+            `usd_disbursement`; or `usd_disbursement` isn't numeric.
+    """
+    analysis._require_columns(df, *_RECONCILE_REQUIRED_COLUMNS, func_name="reconcile")
+    _require_numeric_value(df, "usd_disbursement", func_name="reconcile")
+
+    total_value = df["usd_disbursement"].sum()
+
+    units_present = sorted(str(unit) for unit in df["unit"].dropna().unique())
+    unit: object = units_present[0] if len(units_present) == 1 else tuple(units_present)
+
+    aggregate_value = df.loc[df["is_aggregate"], "usd_disbursement"].sum()
+
+    deflated_total = (
+        df["usd_disbursement_deflated"].sum()
+        if "usd_disbursement_deflated" in df.columns
+        else pd.NA
+    )
+
+    pillars_present = tuple(
+        sorted(int(p) for p in df["tossd_pillar"].dropna().unique())
+    )
+
+    if len(df) == 0:
+        year_min: object = pd.NA
+        year_max: object = pd.NA
+        n_years = 0
+    else:
+        year_min = int(df["year"].min())
+        year_max = int(df["year"].max())
+        n_years = int(df["year"].nunique())
+
+    b02_value = (
+        df.loc[df["modality_code"] == _B02_MODALITY_CODE, "usd_disbursement"].sum()
+        if "modality_code" in df.columns
+        else None
+    )
+    b02_core_contribution_value, b02_core_contribution_share_pct = _optional_share(
+        b02_value, total_value
+    )
+
+    if "source_name" in df.columns:
+        is_estimate = (
+            df["source_name"].str.casefold().str.contains(_ESTIMATE_TOKEN, na=False)
+        )
+        estimate_value = df.loc[is_estimate, "usd_disbursement"].sum()
+    else:
+        estimate_value = None
+    estimate_derived_value, estimate_derived_share_pct = _optional_share(
+        estimate_value, total_value
+    )
+
+    if "recipient_code" in df.columns:
+        iso3 = analysis.add_iso3(df[["recipient_code"]])
+        iso3_value = df.loc[iso3["recipient_iso3"].isna(), "usd_disbursement"].sum()
+    else:
+        iso3_value = None
+    iso3_unmatched_value, iso3_unmatched_share_pct = _optional_share(
+        iso3_value, total_value
+    )
+
+    fields: dict[str, object] = {
+        "unit": unit,
+        "n_aggregate_rows": int(df["is_aggregate"].sum()),
+        "aggregate_value": aggregate_value,
+        "aggregate_share_pct": _safe_share_pct(aggregate_value, total_value),
+        "usd_disbursement_total": total_value,
+        "usd_disbursement_deflated_total": deflated_total,
+        "pillars_present": pillars_present,
+        "year_min": year_min,
+        "year_max": year_max,
+        "n_years": n_years,
+        "has_provenance": _provenance.ATTRS_KEY in df.attrs,
+        "b02_core_contribution_value": b02_core_contribution_value,
+        "b02_core_contribution_share_pct": b02_core_contribution_share_pct,
+        "estimate_derived_value": estimate_derived_value,
+        "estimate_derived_share_pct": estimate_derived_share_pct,
+        "iso3_unmatched_value": iso3_unmatched_value,
+        "iso3_unmatched_share_pct": iso3_unmatched_share_pct,
+    }
+    result = pd.Series(fields)
+    result.attrs = dict(df.attrs)
+    return result

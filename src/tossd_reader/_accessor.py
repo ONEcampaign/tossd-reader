@@ -37,10 +37,11 @@ class TossdAccessor:
     Delegate methods mirror their module-level function's own keyword
     arguments, minus `df`, and raise exactly what that function would on the
     same input: `rank_entities`, `compare_years`, `sdg_totals`,
-    `keyword_totals`, `subpillar_breakdown` (from `tossd_reader.verbs`);
-    `add_iso3`, `add_recipient_group`, `add_instrument_group`,
-    `extract_keywords`, `explode_sdg`, `filter_provider_costs` (from
-    `tossd_reader.analysis`).
+    `keyword_totals`, `subpillar_breakdown`, `reconcile` (from
+    `tossd_reader.verbs`); `add_iso3`, `add_recipient_group`,
+    `add_instrument_group`, `extract_keywords`, `explode_sdg`,
+    `filter_provider_costs` (from `tossd_reader.analysis`). `provenance()`
+    delegates to `tossd_reader.get_provenance()` (also `verbs.py`).
 
     Accessor-only methods, with no module-level equivalent: `summary()`,
     `exclude_aggregates()`, `groupby_entity()` -- see each one's own
@@ -253,6 +254,22 @@ class TossdAccessor:
         return verbs.subpillar_breakdown(
             self._df, value=value, include_aggregates=include_aggregates
         )
+
+    def reconcile(self) -> pd.Series:
+        """Delegates to `tossd_reader.reconcile()`."""
+        from tossd_reader import (  # noqa: PLC0415 - lazy: avoid the _accessor<->analysis cycle
+            verbs,
+        )
+
+        return verbs.reconcile(self._df)
+
+    def provenance(self) -> dict[str, object]:
+        """Delegates to `tossd_reader.get_provenance()`."""
+        from tossd_reader import (  # noqa: PLC0415 - lazy: avoid the _accessor<->analysis cycle
+            verbs,
+        )
+
+        return verbs.get_provenance(self._df)
 
     # --- tossd_reader.analysis delegates ---------------------------------------
 

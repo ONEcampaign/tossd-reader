@@ -445,3 +445,39 @@ def test_delegate_missing_columns_raises_the_canonical_teaching_error() -> None:
 
     with pytest.raises(ValueError, match="provider_code"):
         df.tossd.rank_entities()
+
+
+# --- reconcile / provenance delegates ----------------------------------------------
+
+
+def _reconcile_frame() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "unit": ["usd_thousand"],
+            "is_aggregate": [False],
+            "year": [2023],
+            "tossd_pillar": [1],
+            "usd_disbursement": [10.0],
+        }
+    )
+
+
+def test_reconcile_delegate_matches_canonical() -> None:
+    df = _reconcile_frame()
+
+    pd.testing.assert_series_equal(df.tossd.reconcile(), verbs.reconcile(df))
+
+
+def test_provenance_delegate_matches_canonical() -> None:
+    df = pd.DataFrame({"x": [1]})
+    df.attrs["tossd_reader"] = {"package_version": "0.1.0"}
+
+    assert df.tossd.provenance() == verbs.get_provenance(df)
+
+
+def test_provenance_delegate_raises_the_canonical_teaching_error() -> None:
+    """`provenance()` on a frame with no attrs raises the same error `get_provenance` would."""
+    df = pd.DataFrame({"x": [1]})
+
+    with pytest.raises(ValueError, match="get_tossd"):
+        df.tossd.provenance()

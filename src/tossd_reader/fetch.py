@@ -18,7 +18,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import requests
-from readerkit import ArtifactCorruptError, FetchContext, Fetcher
+from readerkit import ArtifactCorruptError, ArtifactEntry, FetchContext, Fetcher
 from readerkit.refresh import effective_refresh
 
 from tossd_reader import _discovery, _provenance, config
@@ -55,10 +55,15 @@ def get_tossd_raw(
 
     Returns:
         A `pandas.DataFrame`, one row per activity, across every requested
-        year.
+        year. `df.attrs["tossd_reader"]` carries this call's own provenance
+        (`{"years", "refresh"}` under `"query"` -- `get_tossd_raw` has no
+        other kwargs to normalise -- plus each fetched year's
+        etag/retrieved_at/url); read it back with `get_provenance(df)`.
 
     Raises:
-        ValueError: `years` resolves to an empty set of years.
+        ValueError: `years` resolves to an empty set of years, or
+            `refresh=True` while offline mode is active
+            (`config.get_offline()` is `True`).
         TypeError: An unrecognised keyword argument was passed. Filtering
             (`providers=`/`recipients=`/`pillars=`), column selection
             (`columns=`), and unit conversion (`units=`) all live on
@@ -71,18 +76,25 @@ def get_tossd_raw(
             "get_tossd_raw() only accepts years=/refresh=; for filtering, "
             "column selection, or unit conversion, use get_tossd() instead."
         )
+    config.raise_if_offline_refresh_conflict(refresh=refresh, func_name="get_tossd_raw")
     resolved_years = normalise_years(years)
     # Resolved once for every requested year, rather than once per year: a
     # per-year `discover()` call would re-run the whole HEAD sweep N times
     # under `refresh=True` (or an enclosing `refresh_scope()`).
     effective = effective_refresh("tossd_reader:get_tossd_raw", explicit=refresh)
     vintages = sweep_or_none(effective)
-    tables = [
-        pq.read_table(resolve_year(year, vintages=vintages, refresh=effective))
-        for year in resolved_years
-    ]
+    paths: dict[int, Path] = {}
+    tables = []
+    for year in resolved_years:
+        path = resolve_year(year, vintages=vintages, refresh=effective)
+        paths[year] = path
+        tables.append(pq.read_table(path))
     combined = pa.concat_tables(tables)
-    return combined.to_pandas()
+    df = combined.to_pandas()
+    df.attrs[_provenance.ATTRS_KEY] = _provenance.build_attrs(
+        query={"years": resolved_years, "refresh": refresh}, paths=paths
+    )
+    return df
 
 
 def normalise_years(years: int | Iterable[int] | None) -> tuple[int, ...]:
@@ -141,7 +153,14 @@ def fetch_year(year: int, *, refresh: bool = False) -> Path:
 
 
 def sweep_or_none(refresh: bool) -> dict[int, _discovery.VintageInfo] | None:
-    """Run discovery's HEAD sweep, or `None` when the publisher host is unreachable."""
+    """Run discovery's HEAD sweep, or `None` when offline mode is active or the host is unreachable.
+
+    Every caller downstream of a `None` result here (`resolve_year`, `get_vintages`) already
+    treats it identically regardless of *why* no sweep ran, so offline mode is folded in at this
+    single seam rather than threaded through each of them separately.
+    """
+    if config.get_offline():
+        return None
     try:
         return _discovery.discover(refresh=refresh)
     except TossdNetworkError:
@@ -159,7 +178,13 @@ def resolve_year(
     re-sweeping per year.
     """
     if vintages is None:
-        return _serve_offline(year, reason="the network is unreachable")
+        reason = (
+            "offline mode is active (tossd_reader.config.set_offline(False), or the "
+            "TOSSD_READER_OFFLINE env var, would allow network access)"
+            if config.get_offline()
+            else "the network is unreachable"
+        )
+        return _serve_offline(year, reason=reason)
 
     info = vintages.get(year)
     if info is None:
@@ -250,8 +275,13 @@ def _warn_serving_stale(year: int, cached: _CachedVintage, *, reason: str) -> No
             cached.path.stat().st_mtime, tz=UTC
         ).isoformat()
     etag_note = f" (etag {cached.etag})" if cached.etag else ""
+    # Only the leading character is upper-cased (not `str.capitalize()`, which would also
+    # lower-case the rest of `reason` -- fine for the plain-prose reasons this carried
+    # originally, but wrong once a reason embeds a case-sensitive identifier like
+    # `set_offline(False)` or `TOSSD_READER_OFFLINE`).
+    sentence = reason[:1].upper() + reason[1:]
     warnings.warn(
-        f"{reason.capitalize()}; serving the cached {year} vintage retrieved "
+        f"{sentence}; serving the cached {year} vintage retrieved "
         f"{vintage_date}{etag_note}.",
         # 5 frames up from here: _warn_serving_stale -> _serve_offline/
         # _serve_missing -> resolve_year -> fetch_year/get_tossd_raw ->
@@ -459,6 +489,114 @@ def _validate_new_vintage(path: Path) -> None:
     for field in table.schema:
         if pa.types.is_string(field.type):
             table.column(field.name).validate(full=True)
+
+
+def key_year(key: str) -> int | None:
+    """Parse a cache key (`"tossd_<year>_<etag-or-unknown>"`) back to its year.
+
+    Plain name (no leading underscore): consumed by `config.py`'s cache-listing tools
+    (`cache_info`/`clear_cache`) via a lazy import inside their own bodies -- `config.py` cannot
+    import `fetch` at module scope, since `fetch.py` already imports `config` there.
+
+    Returns:
+        The year, or `None` if `key` doesn't match this module's own `<prefix><year>_<etag>`
+        shape (defensive against a foreign entry ever landing in the same cache namespace).
+    """
+    if not key.startswith(_KEY_PREFIX):
+        return None
+    year_part = key[len(_KEY_PREFIX) :].split("_", 1)[0]
+    return int(year_part) if year_part.isdigit() else None
+
+
+_VINTAGES_COLUMNS = ("year", "url", "etag", "last_modified", "size_bytes")
+
+
+def get_vintages(*, refresh: bool = False) -> pd.DataFrame:
+    """List what the publisher has live right now, one row per year: `get_tossd`'s own discovery sweep.
+
+    Args:
+        refresh: Re-run discovery's HEAD sweep instead of reusing this process's already-swept
+            result (`_discovery.discover` memoises in-process). An enclosing
+            `readerkit.refresh_scope()` has the same effect even when this stays `False`.
+
+    Returns:
+        One row per year the sweep saw published (a 404 year is simply absent): `year`, `url`,
+        `etag`, `last_modified`, `size_bytes` -- straight from `_discovery.VintageInfo`, any of
+        which may be `None` when the publisher's HEAD response didn't carry that header.
+
+        In offline mode (`config.get_offline()`), or when the publisher host is genuinely
+        unreachable, no HEAD sweep runs at all -- this is instead built from whatever vintages
+        are already cached locally: one row per distinct cached year, `url`/`etag` read from
+        that vintage's own provenance sidecar (`None` when missing or corrupt), `last_modified`
+        always `None` (that header is never persisted locally), with one warning naming the
+        fallback -- the same warning an unplanned fetch-time network outage would raise.
+
+    Raises:
+        ValueError: `refresh=True` while offline mode is active (`config.get_offline()` is
+            `True`) -- a forced sweep needs the network; call `config.set_offline(False)` first,
+            or omit `refresh=True`.
+        TossdNetworkError: The publisher is unreachable (or offline mode is active) and nothing
+            is cached locally either.
+    """
+    config.raise_if_offline_refresh_conflict(refresh=refresh, func_name="get_vintages")
+    offline = config.get_offline()
+    vintages = sweep_or_none(refresh)
+    if vintages is None:
+        reason = (
+            "offline mode is active (config.get_offline() is True)"
+            if offline
+            else "the network is unreachable"
+        )
+        return _vintages_from_cache(reason)
+    rows = [
+        {
+            "year": year,
+            "url": info.url,
+            "etag": info.etag,
+            "last_modified": info.last_modified,
+            "size_bytes": info.size_bytes,
+        }
+        for year, info in sorted(vintages.items())
+    ]
+    return pd.DataFrame(rows, columns=list(_VINTAGES_COLUMNS))
+
+
+def _vintages_from_cache(reason: str) -> pd.DataFrame:
+    """`get_vintages()`'s offline/unreachable fallback: one row per distinct cached year."""
+    cache = config.get_cache()
+    newest_by_year: dict[int, ArtifactEntry] = {}
+    for entry in cache.entries():
+        year = key_year(entry.key)
+        if year is None:
+            continue
+        current = newest_by_year.get(year)
+        if current is None or entry.downloaded_at > current.downloaded_at:
+            newest_by_year[year] = entry
+
+    if not newest_by_year:
+        raise TossdNetworkError(
+            f"Cannot list vintages: {reason}, and nothing is cached locally.",
+            cache_dir=config.get_cache_dir(),
+        )
+
+    warnings.warn(
+        f"{reason[:1].upper()}{reason[1:]}; listing vintages from the local cache "
+        "instead of a live discovery sweep (last_modified is unavailable this way).",
+        stacklevel=3,
+    )
+    rows = []
+    for year, entry in sorted(newest_by_year.items()):
+        provenance = _provenance.read_provenance(entry.path) or {}
+        rows.append(
+            {
+                "year": year,
+                "url": _as_str(provenance.get("url")),
+                "etag": _as_str(provenance.get("etag")),
+                "last_modified": None,
+                "size_bytes": entry.size_bytes,
+            }
+        )
+    return pd.DataFrame(rows, columns=list(_VINTAGES_COLUMNS))
 
 
 def _reset_for_tests() -> None:

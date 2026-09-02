@@ -916,3 +916,248 @@ def test_subpillar_breakdown_does_not_mutate_input() -> None:
     verbs.subpillar_breakdown(df)
 
     pd.testing.assert_frame_equal(df, original)
+
+
+# --- get_provenance ---------------------------------------------------------------
+
+
+def test_get_provenance_missing_attrs_raises_teaching_error() -> None:
+    """A frame with no `df.attrs["tossd_reader"]` raises, naming where the key comes from."""
+    df = pd.DataFrame({"x": [1]})
+
+    with pytest.raises(ValueError, match="get_tossd") as excinfo:
+        verbs.get_provenance(df)
+
+    message = str(excinfo.value)
+    assert "get_tossd_raw" in message
+    assert "load_export" in message
+
+
+def test_get_provenance_returns_a_deep_copy() -> None:
+    """Mutating the returned dict (nested included) never touches `df.attrs` itself."""
+    df = pd.DataFrame({"x": [1]})
+    df.attrs["tossd_reader"] = {"years": {"2019": {"etag": "e1"}}}
+
+    provenance = verbs.get_provenance(df)
+    provenance["years"]["2019"]["etag"] = "tampered"
+    provenance["new_key"] = "added"
+
+    assert df.attrs["tossd_reader"] == {"years": {"2019": {"etag": "e1"}}}
+
+
+def test_get_provenance_returns_equal_but_distinct_object() -> None:
+    """The returned dict is equal to the source, but not the same object."""
+    df = pd.DataFrame({"x": [1]})
+    df.attrs["tossd_reader"] = {"package_version": "0.1.0"}
+
+    provenance = verbs.get_provenance(df)
+
+    assert provenance == df.attrs["tossd_reader"]
+    assert provenance is not df.attrs["tossd_reader"]
+
+
+# --- reconcile --------------------------------------------------------------------
+
+
+def _reconcile_df() -> pd.DataFrame:
+    """A small hand-computable `get_tossd()`-shaped frame for `reconcile`.
+
+    Hand-computed totals (checked against in the tests below): total usd_disbursement 150.0
+    (10+20+30+40+0+50); one aggregate row (50.0, 33.33% share); B02 rows (index 1, 3, 5:
+    20+40+50=110.0, 73.33% share); "estimate"-tagged source_name rows (index 1, 3: 20+40=60.0,
+    40.0% share, case-insensitive); recipient_code 0 rows have no iso3 match (index 2, 5:
+    30+50=80.0, 53.33% share) -- recipient_code 55 (Türkiye) does match.
+    """
+    return pd.DataFrame(
+        {
+            "unit": ["usd_thousand"] * 6,
+            "is_aggregate": [False, False, False, False, False, True],
+            "year": [2019, 2019, 2020, 2020, 2020, 2020],
+            "tossd_pillar": [1, 2, 1, 2, 2, 1],
+            "usd_disbursement": [10.0, 20.0, 30.0, 40.0, 0.0, 50.0],
+            "usd_disbursement_deflated": [9.0, 18.0, 27.0, 36.0, 0.0, 45.0],
+            "modality_code": ["C01", "B02", "C01", "B02", "D01", "B02"],
+            "source_name": [
+                "TOSSD",
+                "TOSSD estimate",
+                "CRS-TOSSD",
+                "TOSSD ESTIMATE",
+                "TOSSD",
+                "TOSSD",
+            ],
+            "recipient_code": [55, 55, 0, 55, 55, 0],
+        }
+    )
+
+
+def test_reconcile_missing_required_columns_raises() -> None:
+    """Missing any of the required column set is named."""
+    df = pd.DataFrame({"other": [1]})
+
+    with pytest.raises(ValueError, match="usd_disbursement") as excinfo:
+        verbs.reconcile(df)
+
+    message = str(excinfo.value)
+    assert "unit" in message
+    assert "is_aggregate" in message
+    assert "year" in message
+    assert "tossd_pillar" in message
+
+
+def test_reconcile_value_not_numeric_raises() -> None:
+    """A non-numeric `usd_disbursement` column raises, naming its dtype."""
+    df = _reconcile_df()
+    df["usd_disbursement"] = df["usd_disbursement"].astype(str)
+
+    with pytest.raises(ValueError, match="numeric"):
+        verbs.reconcile(df)
+
+
+def test_reconcile_hand_computed_core_entries() -> None:
+    """Unit, aggregate-row, price-basis, pillar, and year entries match hand-computed values."""
+    df = _reconcile_df()
+
+    result = verbs.reconcile(df)
+
+    assert result["unit"] == "usd_thousand"
+    assert result["n_aggregate_rows"] == 1
+    assert result["aggregate_value"] == pytest.approx(50.0)
+    assert result["aggregate_share_pct"] == pytest.approx(50.0 / 150.0 * 100)
+    assert result["usd_disbursement_total"] == pytest.approx(150.0)
+    assert result["usd_disbursement_deflated_total"] == pytest.approx(135.0)
+    assert result["pillars_present"] == (1, 2)
+    assert result["year_min"] == 2019
+    assert result["year_max"] == 2020
+    assert result["n_years"] == 2
+
+
+def test_reconcile_hand_computed_added_entries() -> None:
+    """B02/estimate/ISO3-unmatched entries match hand-computed values."""
+    df = _reconcile_df()
+
+    result = verbs.reconcile(df)
+
+    assert result["b02_core_contribution_value"] == pytest.approx(110.0)
+    assert result["b02_core_contribution_share_pct"] == pytest.approx(
+        110.0 / 150.0 * 100
+    )
+    assert result["estimate_derived_value"] == pytest.approx(60.0)
+    assert result["estimate_derived_share_pct"] == pytest.approx(40.0)
+    assert result["iso3_unmatched_value"] == pytest.approx(80.0)
+    assert result["iso3_unmatched_share_pct"] == pytest.approx(80.0 / 150.0 * 100)
+
+
+def test_reconcile_unit_reports_every_distinct_value_present() -> None:
+    """More than one distinct `unit` value in `df` reports a tuple, not just the first."""
+    df = _reconcile_df()
+    df.loc[0, "unit"] = "usd_million"
+
+    result = verbs.reconcile(df)
+
+    assert result["unit"] == ("usd_million", "usd_thousand")
+
+
+def test_reconcile_has_provenance_reflects_attrs() -> None:
+    """`has_provenance` is true only when `df.attrs["tossd_reader"]` is actually set."""
+    df = _reconcile_df()
+
+    assert verbs.reconcile(df)["has_provenance"] is False
+
+    df.attrs["tossd_reader"] = {"package_version": "0.1.0"}
+    assert verbs.reconcile(df)["has_provenance"] is True
+
+
+@pytest.mark.parametrize(
+    "missing_column",
+    ["usd_disbursement_deflated", "modality_code", "source_name", "recipient_code"],
+)
+def test_reconcile_optional_columns_read_na_when_absent(missing_column: str) -> None:
+    """Each optional column's own entries read `pd.NA` when it isn't present -- never raise."""
+    df = _reconcile_df().drop(columns=[missing_column])
+
+    result = verbs.reconcile(df)
+
+    entries_by_column = {
+        "usd_disbursement_deflated": ["usd_disbursement_deflated_total"],
+        "modality_code": [
+            "b02_core_contribution_value",
+            "b02_core_contribution_share_pct",
+        ],
+        "source_name": ["estimate_derived_value", "estimate_derived_share_pct"],
+        "recipient_code": ["iso3_unmatched_value", "iso3_unmatched_share_pct"],
+    }
+    for entry in entries_by_column[missing_column]:
+        assert pd.isna(result[entry])
+
+
+def test_reconcile_every_optional_column_absent_still_returns_every_entry() -> None:
+    """Dropping every optional column at once still returns a full Series, all raises averted."""
+    df = _reconcile_df()[
+        ["unit", "is_aggregate", "year", "tossd_pillar", "usd_disbursement"]
+    ]
+
+    result = verbs.reconcile(df)
+
+    assert pd.isna(result["usd_disbursement_deflated_total"])
+    assert pd.isna(result["b02_core_contribution_value"])
+    assert pd.isna(result["estimate_derived_value"])
+    assert pd.isna(result["iso3_unmatched_value"])
+    assert result["aggregate_value"] == pytest.approx(
+        50.0
+    )  # the required entries still compute
+
+
+def test_reconcile_empty_input_never_divides_by_zero_or_warns() -> None:
+    """An empty frame reports NaN shares (a real 0-total), never a raise or a warning."""
+    df = _reconcile_df().iloc[0:0]
+
+    result = verbs.reconcile(
+        df
+    )  # would raise under filterwarnings=["error"] if it warned
+
+    assert result["n_aggregate_rows"] == 0
+    assert result["usd_disbursement_total"] == 0.0
+    assert pd.isna(result["aggregate_share_pct"])
+    assert pd.isna(result["year_min"])
+    assert result["n_years"] == 0
+    assert result["pillars_present"] == ()
+
+
+def test_reconcile_all_zero_disbursement_never_divides_by_zero_or_warns() -> None:
+    """A non-empty frame whose `usd_disbursement` total is 0 reports NaN shares, no warning."""
+    df = _reconcile_df().copy()
+    df["usd_disbursement"] = 0.0
+
+    result = verbs.reconcile(
+        df
+    )  # would raise under filterwarnings=["error"] if it warned
+
+    assert result["usd_disbursement_total"] == 0.0
+    assert pd.isna(result["aggregate_share_pct"])
+    assert pd.isna(result["b02_core_contribution_share_pct"])
+
+
+def test_reconcile_include_aggregates_kwarg_does_not_exist() -> None:
+    """`reconcile` takes no `include_aggregates=`: it describes the frame as given."""
+    with pytest.raises(TypeError):
+        verbs.reconcile(_reconcile_df(), include_aggregates=False)  # type: ignore[call-arg]
+
+
+def test_reconcile_copies_attrs() -> None:
+    """`df.attrs` propagates onto the result (A7), same as every other verb here."""
+    df = _reconcile_df()
+    df.attrs["tossd_reader"] = {"years": [2019, 2020]}
+
+    result = verbs.reconcile(df)
+
+    assert result.attrs == {"tossd_reader": {"years": [2019, 2020]}}
+
+
+def test_reconcile_does_not_mutate_input() -> None:
+    """`reconcile` leaves the caller's original frame unchanged."""
+    df = _reconcile_df()
+    original = df.copy()
+
+    verbs.reconcile(df)
+
+    pd.testing.assert_frame_equal(df, original)

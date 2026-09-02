@@ -1,6 +1,6 @@
 """Read/write of `<payload>.provenance.json` sidecars beside cached vintages.
 
-Private module. Consumed by fetch.py and _export.py. Not a leaf: it imports
+Private module. Consumed by fetch.py, query.py, and _export.py. Not a leaf: it imports
 pyarrow.parquet (for the sidecar's row-count field) and
 `tossd_reader.__version__`.
 """
@@ -12,12 +12,27 @@ import json
 import os
 import secrets
 import warnings
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Final
 
 import pyarrow.parquet as pq
 
 from tossd_reader import __version__
+
+ATTRS_KEY: Final = "tossd_reader"
+"""The `df.attrs` key `get_tossd()`, `get_tossd_raw()`, and `load_export()` each set."""
+
+
+def sidecar_path(payload_path: Path) -> Path:
+    """The `<payload path>.provenance.json` sidecar path for `payload_path`.
+
+    Not underscore-prefixed: `config.py`'s `clear_cache()` reuses this to unlink a removed
+    entry's sidecar alongside its payload, so cache clearing and provenance writing/reading never
+    derive this path two different ways.
+    """
+    return payload_path.with_suffix(".provenance.json")
 
 
 def write_provenance_if_absent(
@@ -40,7 +55,7 @@ def write_provenance_if_absent(
             whose sidecar was lost still records the right ETag rather than
             `null`.
     """
-    provenance_path = path.with_suffix(".provenance.json")
+    provenance_path = sidecar_path(path)
     if provenance_path.exists():
         return
     parquet_file = pq.ParquetFile(path)
@@ -74,7 +89,7 @@ def read_provenance(path: Path) -> dict[str, object] | None:
     faults other than the file vanishing mid-read (permissions, I/O errors)
     still propagate: those are environment problems, not corruption.
     """
-    provenance_path = path.with_suffix(".provenance.json")
+    provenance_path = sidecar_path(path)
     if not provenance_path.is_file():
         return None
     try:
@@ -105,6 +120,53 @@ def _warn_corrupt_provenance(provenance_path: Path, *, reason: str) -> None:
         # caller (fetch._latest_cached, or _export._vintage_provenance).
         stacklevel=3,
     )
+
+
+def build_attrs(
+    *, query: dict[str, object], paths: Mapping[int, Path]
+) -> dict[str, object]:
+    """Build the `df.attrs["tossd_reader"]` payload `get_tossd()`/`get_tossd_raw()` attach.
+
+    Args:
+        query: The caller's normalised call -- already JSON-serializable (see each caller's own
+            docstring for its exact shape).
+        paths: Each resolved year's own cache path, read here for that vintage's own
+            `.provenance.json` sidecar.
+
+    Returns:
+        `{"package_version", "created_at", "query", "years"}` -- `"created_at"` an ISO 8601 UTC
+        timestamp of this call, not the vintage's own retrieval time; `"years"` maps each
+        resolved year (as `str`, since JSON object keys are always strings) to
+        `{"etag", "retrieved_at", "url"}` read from that year's sidecar, every field `None` when
+        the sidecar is missing or corrupt (`read_provenance` already warns on corruption -- this
+        function raises no warning of its own).
+    """
+    return {
+        "package_version": __version__,
+        "created_at": datetime.now(UTC).isoformat(),
+        "query": query,
+        "years": {str(year): _vintage_fields(path) for year, path in paths.items()},
+    }
+
+
+def _vintage_fields(path: Path) -> dict[str, str | None]:
+    """One year's `{"etag", "retrieved_at", "url"}`, read from its provenance sidecar."""
+    provenance = read_provenance(path) or {}
+    return {
+        "etag": _as_str(provenance.get("etag")),
+        "retrieved_at": _as_str(provenance.get("retrieved_at")),
+        "url": _as_str(provenance.get("url")),
+    }
+
+
+def _as_str(value: object) -> str | None:
+    """Narrow a provenance-JSON field to `str`, or `None` if it isn't one.
+
+    Duplicated from `fetch.py`'s own `_as_str` (both are 2-line helpers reading the same
+    provenance dict shape) rather than shared: `_provenance.py` cannot import `fetch.py` (the
+    dependency runs the other way), and a shared import isn't worth threading for this.
+    """
+    return value if isinstance(value, str) else None
 
 
 def sha256_file(path: Path) -> str:

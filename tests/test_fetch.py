@@ -825,3 +825,342 @@ def test_refresh_scope_equivalent_to_refresh_true(
 
     assert path_v2 != path_v1
     assert pq.ParquetFile(path_v2).metadata.num_rows == 9
+
+
+# --- get_tossd_raw attrs provenance ---------------------------------------------
+
+
+def test_get_tossd_raw_attrs_shape_and_json_serializable(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`df.attrs["tossd_reader"]` carries package_version/created_at/query/years, all JSON-able."""
+    year = 2019
+    url = url_for(year)
+    fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=5)
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e19"')})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e19"')})
+
+    df = fetch.get_tossd_raw(years=year)
+
+    provenance = df.attrs["tossd_reader"]
+    assert set(provenance) == {"package_version", "created_at", "query", "years"}
+    assert provenance["query"] == {"years": (year,), "refresh": False}
+    assert set(provenance["years"]) == {str(year)}
+    year_entry = provenance["years"][str(year)]
+    assert year_entry["etag"] == '"e19"'
+    assert year_entry["url"] == url
+    datetime.fromisoformat(year_entry["retrieved_at"])
+    json.dumps(provenance)  # never raises: every value is JSON-serializable
+    datetime.fromisoformat(provenance["created_at"])
+
+
+def test_get_tossd_raw_attrs_multi_year(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A multi-year call's `"years"` provenance mapping carries one entry per requested year."""
+    years = (2019, 2020)
+    published: dict[int, VintageInfo] = {}
+    sources: dict[str, tuple[bytes, str | None]] = {}
+    for year in years:
+        url = url_for(year)
+        fixture = write_tossd_fixture(
+            tmp_path / f"fixture_{year}.parquet", year, n_rows=3
+        )
+        published[year] = VintageInfo(url=url, etag=f'"e{year}"')
+        sources[url] = (fixture.read_bytes(), f'"e{year}"')
+    patch_discovery(monkeypatch, published)
+    patch_fetcher_by_url(monkeypatch, sources)
+
+    df = fetch.get_tossd_raw(years=list(years))
+
+    provenance = df.attrs["tossd_reader"]
+    assert provenance["query"]["years"] == years
+    assert set(provenance["years"]) == {"2019", "2020"}
+    for year in years:
+        assert provenance["years"][str(year)]["etag"] == f'"e{year}"'
+
+
+def test_get_tossd_raw_offline_refresh_conflict_raises() -> None:
+    """`refresh=True` while offline mode is active raises before touching the network."""
+    config.set_offline(True)
+    with pytest.raises(ValueError, match="get_tossd_raw"):
+        fetch.get_tossd_raw(years=2019, refresh=True)
+
+
+# --- get_vintages -----------------------------------------------------------------
+
+
+def test_get_vintages_returns_the_live_sweep_as_a_frame(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A live sweep result becomes one row per year, with `VintageInfo`'s own fields."""
+    published = {
+        2019: VintageInfo(
+            url=url_for(2019), etag='"e19"', last_modified="Mon", size_bytes=100
+        ),
+        2020: VintageInfo(
+            url=url_for(2020), etag='"e20"', last_modified="Tue", size_bytes=200
+        ),
+    }
+    patch_discovery(monkeypatch, published)
+
+    vintages = fetch.get_vintages()
+
+    assert list(vintages.columns) == [
+        "year",
+        "url",
+        "etag",
+        "last_modified",
+        "size_bytes",
+    ]
+    assert list(vintages["year"]) == [2019, 2020]
+    row_2019 = vintages.loc[vintages["year"] == 2019].iloc[0]
+    assert row_2019["url"] == url_for(2019)
+    assert row_2019["etag"] == '"e19"'
+    assert row_2019["last_modified"] == "Mon"
+    assert row_2019["size_bytes"] == 100
+
+
+def test_get_vintages_omits_years_that_404(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A year the sweep didn't see published (404) is simply absent, not a null row."""
+    patch_discovery(monkeypatch, {2019: VintageInfo(url=url_for(2019), etag='"e"')})
+
+    vintages = fetch.get_vintages()
+
+    assert list(vintages["year"]) == [2019]
+
+
+def test_get_vintages_offline_serves_from_cache_with_warning(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Offline mode skips the sweep entirely, listing cached years instead, with one warning."""
+    year = 2019
+    url = url_for(year)
+    fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=4)
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e19"')})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e19"')})
+    fetch.fetch_year(year)
+
+    config.set_offline(True)
+
+    with pytest.warns(UserWarning, match="offline"):
+        vintages = fetch.get_vintages()
+
+    assert list(vintages["year"]) == [year]
+    row = vintages.iloc[0]
+    assert row["url"] == url
+    assert row["etag"] == '"e19"'
+    assert row["last_modified"] is None
+
+
+def test_get_vintages_offline_raises_when_nothing_cached() -> None:
+    """Offline mode with an empty cache raises `TossdNetworkError`, no warning."""
+    config.set_offline(True)
+    with pytest.raises(TossdNetworkError, match="offline"):
+        fetch.get_vintages()
+
+
+def test_get_vintages_network_down_falls_back_to_cache_with_warning(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A genuine (non-offline) sweep failure falls back to the cache too, warning why."""
+    year = 2019
+    url = url_for(year)
+    fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=4)
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e19"')})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e19"')})
+    fetch.fetch_year(year)
+
+    _discovery._reset_for_tests()
+
+    def _offline_head_one(_session: requests.Session, _year: int) -> VintageInfo | None:
+        raise TossdNetworkError("simulated outage")
+
+    monkeypatch.setattr(_discovery, "_head_one", _offline_head_one)
+
+    with pytest.warns(UserWarning, match="network is unreachable"):
+        vintages = fetch.get_vintages()
+
+    assert list(vintages["year"]) == [year]
+
+
+def test_get_vintages_network_down_nothing_cached_raises() -> None:
+    """A genuine sweep failure with nothing cached still raises `TossdNetworkError`."""
+
+    def _offline_head_one(_session: requests.Session, _year: int) -> VintageInfo | None:
+        raise TossdNetworkError("simulated outage")
+
+    fetch._discovery._head_one = _offline_head_one
+    with pytest.raises(TossdNetworkError, match="network is unreachable"):
+        fetch.get_vintages()
+
+
+def test_get_vintages_offline_ignores_a_foreign_cache_entry_and_keeps_the_newest(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A foreign cache entry is skipped, and a republished year lists its newest vintage only."""
+    year = 2019
+    url = url_for(year)
+    fixture_v1 = write_tossd_fixture(tmp_path / "v1.parquet", year, n_rows=2, seed=1)
+    fixture_v2 = write_tossd_fixture(tmp_path / "v2.parquet", year, n_rows=3, seed=2)
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e1"')})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture_v1.read_bytes(), '"e1"')})
+    fetch.fetch_year(year)
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e2"')})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture_v2.read_bytes(), '"e2"')})
+    fetch.fetch_year(year, refresh=True)
+
+    cache = config.get_cache()
+    cache.ensure("not-a-tossd-key", fetcher=lambda ctx: ctx.path.write_bytes(b"x"))
+
+    config.set_offline(True)
+    with pytest.warns(UserWarning):
+        vintages = fetch.get_vintages()
+
+    assert list(vintages["year"]) == [year]
+    assert vintages.iloc[0]["etag"] == '"e2"'
+
+
+def test_get_vintages_offline_keeps_the_newest_regardless_of_cache_scan_order(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The newest vintage wins even when the cache lists an older entry after it."""
+    year = 2019
+    url = url_for(year)
+    fixture_v1 = write_tossd_fixture(tmp_path / "v1.parquet", year, n_rows=2, seed=1)
+    fixture_v2 = write_tossd_fixture(tmp_path / "v2.parquet", year, n_rows=3, seed=2)
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e1"')})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture_v1.read_bytes(), '"e1"')})
+    fetch.fetch_year(year)
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e2"')})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture_v2.read_bytes(), '"e2"')})
+    fetch.fetch_year(year, refresh=True)
+
+    real_entries = config.get_cache().entries()
+    newest = max(real_entries, key=lambda entry: entry.downloaded_at)
+    reversed_order = sorted(
+        real_entries, key=lambda entry: entry.downloaded_at, reverse=True
+    )
+    assert reversed_order[0] == newest  # newest scanned first, older scanned after
+
+    class _ReversedScanCache:
+        def entries(self) -> list:
+            return reversed_order
+
+    monkeypatch.setattr(config, "get_cache", _ReversedScanCache)
+    config.set_offline(True)
+
+    with pytest.warns(UserWarning):
+        vintages = fetch.get_vintages()
+
+    assert vintages.iloc[0]["etag"] == '"e2"'
+
+
+def test_get_vintages_refresh_true_offline_raises_value_error() -> None:
+    """`get_vintages(refresh=True)` while offline mode is active raises before any sweep."""
+    config.set_offline(True)
+    with pytest.raises(ValueError, match="get_vintages"):
+        fetch.get_vintages(refresh=True)
+
+
+def test_get_vintages_refresh_passthrough(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`refresh=True` reaches `_discovery.discover` as an explicit refresh."""
+    patch_discovery(monkeypatch, {2019: VintageInfo(url=url_for(2019), etag='"e"')})
+    fetch.get_vintages()  # first sweep, memoised
+
+    calls: list[bool] = []
+    real_discover = _discovery.discover
+
+    def _spy(*, refresh: bool = False) -> dict[int, VintageInfo]:
+        calls.append(refresh)
+        return real_discover(refresh=refresh)
+
+    monkeypatch.setattr(_discovery, "discover", _spy)
+
+    fetch.get_vintages(refresh=True)
+
+    assert calls == [True]
+
+
+# --- offline mode at the fetch layer ---------------------------------------------
+
+
+def test_offline_mode_serves_cached_vintage_with_warning(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Offline mode skips the sweep and serves the cached vintage, naming offline mode."""
+    year = 2019
+    url = url_for(year)
+    fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=4)
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e19"')})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e19"')})
+    cached_path = fetch.fetch_year(year)
+
+    config.set_offline(True)
+
+    with pytest.warns(UserWarning, match="[Oo]ffline mode") as record:
+        served_path = fetch.fetch_year(year)
+
+    assert served_path == cached_path
+    assert "set_offline(False)" in str(record[0].message)
+
+
+def test_offline_mode_nothing_cached_raises_teaching_set_offline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Offline mode with nothing cached raises, teaching `set_offline(False)`/the env var."""
+    config.set_offline(True)
+
+    with pytest.raises(TossdNetworkError, match="offline mode") as excinfo:
+        fetch.fetch_year(2019)
+
+    assert "set_offline(False)" in str(excinfo.value)
+    assert "TOSSD_READER_OFFLINE" in str(excinfo.value)
+
+
+def test_offline_mode_never_attempts_a_head_sweep(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Offline mode short-circuits before `_discovery.discover` ever runs."""
+    year = 2019
+    url = url_for(year)
+    fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=4)
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e19"')})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e19"')})
+    fetch.fetch_year(year)
+    _discovery._reset_for_tests()
+
+    calls = 0
+    real_discover = _discovery.discover
+
+    def _counting_discover(*, refresh: bool = False) -> dict[int, VintageInfo]:
+        nonlocal calls
+        calls += 1
+        return real_discover(refresh=refresh)
+
+    monkeypatch.setattr(_discovery, "discover", _counting_discover)
+    config.set_offline(True)
+
+    with pytest.warns(UserWarning):
+        fetch.fetch_year(year)
+
+    assert calls == 0
+
+
+def test_offline_mode_env_var_true_also_triggers_the_fallback(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`TOSSD_READER_OFFLINE=1` (no explicit `set_offline` call) has the same effect."""
+    year = 2019
+    url = url_for(year)
+    fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=4)
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e19"')})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e19"')})
+    cached_path = fetch.fetch_year(year)
+
+    monkeypatch.setenv("TOSSD_READER_OFFLINE", "1")
+
+    with pytest.warns(UserWarning, match="[Oo]ffline mode"):
+        served_path = fetch.fetch_year(year)
+
+    assert served_path == cached_path

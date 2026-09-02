@@ -42,8 +42,10 @@ from tossd_reader import (
     _accessor,  # noqa: F401 - registers df.tossd
     _matching,
     _pillars,
+    _provenance,
     _schema,
     codelists,
+    config,
     fetch,
 )
 from tossd_reader.exceptions import UnknownCodeError
@@ -146,13 +148,19 @@ def get_tossd(
     Returns:
         A `pandas.DataFrame`, one row per activity matching every filter,
         across every requested year. An empty result (after filtering)
-        still comes back correctly typed, with one warning.
+        still comes back correctly typed, with one warning. `df.attrs
+        ["tossd_reader"]` carries this call's own provenance (the
+        normalised query, plus each fetched year's etag/retrieved_at/url)
+        -- read it back with `get_provenance(df)` rather than the raw
+        `attrs` key directly.
 
     Raises:
         ValueError: `units` is not `"usd_thousand"`/`"usd_million"`/`"usd"`;
             `columns` names an unknown column (or an unrecognised preset);
-            `years` resolves to an empty set of years; or a requested year
-            is not currently published and nothing is cached for it.
+            `years` resolves to an empty set of years; a requested year
+            is not currently published and nothing is cached for it; or
+            `refresh=True` while offline mode is active
+            (`config.get_offline()` is `True`).
         UnknownCodeError: A `providers`/`recipients` token (name, code, or
             digit-string) does not match the packaged codelist.
         InvalidPillarError: A sub-pillar filter is requested for an
@@ -162,7 +170,7 @@ def get_tossd(
         SchemaDriftError: A requested year's published file no longer
             matches the packaged schema.
     """
-    combined, _paths = build_table(
+    combined, paths = build_table(
         years=years,
         providers=providers,
         recipients=recipients,
@@ -173,7 +181,56 @@ def get_tossd(
         refresh=refresh,
         op_name="tossd_reader:get_tossd",
     )
-    return combined.to_pandas(types_mapper=ARROW_TO_PANDAS_INT.get)
+    df = combined.to_pandas(types_mapper=ARROW_TO_PANDAS_INT.get)
+    df.attrs[_provenance.ATTRS_KEY] = _build_get_tossd_provenance(
+        providers=providers,
+        recipients=recipients,
+        pillars=pillars,
+        columns=columns,
+        units=units,
+        include_aggregates=include_aggregates,
+        refresh=refresh,
+        paths=paths,
+    )
+    return df
+
+
+def _build_get_tossd_provenance(
+    *,
+    providers: int | str | Iterable[int | str] | None,
+    recipients: int | str | Iterable[int | str] | None,
+    pillars: int | str | None,
+    columns: Literal["all", "minimal", "analysis"] | list[str],
+    units: Literal["usd_thousand", "usd_million", "usd"],
+    include_aggregates: bool,
+    refresh: bool,
+    paths: dict[int, Path],
+) -> dict[str, object]:
+    """Build `get_tossd()`'s `df.attrs["tossd_reader"]` payload.
+
+    `providers`/`recipients` are re-resolved to codes here (already resolved once, inside
+    `build_table`) rather than threaded through its return value: both calls are pure,
+    side-effect-free lookups against the packaged codelists, so recomputing them is cheaper than
+    widening `build_table`'s own return contract (also used directly by `export()` and by
+    existing tests) just to carry them out.
+    """
+    provider_codes = _matching.resolve_dimension_codes(
+        providers, dimension="provider", label="providers"
+    )
+    recipient_codes = _matching.resolve_dimension_codes(
+        recipients, dimension="recipient", label="recipients"
+    )
+    query_dict = {
+        "years": tuple(paths),
+        "providers": provider_codes,
+        "recipients": recipient_codes,
+        "pillars": pillars,
+        "columns": columns,
+        "units": units,
+        "include_aggregates": include_aggregates,
+        "refresh": refresh,
+    }
+    return _provenance.build_attrs(query=query_dict, paths=paths)
 
 
 def build_table(
@@ -205,7 +262,14 @@ def build_table(
         The combined, filtered, typed arrow table, alongside each resolved
         year's cache path (so `export()` can read per-year provenance
         sidecars without re-running discovery/fetch).
+
+    Raises:
+        ValueError: `refresh=True` while offline mode is active (`config.get_offline()` is
+            `True`) -- shared by every caller (`get_tossd`, `export`) via this one seam.
     """
+    config.raise_if_offline_refresh_conflict(
+        refresh=refresh, func_name=op_name.removeprefix("tossd_reader:")
+    )
     if units not in _VALID_UNITS:
         raise ValueError(f"Unknown units {units!r}; expected one of {_VALID_UNITS}.")
 
