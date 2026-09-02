@@ -54,6 +54,34 @@ Initial release. Covers TOSSD activity-level vintages 2019 to 2024.
   now name the fix when the column ships in the `"analysis"` preset.
 - Data canaries: weekly vintage-change detection and monthly full-download
   reconciliation against recorded headline totals.
+- `get_tossd` and `get_tossd_raw` results now carry `df.attrs["tossd_reader"]`,
+  the same provenance shape `load_export` already stamped: package version, a
+  UTC timestamp, the normalised query, and each fetched year's etag, retrieval
+  time, and source URL. `get_provenance(df)` reads it back as a deep copy.
+- `reconcile(df)`: describes a `get_tossd()`-shaped frame against six manual
+  reconciliation checks (aggregate share, both price-basis totals,
+  core-contribution share, estimate-derived share, unmatched-recipient share,
+  and year/pillar coverage) in one `pandas.Series`. Both `get_provenance` and
+  `reconcile` are new `tossd_reader.verbs` functions and `df.tossd` accessor
+  methods (`df.tossd.provenance()`, `df.tossd.reconcile()`).
+- `get_vintages`: lists what the publisher has live right now, one row per
+  year, from `get_tossd`'s own discovery sweep. Falls back to the local cache
+  with a warning when offline mode is active or the publisher is unreachable,
+  and raises the new `TossdNetworkError` if nothing is cached either.
+- Offline mode: `set_offline`/`get_offline`, plus the `TOSSD_READER_OFFLINE`
+  environment variable. Active offline mode serves cached vintages with a
+  warning instead of touching the network. `refresh=True` combined with
+  offline mode raises `ValueError` on `get_tossd`, `get_tossd_raw`, `export`,
+  and `get_vintages` alike.
+- `cache_info`: one row per cached vintage, a republished year counted
+  separately rather than once per year. `clear_cache`: frees local cache
+  space, filterable by `years=` and `before=`. The bare call drops only
+  superseded vintages. `keep_latest=False` empties whatever `years=`/`before=`
+  matches, the newest vintage included. Returns the number of entries
+  removed.
+- `export(..., max_rows=None)`: an opt-in guard. Once the table is built,
+  raises `ValueError` naming the actual row count before anything is written,
+  if it exceeds `max_rows`.
 
 ### Changed
 

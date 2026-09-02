@@ -1,47 +1,60 @@
 # How to check a figure against the published total
 
-Reconcile a computed figure against the International Forum on TOSSD (IFT) data portal at [tossd.online](https://tossd.online) or an external spreadsheet by verifying six core data properties.
+Reconcile a computed figure against the International Forum on TOSSD (IFT) data portal at [tossd.online](https://tossd.online) or an external spreadsheet. Run the same query you used to compute the figure, call `df.tossd.reconcile()` on the result, and read its entries against the figure you're checking. When one entry doesn't explain a mismatch, the checks below dig into that line.
 
-Load the multi-year dataset to evaluate reconciliation parameters.
+## Run `reconcile()` first
 
 ```python
 import tossd_reader as tossd
 
-df = tossd.get_tossd(years=range(2019, 2025), columns="minimal")
+df = tossd.get_tossd(years=2024, columns="analysis", units="usd_million")
+
+df.tossd.reconcile()
 ```
+
+```text
+unit                                 usd_million
+n_aggregate_rows                            5626
+aggregate_value                     99379.609718
+aggregate_share_pct                    19.968737
+usd_disbursement_total             497675.981441
+usd_disbursement_deflated_total    497675.981441
+pillars_present                           (1, 2)
+year_min                                    2024
+year_max                                    2024
+n_years                                        1
+has_provenance                              True
+b02_core_contribution_value          6678.973842
+b02_core_contribution_share_pct         1.342033
+estimate_derived_value               2913.935663
+estimate_derived_share_pct              0.585509
+iso3_unmatched_value               147394.103994
+iso3_unmatched_share_pct               29.616479
+dtype: object
+```
+
+`reconcile()` is a read-out, not a validator. It never warns or raises on what the data says, only on a frame that isn't `get_tossd()`-shaped. Every share is of `df`'s own `usd_disbursement` total, aggregate rows included, so it takes no `include_aggregates=` argument.
+
+Read the entries against the figure you're checking:
+
+- `unit`, `usd_disbursement_total`, and `usd_disbursement_deflated_total` cover units and price basis.
+- `n_aggregate_rows`, `aggregate_value`, and `aggregate_share_pct` cover aggregate rows.
+- `pillars_present`, `year_min`, `year_max`, and `n_years` cover pillar and year coverage.
+- `has_provenance` confirms `df` carries a vintage record. Read it with `df.tossd.provenance()`.
+
+Three entries go past the checks below: `b02_core_contribution_*` sums core contributions to multilateral institutions (`modality_code == "B02"`), `estimate_derived_*` sums rows whose `source_name` names them as an estimate (a heuristic reading of the source name, not a packaged flag), and `iso3_unmatched_*` sums rows `add_iso3` can't match to a country (regional and multi-country codes, TOSSD-only entities). `usd_disbursement_deflated_total` equals `usd_disbursement_total` above because 2024 is the deflator base year. That equality doesn't hold on other years. See [Verbs](../reference/verbs.md#reconcile-in-practice) for the full entry list, including a multi-year example.
 
 ## Checks
 
-1. **Units.** The `get_tossd` function returns amounts in USD thousands by default (`units="usd_thousand"`). Inspect the `unit` column to verify the active scale.
+1. **Units.** `reconcile()`'s `unit` field already names the active scale. `get_tossd` defaults to `usd_thousand`. Pass `units="usd_million"` to match figures published in millions.
 
-   ```python
-   df["unit"].unique()
-   ```
+2. **Aggregate rows.** `n_aggregate_rows`, `aggregate_value`, and `aggregate_share_pct` cover this. Above, aggregates contribute USD 99.4 billion of the USD 497.7 billion total across all rows. Keep aggregate rows when reconciling the publisher's headline total. Exclude them for provider rankings or other calculations restricted to named reporting institutions (`~df["is_aggregate"]`, or `df.tossd.exclude_aggregates()`). See [How to rank providers by disbursement](rank-providers.md).
 
-   ```text
-   ['usd_thousand']
-   Categories (1, str): ['usd_thousand']
-   ```
+3. **Price basis (current versus constant).** Current prices (`usd_disbursement`) capture nominal flows. Deflated prices (`usd_disbursement_deflated`) hold constant prices adjusted for inflation. `usd_disbursement_total` and `usd_disbursement_deflated_total` give both bases side by side. Confirm which basis the figure you're checking used. See [How to compare TOSSD totals across years](compare-years.md).
 
-   Pass `units="usd_million"` to match figures published in millions.
+4. **Pillar filtering.** `pillars_present` lists the distinct `tossd_pillar` values in `df`, above `(1, 2)`, since 2024 carries no unassigned-pillar rows. Filtering by `pillars=1` or `pillars=2` on `get_tossd()` restricts to Pillar I (cross-border flows) or Pillar II (global public goods). The default `pillars=None` includes everything `pillars_present` reports. Confirm whether the figure you're checking applies a pillar filter.
 
-2. **Aggregate rows.** The TOSSD dataset includes aggregate total rows (marked with `is_aggregate = True` and provider code `0`) alongside individual activity records.
-
-   ```python
-   int(df["is_aggregate"].sum())
-   ```
-
-   ```text
-   38432
-   ```
-
-   Keep aggregate rows when reconciling the publisher's headline total. In 2024, they contribute USD 99.4 billion to the USD 497.7 billion total across all rows. Exclude them for provider rankings or other calculations restricted to named reporting institutions (`~df["is_aggregate"]`). See [How to rank providers by disbursement](rank-providers.md).
-
-3. **Price basis (current versus constant).** Current prices (`usd_disbursement`) capture nominal flows, whereas deflated prices (`usd_disbursement_deflated`) express values in constant prices adjusted for inflation. Verify which price basis was used in the comparison figure. See [How to compare TOSSD totals across years](compare-years.md).
-
-4. **Pillar filtering.** Filtering by `pillars=1` or `pillars=2` restricts records to Pillar I (cross-border flows) or Pillar II (global public goods). The default `pillars=None` includes all records, including unassigned pillar records from 2020 to 2023. Confirm whether the target figure applies a pillar filter.
-
-5. **Data vintage and ETag.** The International Forum on TOSSD (IFT) updates annual data files in place at tossd.online. The `export` function records the file ETag and retrieval timestamp in the export manifest.
+5. **Data vintage and ETag.** `has_provenance` confirms `df` carries a vintage record, but `reconcile()` doesn't surface the ETag itself. Read it with [`df.tossd.provenance()`](../reference/verbs.md#get_provenance-in-practice), or from an export manifest. The IFT updates annual data files in place at tossd.online, and `export` records each file's ETag and retrieval timestamp in the manifest.
 
    ```python
    from pathlib import Path
@@ -52,7 +65,8 @@ df = tossd.get_tossd(years=range(2019, 2025), columns="minimal")
 
    ```text
    {
-     "created_at": "2026-08-29T08:43:24.037603+00:00",
+     "created_at": "2026-09-02T08:23:28.437587+00:00",
+     "payload_sha256": "8a6eed10875a87fcd5faedece760bc461aa5926113ba1686613728c8c27d30bf",
      "row_count": 290914,
      "schema_hash": "0a95f2c54852817a9db1a2174cffa5bd371d601e5d137a37cb27491182367df9",
      "tossd_reader_version": "0.1.0",
@@ -68,25 +82,16 @@ df = tossd.get_tossd(years=range(2019, 2025), columns="minimal")
    }
    ```
 
-   Matching `etag` values confirm identical data releases. Differing `etag` values indicate that the publisher updated the dataset between downloads.
+   Matching `etag` values confirm identical data releases. A mismatched `etag` means re-verify, not necessarily new data. The publisher's host doesn't always serve a stable ETag format for unchanged files.
 
-6. **Year coverage.** Confirm that both calculations span the exact same set of reporting years.
-
-   ```python
-   int(df["year"].min()), int(df["year"].max()), df["year"].nunique()
-   ```
-
-   ```text
-   (2019, 2024, 6)
-   ```
-
-   Figures produced before an annual release reflect a narrower year span.
+6. **Year coverage.** `year_min`, `year_max`, and `n_years` cover this too. Confirm both figures span the same set of reporting years. A figure produced before an annual release reflects a narrower span than `reconcile()` shows for the current data. `reconcile()` also works on a multi-year frame. `year_min`, `year_max`, and `n_years` then span the full range.
 
 ## Verify it worked
 
-Two figures agree once units, aggregate row filtering, price basis, pillar filters, vintage ETag, and year coverage all align.
+Two figures agree once every `reconcile()` entry lines up: unit, price basis, aggregate share, pillar coverage, ETag, and year coverage.
 
 ## See also
 
 - [About the amount columns](../about/amounts.md) for commitment versus disbursement definitions and price adjustments.
 - [Reproducibility and vintages](../about/reproducibility.md) for tracking data revisions using HTTP ETags.
+- [Verbs](../reference/verbs.md#reconcile-in-practice) for `reconcile()`'s full entry list and `get_provenance()`'s deep-copy and attrs-survival details.

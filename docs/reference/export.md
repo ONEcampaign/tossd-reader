@@ -1,6 +1,6 @@
 # Export
 
-The `export` function processes TOSSD activity records through schema casting and derived column generation, then writes the complete result to a compressed parquet file with a JSON provenance manifest. Exports retain all columns (`columns="all"`) and original units (`units="usd_thousand"` in USD thousands).
+`export` casts and types TOSSD activity records, then writes the result to a compressed parquet file with an export manifest. Exports retain all columns (`columns="all"`) and original units (`units="usd_thousand"` in USD thousands).
 
 ```python
 import tossd_reader as tossd
@@ -35,8 +35,8 @@ Each export writes a companion `<stem>.manifest.json` file beside the parquet fi
 <!-- prettier-ignore -->
 ```json
 {
-  "created_at": "2026-08-29T08:43:24.037603+00:00",
-  "payload_sha256": "edb669d585db4108e63b9b73ed6a1a44e1eed200e4ce8a04506f62b34b234fca",
+  "created_at": "2026-09-02T08:24:37.680642+00:00",
+  "payload_sha256": "8a6eed10875a87fcd5faedece760bc461aa5926113ba1686613728c8c27d30bf",
   "row_count": 290914,
   "schema_hash": "0a95f2c54852817a9db1a2174cffa5bd371d601e5d137a37cb27491182367df9",
   "tossd_reader_version": "0.1.0",
@@ -80,6 +80,8 @@ print(sorted(df.attrs["tossd_reader"]))
 ['created_at', 'package_version', 'years']
 ```
 
+`load_export` sets `df.attrs["tossd_reader"]` to this same three-key shape on every call. An export is an unfiltered snapshot, so it carries no `query` key the way a `get_tossd()` or `get_tossd_raw()` result does. `tossd.get_provenance(df)` returns the payload as a deep copy, so mutating the result never touches `df`'s own attrs the way editing `df.attrs["tossd_reader"]` directly would. See [Verbs](verbs.md) for `get_provenance` and its `df.tossd.provenance()` accessor equivalent.
+
 `verify_export` checks only `payload_sha256` and `row_count`. An export written by an older or newer package version can carry a different `schema_hash` without being corrupted, so that field sits outside the check.
 
 <!-- prettier-ignore -->
@@ -97,14 +99,20 @@ print(sorted(df.attrs["tossd_reader"]))
 
     `verify=False` skips the payload-hash and row-count checks. `load_export` still reads `<stem>.manifest.json` for `df.attrs` provenance, so a missing or unreadable manifest raises `ExportIntegrityError` either way.
 
-A tampered or truncated file fails at the hash check:
+A tampered or truncated file fails at the hash check. Flipping a single byte mid-file is enough:
 
 ```python
+with open("tossd_2024.parquet", "r+b") as f:
+    f.seek(1_000_000)
+    original_byte = f.read(1)
+    f.seek(1_000_000)
+    f.write(bytes([original_byte[0] ^ 0xFF]))
+
 tossd.verify_export("tossd_2024.parquet")
 ```
 
 ```text
-ExportIntegrityError: tossd_2024.parquet does not match its manifest: sha256 a6cb8d2e18696af9… but the manifest recorded e203faab0bb8a69f…. The file may have been modified or corrupted since export.
+ExportIntegrityError: tossd_2024.parquet does not match its manifest: sha256 86f01b27506eeaba3f4fb71fd98ffa2e910bb6fb663e8d6d88a48c219ade1c3e but the manifest recorded cbc990069898161335701299e172cd6ae39bbfef2d2543ec7044e914384b13e8. The file may have been modified or corrupted since export.
 ```
 
 <!-- prettier-ignore -->
@@ -114,7 +122,17 @@ ExportIntegrityError: tossd_2024.parquet does not match its manifest: sha256 a6c
 
 ## Performance and memory
 
-Exporting the default full dataset (`years=None`, covering 2019 through 2024) materialises approximately 2.4 million rows in memory as an Apache Arrow table before writing to disk. This requires roughly 2.1 GB of resident memory. Pass specific years to `years=` when working in memory-constrained environments.
+Exporting the default full dataset (`years=None`, covering 2019 through 2024) materialises approximately 2.4 million rows in memory as an Apache Arrow table before writing to disk. Peak resident memory reaches roughly 4.4 GB. The finished table itself accounts for about 2.1 GB of that. Per-year tables stay alive alongside it until concatenation completes. Pass specific years to `years=` when working in memory-constrained environments, or pass `max_rows=` to fail fast instead of writing an export larger than expected:
+
+```python
+tossd.export("out", years=2019, max_rows=100_000)
+```
+
+```text
+ValueError: export() would write 290914 rows, exceeding max_rows=100000. Pass a larger max_rows=, or narrow years= to export a smaller slice.
+```
+
+The check runs after the table is built, so the error names the actual row count. It also runs before anything is written, so a rejected export leaves no partial file, and a pre-existing file at the target path is untouched.
 
 ## Next
 

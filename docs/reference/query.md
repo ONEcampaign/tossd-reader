@@ -13,13 +13,9 @@ For saving complete annual datasets to disk, see [Export](export.md).
 
 ## Usage
 
-The `get_tossd` function applies schema casting, row filtering, and derived columns (`is_aggregate`, `unit`, `tossd_pillar`, `tossd_subpillar`) across requested reporting years.
+`get_tossd()` applies schema casting, row filtering, and derived columns (`is_aggregate`, `unit`, `tossd_pillar`, `tossd_subpillar`) across requested reporting years.
 
-The `get_tossd_raw` function loads requested annual files as published, preserving source column names, data types, and column ordering.
-
-The `get_available_filters` function returns a dictionary of DataFrames for each filter dimension, including valid provider codes, recipient codes, pillar categories, and reporting years.
-
-The `get_codelists_version` function returns the snapshot date of the packaged codelists.
+Provider codes, recipient codes, pillar categories, and reporting years each get their own DataFrame from `get_available_filters()`.
 
 ### Resolving a provider name
 
@@ -168,6 +164,47 @@ code        name  tossd_only
   22 Pillar II.B        True
 ```
 
+### Reading back query provenance
+
+`get_tossd()` stamps `df.attrs["tossd_reader"]` with the call's own
+provenance: the package version, a UTC timestamp, the normalised query,
+and each fetched year's etag, retrieval time, and source URL.
+`get_provenance(df)` (documented in [Verbs](verbs.md)) returns a deep
+copy of that dict.
+
+```python
+import tossd_reader as tossd
+
+df = tossd.get_tossd(years=2024, columns="analysis", units="usd_million")
+tossd.get_provenance(df)
+```
+
+```text
+{'created_at': '2026-09-02T08:01:04.167632+00:00',
+ 'package_version': '0.1.0',
+ 'query': {'columns': 'analysis',
+           'include_aggregates': True,
+           'pillars': None,
+           'providers': None,
+           'recipients': None,
+           'refresh': False,
+           'units': 'usd_million',
+           'years': (2024,)},
+ 'years': {'2024': {'etag': '"69e6ac8d-5728379"',
+                    'retrieved_at': '2026-08-28T19:32:28.617740+00:00',
+                    'url': 'https://tossd.online/tossddata_2024.parquet'}}}
+```
+
+`df.tossd.provenance()` returns the identical dict. `get_tossd_raw()`
+sets the same key with a minimal query: `"years"` and `"refresh"`, the
+only two keywords it takes.
+
+`tossd_reader.verbs` functions and `df.tossd` accessor methods copy
+`df.attrs` onto their results, so provenance survives `rank_entities`,
+`explode_sdg`, and the rest. A plain pandas operation like `merge`,
+`concat`, or some `groupby` calls can drop `attrs`. Read provenance
+from the query result itself, or early.
+
 ### Passing filter arguments to `get_tossd_raw`
 
 `get_tossd_raw` accepts only `years` and `refresh`. Any other keyword raises a `TypeError` naming it and pointing at `get_tossd`.
@@ -208,4 +245,4 @@ TypeError: get_tossd_raw() got unexpected keyword argument(s): providers. get_to
 - [Look up provider and recipient codes](../how-to/look-up-codes.md). Code lookup techniques and error handling.
 - [Read the published columns unchanged](../how-to/read-published-columns.md). Compare `get_tossd_raw` with typed `get_tossd` outputs.
 - [Columns, presets, and units](columns.md). The full column surface, including `FORCED_COLUMNS`.
-- [Export](export.md). Write normalised parquet extracts with provenance manifests.
+- [Export](export.md). Write normalised parquet extracts with export manifests.
