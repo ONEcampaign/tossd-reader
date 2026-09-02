@@ -199,7 +199,10 @@ def _cache_one_year(
     """Cache one year's vintage under `etag`, faking discovery/fetch. Returns its cache path."""
     url = url_for(year)
     fixture = write_tossd_fixture(
-        tmp_path / f"fixture_{year}_{etag}.parquet", year, n_rows=4
+        # The etag's own quote characters are illegal in Windows filenames.
+        tmp_path / f"fixture_{year}_{etag.strip('"')}.parquet",
+        year,
+        n_rows=4,
     )
     patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag=etag)})
     patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), etag)})
