@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-09-02)
 
 Initial release. Covers TOSSD activity-level vintages 2019 to 2024.
 
