@@ -606,8 +606,8 @@ def _filter_dimension_codes(
     """Keep only rows whose `column_name` value is one of `codes` (exact `is_in`).
 
     Generalises `_filter_codes` to also cover `filters=`'s dictionary-encoded
-    (`category<string>`) dimensions -- `modality_code` today, per pin 11 --
-    by casting the value-set to the dictionary's VALUE type rather than the
+    (`category<string>`) dimensions -- `modality_code` today -- by casting
+    the value-set to the dictionary's VALUE type rather than the
     column's own (dictionary) type, and comparing against the decoded
     values. A plain `Int16`/`Int32` column (`sector_code`, `purpose_code`,
     `channel_code`, `finance_instrument_code`) goes through the same

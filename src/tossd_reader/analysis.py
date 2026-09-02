@@ -700,10 +700,10 @@ def add_instrument_group(df: pd.DataFrame) -> pd.DataFrame:
     grant" -- both `422` "Reimbursable grant" sub-variants by name and
     real-data concessionality profile), which additionally needs
     `concessionality_flag`: flag `1` -> `"Concessional Loans"`, flag `0` ->
-    `"Non-concessional Loans"`, a blank flag -> `NA` (17 rows in the 2024
-    vintage, concentrated in code `421`, the highest-volume debt instrument
-    -- there is no separate concessional/non-concessional code, only the one
-    flag column).
+    `"Non-concessional Loans"`, a blank flag -> `NA` (46 rows in the 2024
+    vintage, spread across the debt codes, 17 of them on code `421`, the
+    highest-volume debt instrument -- there is no separate
+    concessional/non-concessional code, only the one flag column).
 
     Groups: `"Grants"` (`100`/`110`), `"Non-concessional Loans"` /
     `"Concessional Loans"` (the debt family, see above),
