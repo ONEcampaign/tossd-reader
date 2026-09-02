@@ -1,85 +1,107 @@
-# How to look up provider and recipient codes
+# How to look up codes and names
 
-Look up official provider and recipient codes or names from the packaged codelists before querying `get_tossd`, and resolve unknown code errors.
+Browse a packaged codelist or resolve one code or name to its packaged value with `tossd_reader.codes`, then pass the result straight to `get_tossd`.
 
 ## Steps
 
-1. **List the available filter dimensions.**
+1. **Browse a dimension's codelist.** `tossd.codes.browse(dimension)` returns the packaged codelist frame for one of ten dimensions: `provider`, `recipient`, `pillar`, `sector`, `purpose`, `channel`, `modality`, `finance_instrument`, `financing_arrangement`, `framework_of_collaboration`.
 
    ```python
    import tossd_reader as tossd
 
-   filters = tossd.get_available_filters()
-   sorted(filters)
+   m = tossd.codes.browse("modality")
+   print(m.head(4).to_string(index=False))
    ```
 
    ```text
-   ['channel', 'finance_instrument', 'financing_arrangement', 'framework_of_collaboration', 'modality', 'pillar', 'provider', 'purpose', 'recipient', 'sector', 'years']
+   code                                                                     name  tossd_only
+      A                                                           Budget support        True
+    A00                                                           Budget support        True
+      B                       Core contributions and pooled programmes and funds        True
+    B01 Core support to NGOs, other private bodies, PPPs and research institutes        True
    ```
 
-   The packaged codelists contain eleven dimensions. The `get_tossd` function accepts `providers`, `recipients`, and `pillars` as query arguments. Filter other dimensions such as sector, purpose, channel, and modality in pandas after querying, as shown in [How to filter by sector, purpose, channel, or modality](filter-by-sector.md).
+   `get_available_filters()` returns all ten codelists at once, plus a synthetic `years` entry (eleven keys total), when you want everything in one dict instead of one dimension at a time.
 
-2. **Inspect the target dimension DataFrame.**
+2. **Resolve one code or name with `lookup()`.** `tossd.codes.lookup(dimension, token)` takes a code, a digit-string code, or a name (case-folded), and returns the resolved code. The return type follows the column: `provider`, `recipient`, `sector`, `purpose`, `channel`, and `finance_instrument` give back `int`; `modality`, `financing_arrangement`, and `framework_of_collaboration` give back `str`.
 
    ```python
-   filters["provider"].head(3)
+   import tossd_reader as tossd
+
+   print(tossd.codes.lookup("sector", "I.2.b. Basic health"))
+   print(tossd.codes.lookup("provider", "France"))
+   print(tossd.codes.lookup("modality", "B02"))
    ```
 
    ```text
-     code     name  tossd_only iso3
-   0    1  Austria       False  AUT
-   1    2  Belgium       False  BEL
-   2    3  Denmark       False  DNK
+   122
+   4
+   B02
    ```
 
-3. **Pass the numeric code or exact name to `get_tossd`.** An unrecognized string raises `UnknownCodeError` with suggested matches.
+3. **Trust `lookup()`'s result in a filter.** `codes.lookup()` resolves a token through the same matching path `filters=`, `providers=`, and `recipients=` use, so the code `lookup()` returns is exactly what a filter built from that same token would match. A resolvable code can still match zero rows in the published data (sector sub-codes, for example, fold into their top-level group before publishing). See [How to filter by sector](filter-by-sector.md) for the full story.
+
+   <!-- prettier-ignore -->
+   !!! warning "Heads up"
+       A provider name doesn't always raise when looked up against the `recipient` dimension. 22 names, including Brazil, Argentina, and Indonesia, are both official providers and official recipients in the TOSSD standard. The lookup only fails for a provider-only name, like Japan.
+
+       ```python
+       import tossd_reader as tossd
+
+       print(tossd.codes.lookup("recipient", "Brazil"))
+       ```
+
+       ```text
+       431
+       ```
+
+4. **Ask for a dimension `lookup()` doesn't cover.** `browse()` accepts all ten packaged dimensions, `pillar` included. `lookup()` covers nine: every dimension `filters=` accepts, plus `provider` and `recipient`, each resolved through its own `providers=`/`recipients=` kwarg. `pillar` is the one exception. A pillar token like `"II.A"` doesn't resolve to a flat codelist code the way every other dimension does, so `lookup()` raises `ValueError` and points at `pillars=` instead.
 
    ```python
-   tossd.get_tossd(years=2024, providers="Germny")
+   import tossd_reader as tossd
+
+   tossd.codes.lookup("pillar", "II.A")
    ```
 
    ```text
-   UnknownCodeError: 'Germny' did not match any providers code or name in the packaged codelist. Closest matches: Germany.
+   ValueError: Unknown lookup() dimension 'pillar'; expected one of provider, recipient, sector, purpose, channel, modality, finance_instrument, financing_arrangement, framework_of_collaboration. Pillar tokens ('1', 'II.A', ...) resolve via get_tossd(pillars=...), not codes.lookup().
    ```
 
-   Strings are validated against the packaged codelist. In-range integer codes pass directly to the query.
+5. **Ask for a code or name that doesn't exist.** An unresolved token raises `UnknownCodeError`, naming the closest matches from the packaged codelist.
 
    ```python
-   tossd.get_tossd(years=2024, providers=500, columns="minimal").shape
+   import tossd_reader as tossd
+
+   tossd.codes.lookup("sector", "Helth")
    ```
 
    ```text
-   (0, 19)
+   UnknownCodeError: 'Helth' did not match any sector code or name in the packaged codelist. Closest matches: I.2. Health, I.2.a. Health, general, I.2.b. Basic health, I.3. Population policies/programmes and reproductive health.
    ```
-
-   Provider code `500` matches the numeric column range, so the call returns an empty DataFrame with a warning when no records match.
-
-   The provider codelist contains 159 rows while the recipient codelist contains 177 rows. Querying a recipient with a provider name raises an error.
-
-   ```python
-   tossd.get_tossd(years=2024, recipients="Japan")
-   ```
-
-   ```text
-   UnknownCodeError: 'Japan' did not match any recipients code or name in the packaged codelist. Closest matches: Azerbaijan, Panama.
-   ```
-
-   Japan reports as an official provider in the TOSSD standard.
 
 ## Verify it worked
 
-Check the row count to confirm that the resolved query returns matching records.
+Pass a `lookup()` result straight to `get_tossd` and confirm it resolves to matching rows.
 
 ```python
-df = tossd.get_tossd(years=2024, providers="Germany", columns="minimal")
-df.shape[0] > 0
+import tossd_reader as tossd
+
+code = tossd.codes.lookup("provider", "France")
+df = tossd.get_tossd(years=2024, providers=code, columns="minimal")
+print(df.shape[0] > 0)
 ```
 
 ```text
 True
 ```
 
+## Troubleshooting
+
+- **`UnknownCodeError` on a token you expected to resolve.** Check the exact packaged spelling with `browse(dimension)` first; the suggestions in the error list the closest packaged names, not necessarily the one you meant.
+- **A filter built from a `lookup()` result matches zero rows.** The code resolved, but the published data doesn't carry that granularity. See [How to filter by sector](filter-by-sector.md).
+- **`ValueError: Unknown lookup() dimension 'pillar'`.** Pillar tokens don't go through `codes.lookup()`. Pass the token to `get_tossd(pillars=...)` directly. See [About pillars and aggregate rows](../about/pillars-and-aggregates.md).
+
 ## See also
 
-- [Query reference](../reference/query.md) for code and name resolution rules behind `providers=`, `recipients=`, and `pillars=`.
-- [How to rank providers by disbursement](rank-providers.md) for aggregating provider disbursements.
+- [Query reference](../reference/query.md) for the full resolution rules behind `providers=`, `recipients=`, and `filters=`.
+- [How to filter by sector](filter-by-sector.md) for applying a resolved code as a filter and the sub-sector granularity story.

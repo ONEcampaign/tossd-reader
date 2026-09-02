@@ -31,6 +31,150 @@ tossd.get_tossd(years=2024, providers="Germny")
 UnknownCodeError: 'Germny' did not match any providers code or name in the packaged codelist. Closest matches: Germany.
 ```
 
+### Filtering to pillars 1 and 2
+
+`pillars="standard"` filters to pillars 1 and 2 together, excluding the
+pillar-0 placeholder rows a few years carry. Every other `pillars=`
+value already excludes pillar-0. Only the default `pillars=None` keeps
+it. See [Pillars and aggregate
+rows](../about/pillars-and-aggregates.md#transitional-pillar-0-classifications)
+for what those rows are.
+
+```python
+import tossd_reader as tossd
+
+len(tossd.get_tossd(years=2023, columns="minimal"))
+```
+
+```text
+442737
+```
+
+```python
+len(tossd.get_tossd(years=2023, columns="minimal", pillars="standard"))
+```
+
+```text
+442399
+```
+
+### Filtering by dimension
+
+`filters=` narrows results by any of seven dimensions with no dedicated
+keyword: `sector`, `purpose`, `channel`, `modality`, `finance_instrument`,
+`financing_arrangement`, `framework_of_collaboration`. Each key takes a
+single code, a single codelist name, or an iterable mixing both, resolved
+the same way `providers=` and `recipients=` resolve their own values.
+Filtering on more than one dimension at once narrows to rows matching
+every dimension given.
+
+```python
+df = tossd.get_tossd(
+    years=2024,
+    columns="analysis",
+    units="usd_million",
+    filters={"sector": "I.2. Health"},
+)
+len(df)
+```
+
+```text
+53064
+```
+
+```python
+round(df["usd_disbursement"].sum(), 1)
+```
+
+```text
+30794.2
+```
+
+Resolve a token before filtering with `tossd.codes.lookup(dimension,
+token)` to check what a code or name matches (see [Codes](#codes)
+below).
+
+`financing_arrangement` and `framework_of_collaboration` match by token
+membership. Real data packs multiple codes into one row (`"FA02|FA03"`),
+so a filter for `"FA02"` also matches a packed row carrying it alongside
+another code. The other five dimensions match by exact equality.
+
+```python
+fa = tossd.get_tossd(
+    years=2024,
+    columns="analysis",
+    units="usd_million",
+    filters={"financing_arrangement": "FA02"},
+)
+len(fa)
+```
+
+```text
+11561
+```
+
+```python
+print(fa["financing_arrangement_code"].value_counts().head(2).to_string())
+```
+
+```text
+financing_arrangement_code
+FA02         11557
+FA02|FA03        4
+```
+
+`provider`, `recipient`, and `pillar` keys raise, naming the dedicated
+keyword to use instead.
+
+```python
+tossd.get_tossd(years=2024, filters={"provider": "France"})
+```
+
+```text
+ValueError: filters={'provider': ...} is not supported; use providers= directly.
+```
+
+An unrecognized dimension raises the same way, with closest matches.
+
+```python
+tossd.get_tossd(years=2024, filters={"sectors": "x"})
+```
+
+```text
+ValueError: Unknown filters= dimension 'sectors'; expected one of channel, finance_instrument, financing_arrangement, framework_of_collaboration, modality, purpose, sector. Closest matches: sector.
+```
+
+An unresolved code or name raises `UnknownCodeError` with closest
+matching names.
+
+```python
+tossd.get_tossd(years=2024, filters={"sector": "Helth"})
+```
+
+```text
+UnknownCodeError: 'Helth' did not match any sector code or name in the packaged codelist. Closest matches: I.2. Health, I.2.a. Health, general, I.2.b. Basic health, I.3. Population policies/programmes and reproductive health.
+```
+
+A codelist entry can resolve cleanly and still match no row. The
+packaged `sector` codelist carries sub-sector codes the published data
+folds into their top-level group before publishing, so a sub-sector
+filter resolves the code and returns nothing.
+
+```python
+tossd.get_tossd(years=2024, filters={"sector": "I.2.b. Basic health"})
+```
+
+```text
+UserWarning: get_tossd's filters matched no rows; returning an empty (but correctly typed) frame. A codelist entry can sit at a finer granularity than the published data uses (sector sub-codes, for example, fold into their top-level group) -- compare against the column's own values, e.g. df['sector_code'].unique().
+```
+
+`purpose_code` carries that sub-sector-level detail instead. Filter on
+`purpose` for questions finer than the 25 top-level sector groups.
+
+`export()` takes no `filters=`. Its contract is an unfiltered snapshot
+of a requested year (see [Export](export.md)). Build a filtered extract
+with `get_tossd(filters=...)` and your own `DataFrame.to_parquet` call.
+
 ### Checking the forced columns
 
 `FORCED_COLUMNS` names the columns present in every `get_tossd` result, regardless of `columns=`. Import it to check membership before building an explicit column list.
@@ -239,10 +383,86 @@ TypeError: get_tossd_raw() got unexpected keyword argument(s): providers. get_to
     options:
       heading_level: 2
 
+## Codes
+
+`tossd_reader.codes` browses and resolves the packaged codelists that
+`filters=`, `providers=`, and `recipients=` all draw on. `browse(dimension)`
+returns one dimension's full codelist frame. `lookup(dimension, token)`
+resolves a single code or name to the packaged code, through the same
+resolution path a filter uses, so a lookup and a filter built from its
+result always agree.
+
+```python
+import tossd_reader as tossd
+
+m = tossd.codes.browse("modality")
+print(m.head(4).to_string(index=False))
+```
+
+```text
+code                                                                     name  tossd_only
+   A                                                           Budget support        True
+ A00                                                           Budget support        True
+   B                       Core contributions and pooled programmes and funds        True
+ B01 Core support to NGOs, other private bodies, PPPs and research institutes        True
+```
+
+`browse()` covers all 10 packaged dimensions, `pillar` included.
+`lookup()` covers the 9 that resolve to a flat code, every `filters=`
+dimension plus `provider` and `recipient`, and returns `int` for the
+int-coded dimensions (`provider`, `recipient`, `sector`, `purpose`,
+`channel`, `finance_instrument`) or `str` for the str-coded ones
+(`modality`, `financing_arrangement`, `framework_of_collaboration`).
+
+```python
+tossd.codes.lookup("sector", "I.2.b. Basic health")
+```
+
+```text
+122
+```
+
+```python
+tossd.codes.lookup("provider", "France")
+```
+
+```text
+4
+```
+
+```python
+tossd.codes.lookup("modality", "B02")
+```
+
+```text
+'B02'
+```
+
+`lookup()` excludes `pillar`. Resolve a pillar token like `"II.A"`
+through `get_tossd(pillars=...)` instead.
+
+```python
+tossd.codes.lookup("pillar", "II.A")
+```
+
+```text
+ValueError: Unknown lookup() dimension 'pillar'; expected one of provider, recipient, sector, purpose, channel, modality, finance_instrument, financing_arrangement, framework_of_collaboration. Pillar tokens ('1', 'II.A', ...) resolve via get_tossd(pillars=...), not codes.lookup().
+```
+
+<!-- prettier-ignore -->
+::: tossd_reader.codes.browse
+    options:
+      heading_level: 2
+
+<!-- prettier-ignore -->
+::: tossd_reader.codes.lookup
+    options:
+      heading_level: 2
+
 ## Next
 
 - [Verbs](verbs.md). Aggregation functions (`rank_entities`, `compare_years`, and others) built on `get_tossd()` output.
-- [Look up provider and recipient codes](../how-to/look-up-codes.md). Code lookup techniques and error handling.
+- [How to look up codes and names](../how-to/look-up-codes.md). Browse or resolve any dimension's codes with `tossd_reader.codes`, then pass the result to `get_tossd`.
 - [Read the published columns unchanged](../how-to/read-published-columns.md). Compare `get_tossd_raw` with typed `get_tossd` outputs.
 - [Columns, presets, and units](columns.md). The full column surface, including `FORCED_COLUMNS`.
 - [Export](export.md). Write normalised parquet extracts with export manifests.

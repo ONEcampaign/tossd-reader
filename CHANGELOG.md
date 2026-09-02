@@ -82,6 +82,28 @@ Initial release. Covers TOSSD activity-level vintages 2019 to 2024.
 - `export(..., max_rows=None)`: an opt-in guard. Once the table is built,
   raises `ValueError` naming the actual row count before anything is written,
   if it exceeds `max_rows`.
+- `get_tossd(filters=...)`: filters rows by code or codelist name across
+  seven dimensions: `sector`, `purpose`, `channel`, `modality`,
+  `finance_instrument`, `financing_arrangement`, and
+  `framework_of_collaboration`. Each value takes one code, one codelist
+  name, or an iterable mixing both. `financing_arrangement` and
+  `framework_of_collaboration` match by token membership. A filter for
+  `"FA02"` also catches rows tagged `"FA02|FA03"`, matching how the
+  publisher packs multiple codes into these two dimensions. A `filters=`
+  key of `provider`, `recipient`, or `pillar`, in any spelling, raises a
+  `ValueError` naming the dedicated kwarg to use instead.
+- `pillars="standard"`: filters to pillars 1 and 2, excluding pillar-0
+  placeholder rows. Existing pillar tokens are unchanged.
+- `tossd_reader.codes`: `browse(dimension)` returns the packaged codelist
+  as a DataFrame. `lookup(dimension, token)` resolves a code or codelist
+  name to its code through the same resolution path `filters=` uses, so
+  the two never disagree. `lookup` returns `int` for int-coded dimensions
+  (`provider`, `recipient`, `sector`, `purpose`, `channel`,
+  `finance_instrument`) and `str` for str-coded ones (`modality`,
+  `financing_arrangement`, `framework_of_collaboration`). `pillar` is
+  excluded from `lookup`, with a teaching error pointing at
+  `get_tossd(pillars=...)`.
+- Docstring examples across the public API, each verified by doctest.
 
 ### Changed
 

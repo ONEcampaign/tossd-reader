@@ -1,215 +1,224 @@
-# How to filter by sector, purpose, channel, or modality
+# How to filter by sector
 
-Filter activity records by sector, purpose, channel, or modality codes using packaged codelists and pandas.
+Filter activity records to one sector by passing a name or code straight to
+`get_tossd(filters={"sector": ...})`. The published data's sector vocabulary
+is coarser than the packaged sector codelist, so some codelist entries match
+no rows at all. This guide covers group-level filtering, that mismatch, and
+where the finer detail actually lives.
 
 ## Steps
 
-1. **Look up the code from the relevant codelist.** The `get_available_filters` function returns eleven dimensions. The `get_tossd` function accepts `providers=`, `recipients=`, and `pillars=` directly. For sector, purpose, channel, and modality, look up the target code from the codelist and filter the returned DataFrame in pandas.
+1. **Filter by a sector name or code.** `filters=` resolves a sector value the
+   same way `providers=` and `recipients=` resolve their own. It tries an
+   exact code match first, then falls back to a case-folded name match
+   against the packaged codelist.
 
    ```python
    import tossd_reader as tossd
 
-   sector = tossd.get_available_filters()["sector"]
-   sector[sector["name"].str.contains("Education", case=False)]
+   df = tossd.get_tossd(
+       years=2024,
+       columns="analysis",
+       units="usd_million",
+       filters={"sector": "I.2. Health"},
+   )
+   print(len(df))
+   print(round(df["usd_disbursement"].sum(), 1))
    ```
 
    ```text
-     code                                 name  tossd_only
-   0  110                       I.1. Education       False
-   1  111  I.1.a. Education, level nnspecified       False
-   2  112               I.1.b. Basic education       False
-   3  113     I.1.c. Upper secondary education       False
-   4  114      I.1.d. Post-secondary education       False
+   53064
+   30794.2
    ```
 
-2. **Query with a preset that includes the code column.** The `sector_code` column is included in `columns="analysis"` and `columns="all"`. The `columns="minimal"` preset excludes it.
+   <!-- prettier-ignore -->
+   !!! note
+       `columns="minimal"` filters correctly too, but drops `sector_code` and
+       `sector_name` from the result. Use `"analysis"` or `"all"` (or list
+       them explicitly) when you need to see the columns you filtered on, as
+       every example on this page does.
+
+2. **Know the sector vocabulary before you filter on a sub-code.** The
+   published data's `sector_code` column holds 25 top-level groups: 110
+   Education, 120 Health, 700 Humanitarian Assistance, and so on. The packaged
+   sector codelist carries 49 entries, including sub-sector codes such as 122
+   (`I.2.b. Basic health`) that the publisher folds into their group before
+   publishing those files. Filter on one of those sub-codes and `get_tossd`
+   returns an empty frame, correctly typed, with a warning:
+
+   ```python
+   tossd.get_tossd(
+       years=2024,
+       columns="analysis",
+       units="usd_million",
+       filters={"sector": "I.2.b. Basic health"},
+   )
+   ```
+
+   ```text
+   UserWarning: get_tossd's filters matched no rows; returning an empty (but
+   correctly typed) frame. A codelist entry can sit at a finer granularity
+   than the published data uses (sector sub-codes, for example, fold into
+   their top-level group) -- compare against the column's own values, e.g.
+   df['sector_code'].unique().
+   ```
+
+   A group-level name has to match the codelist's own spelling too. The
+   frame's `sector_name` column reads the plain `"Health"`. The codelist's own
+   name is prefixed, `"I.2. Health"`.
+
+   ```python
+   tossd.get_tossd(years=2024, filters={"sector": "Health"})
+   ```
+
+   ```text
+   UnknownCodeError: 'Health' did not match any sector code or name in the
+   packaged codelist. Closest matches: I.2. Health, I.2.a. Health, general,
+   I.2.b. Basic health, I.3. Population policies/programmes and reproductive
+   health.
+   ```
+
+3. **Reach sub-sector detail through `purpose` instead.** The granularity a
+   sector sub-code promises lives in the `purpose_code` column, which carries
+   305 distinct values in the published data. Filter `purpose` for the finer
+   question.
+
+   ```python
+   basic_health = tossd.get_tossd(
+       years=2024,
+       columns="analysis",
+       units="usd_million",
+       filters={"purpose": "Basic health care"},
+   )
+   print(len(basic_health))
+   print(round(basic_health["usd_disbursement"].sum(), 1))
+   ```
+
+   ```text
+   5536
+   1883.1
+   ```
+
+   Every one of those rows still carries `sector_code` 120, the group Health.
+   The detail `purpose` adds doesn't change the sector column.
+
+   ```python
+   print(sorted(basic_health["sector_code"].unique().tolist()))
+   ```
+
+   ```text
+   [120]
+   ```
+
+4. **Filter humanitarian assistance by code.** Sector 700, Humanitarian
+   Assistance, is a real value in `sector_code`, but the packaged sector
+   codelist has no row for it at all. Codes pass `filters=` without codelist
+   gating, so the code still works.
+
+   ```python
+   hum = tossd.get_tossd(
+       years=2024,
+       columns="analysis",
+       units="usd_million",
+       filters={"sector": 700},
+   )
+   print(len(hum))
+   print(round(hum["usd_disbursement"].sum(), 1))
+   ```
+
+   ```text
+   40668
+   47179.8
+   ```
+
+   The name doesn't work. `"Humanitarian Assistance"` is the label the
+   publisher writes into the frame's own `sector_name` column. `filters=`
+   matches against the codelist, and 700 has no entry there.
+
+   ```python
+   tossd.get_tossd(years=2024, filters={"sector": "Humanitarian Assistance"})
+   ```
+
+   ```text
+   UnknownCodeError: 'Humanitarian Assistance' did not match any sector code
+   or name in the packaged codelist. Closest matches: VI.3. Other Commodity
+   Assistance.
+   ```
+
+5. **Rank sectors within a filtered frame.** `df.tossd.rank_entities()` sums,
+   ranks, and counts activities per sector in one call, over any
+   `get_tossd()` result.
 
    ```python
    sen = tossd.get_tossd(
        years=2024, recipients="Senegal", columns="analysis", units="usd_million"
    )
-   sen.shape
+   print(sen.tossd.rank_entities(dimension="sector", top=5).to_string(index=False))
    ```
 
    ```text
-   (4802, 44)
+    sector_code                    sector_name  usd_disbursement  n_activities  share_pct  rank
+             320 Industry, Mining, Construction        343.687506           104  15.697118     1
+             230                         Energy        225.801199           127  10.312938     2
+             210            Transport & Storage        213.414997           124   9.747228     3
+             110                      Education        213.233284           528   9.738928     4
+             310 Agriculture, Forestry, Fishing        175.566222           539   8.018574     5
    ```
 
-3. **Filter the returned DataFrame on the code and separate aggregate rows.** The `sector_code` column is a nullable `Int16`. Use the `is_aggregate` flag to separate provider activities from aggregate totals.
+   `n_activities` appears because `sen` carries `tossd_id`. See
+   [How to rank providers by disbursement](rank-providers.md) for how
+   `rank_entities` builds that count and why it excludes aggregate rows by
+   default.
+
+6. **Count activities, not rows.** `rank_entities` computes `n_activities`
+   automatically. Filter `sector_code` by hand instead, and `len()` alone
+   overstates how many activities were involved. The publisher publishes one
+   row per activity-sector pairing, so an activity tagged with two sectors,
+   or two purposes, shows up on two rows.
 
    ```python
    edu = sen[(sen["sector_code"] == 110) & ~sen["is_aggregate"]]
-   edu.sort_values("usd_disbursement", ascending=False)[
-       ["provider_name", "sector_code", "sector_name", "usd_disbursement"]
-   ].head(5)
-   ```
-
-   ```text
-        provider_name  sector_code sector_name  usd_disbursement
-   9           France          110   Education         64.863162
-   507          Japan          110   Education         19.809865
-   307        Türkiye          110   Education         13.456209
-   144  United States          110   Education         11.702304
-   445     Luxembourg          110   Education          8.716902
-   ```
-
-   ```python
-   print(round(edu["usd_disbursement"].sum(), 1))
-   ```
-
-   ```text
-   213.2
-   ```
-
-4. **Rank top sectors by total funding.** Group by sector code and name to identify the largest areas of development assistance across a country or portfolio.
-
-   ```python
-   top_sectors = (
-       sen[~sen["is_aggregate"]]
-       .groupby(["sector_code", "sector_name"], observed=True)["usd_disbursement"]
-       .sum()
-       .sort_values(ascending=False)
-       .head(5)
-       .reset_index()
-   )
-   top_sectors["share_pct"] = (
-       top_sectors["usd_disbursement"]
-       / sen[~sen["is_aggregate"]]["usd_disbursement"].sum()
-       * 100
-   ).round(1)
-   top_sectors["usd_disbursement"] = top_sectors["usd_disbursement"].round(1)
-   top_sectors
-   ```
-
-   ```text
-      sector_code                     sector_name  usd_disbursement  share_pct
-   0          320  Industry, Mining, Construction             343.7       15.7
-   1          230                          Energy             225.8       10.3
-   2          210             Transport & Storage             213.4        9.7
-   3          110                       Education             213.2        9.7
-   4          310  Agriculture, Forestry, Fishing             175.6        8.0
-   ```
-
-5. **Apply the same pattern to purpose, channel, and modality.** Look up the code and apply the same filtering pattern.
-
-   ```python
-   purpose_hits = tossd.get_available_filters()["purpose"]
-   purpose_hits[purpose_hits["name"].str.contains("Basic health care", case=False)]
-   ```
-
-   ```text
-         code                                       name  tossd_only
-   22   12220                          Basic health care       False
-   298  72011  Basic Health Care Services in Emergencies       False
-   ```
-
-   ```python
-   channel_hits = tossd.get_available_filters()["channel"]
-   channel_hits[channel_hits["name"].str.contains("Children", case=False)]
-   ```
-
-   ```text
-         code                                      name  tossd_only
-   79   21505                         Save the Children       False
-   86   22502  Save the Children - donor country office       False
-   139  41122           United Nations Children’s Fund         True
-   ```
-
-   Modality codes are category strings, such as `"B01"`. Filter and sum across purpose, channel, and modality using the same pattern.
-
-   ```python
-   purpose = sen[(sen["purpose_code"] == 12220) & ~sen["is_aggregate"]]
-   channel = sen[(sen["channel_code"] == 41122) & ~sen["is_aggregate"]]
-   modality = sen[(sen["modality_code"] == "B01") & ~sen["is_aggregate"]]
-
-   print(len(purpose), round(purpose["usd_disbursement"].sum(), 1))
-   print(len(channel), round(channel["usd_disbursement"].sum(), 1))
-   print(len(modality), round(modality["usd_disbursement"].sum(), 1))
-   ```
-
-   ```text
-   72 6.9
-   383 19.4
-   122 17.7
-   ```
-
-   The `sector_code`, `purpose_code`, `channel_code`, and `modality_code` columns, along with their paired `_name` columns, appear in `columns="analysis"`. Additional columns such as `channel_raw_text`, `parent_channel_code`, and `parent_channel_name` appear under `columns="all"`. Refer to [Columns, presets, and units](../reference/columns.md) for the complete column layout.
-
-6. **Count activities, not rows.** The publisher publishes one row per activity-sector pairing, and recipient, channel, and instrument splits multiply rows the same way. `len()` on a filtered frame counts rows. Amount sums stay correct either way, since each split row already carries its own share of the total, but a row count overstates how many activities were involved.
-
-   ```python
-   len(edu)
+   print(len(edu))
    ```
 
    ```text
    553
    ```
 
-   An activity tagged with two education purposes shows up on two of those rows. Count activities as distinct `tossd_id`, excluding the `"0000"` placeholder the publisher uses for bundled lines with no activity identifier of their own.
+   Count activities as distinct `tossd_id`, excluding the `"0000"` placeholder
+   the publisher uses for bundled lines with no activity identifier of their
+   own.
 
    ```python
-   edu.loc[edu["tossd_id"] != "0000", "tossd_id"].nunique()
+   print(edu.loc[edu["tossd_id"] != "0000", "tossd_id"].nunique())
    ```
 
    ```text
    528
    ```
 
-   The gap varies in size. The purpose, channel, and modality filters from the previous step show it at different scales.
+   The gap varies in size. Education narrows from 553 rows to 528 activities.
+   The basic-health-care purpose filter from step 3, scoped to the same
+   recipient, doesn't narrow at all.
 
    ```python
-   for name, frame in [("purpose", purpose), ("channel", channel), ("modality", modality)]:
-       n_activities = frame.loc[frame["tossd_id"] != "0000", "tossd_id"].nunique()
-       print(name, len(frame), n_activities)
+   health = sen[(sen["purpose_code"] == 12220) & ~sen["is_aggregate"]]
+   print(len(health), health.loc[health["tossd_id"] != "0000", "tossd_id"].nunique())
    ```
 
    ```text
-   purpose 72 72
-   channel 383 383
-   modality 122 119
-   ```
-
-   Purpose and channel happen to match here. Modality doesn't. `rank_entities()`'s own `n_activities` column runs this same distinct-count logic, so a ranking built with `df.tossd.rank_entities()` never needs the manual `.loc[...].nunique()` step.
-
-7. **Group by year with an explicit column selection.** `get_tossd` always includes `year`, along with `tossd_pillar`, `tossd_subpillar`, `is_aggregate`, and `unit`, in its output regardless of the `columns=` list.
-
-   ```python
-   df = tossd.get_tossd(
-       years=range(2019, 2025),
-       recipients="Senegal",
-       columns=["sector_code", "sector_name", "usd_disbursement"],
-       units="usd_million",
-   )
-   list(df.columns)
-   ```
-
-   ```text
-   ['sector_code', 'sector_name', 'usd_disbursement', 'year', 'tossd_pillar', 'tossd_subpillar', 'is_aggregate', 'unit']
-   ```
-
-   ```python
-   edu_by_year = df[(df["sector_code"] == 110) & ~df["is_aggregate"]]
-   edu_by_year.groupby("year", observed=True)["usd_disbursement"].sum().round(1)
-   ```
-
-   ```text
-   year
-   2019    156.2
-   2020    134.2
-   2021    154.4
-   2022    163.4
-   2023    196.6
-   2024    213.2
-   Name: usd_disbursement, dtype: float64
+   72 72
    ```
 
 ## Verify it worked
 
-Confirm that the 2024 multi-year sum matches the single-year filtered total.
+`rank_entities`'s `n_activities` and the manual distinct-`tossd_id` count from
+step 6 are the same computation reached two ways. They should agree.
 
 ```python
-by_year = edu_by_year.groupby("year", observed=True)["usd_disbursement"].sum().round(1)
-print(by_year[2024] == round(edu["usd_disbursement"].sum(), 1))
+ranked = sen.tossd.rank_entities(dimension="sector")
+edu_activities = ranked.loc[ranked["sector_code"] == 110, "n_activities"].item()
+print(edu_activities == edu.loc[edu["tossd_id"] != "0000", "tossd_id"].nunique())
 ```
 
 ```text
@@ -218,9 +227,19 @@ True
 
 ## Troubleshooting
 
-- **`KeyError` on a dimension code column** (`sector_code`, `purpose_code`, `channel_code`, `modality_code`). The DataFrame was queried with `columns="minimal"`. Re-query with `columns="analysis"` or `columns="all"`, or include the required column in an explicit `columns=` list.
+- **`KeyError` on `sector_code` or `purpose_code`.** The frame was queried
+  with `columns="minimal"`. Re-query with `columns="analysis"` or `"all"`, or
+  include the column in an explicit `columns=` list.
+- **A sector filter returns an empty frame with a `UserWarning`.** The
+  codelist entry sits at a finer granularity than the published data uses.
+  Compare against `df["sector_code"].unique()`, or filter `purpose` instead
+  (step 3).
 
 ## See also
 
-- [How to look up provider and recipient codes](look-up-codes.md) for filterable dimensions and codelist lookups.
-- [Columns, presets, and units](../reference/columns.md) for column definitions and preset details.
+- [How to look up codes and names](look-up-codes.md) for browsing a codelist
+  and resolving a token before you filter on it.
+- [How to rank providers by disbursement](rank-providers.md) for
+  `rank_entities` mechanics, `n_activities`, and aggregate-row handling.
+- [Columns, presets, and units](../reference/columns.md) for the full column
+  layout.

@@ -2,7 +2,7 @@
 
 Total Official Support for Sustainable Development (TOSSD) is an international standard tracked by the International Forum on TOSSD at [tossd.online](https://tossd.online). It measures cross-border development finance under Pillar I and expenditures for global public goods under Pillar II. The published dataset covers six years (2019 to 2024) across 2.4 million activity-level records.
 
-`tossd-reader` provides Python analysts with clean, cached pandas DataFrames loaded directly from these official records. Annual files download once and cache locally on disk, so repeat queries run from local storage.
+`tossd-reader` provides Python analysts with typed, cached pandas DataFrames loaded directly from these official records. Annual files download once and cache locally on disk, so repeat queries run from local storage.
 
 ## Quick verification
 
@@ -50,7 +50,7 @@ Python 3.12 or newer.
 
 - Initial queries for a year download the full published annual dataset (55 to 91 MB per year).
 - The `columns="minimal"` preset loads the core financial and classification fields, keeping memory usage low during interactive analysis.
-- Query parameters filter on years, providers, recipients, and pillars at load time. Detailed filtering by sector, purpose, channel, and modality takes place in pandas on the returned DataFrame, as shown in [How to filter by sector, purpose, channel, or modality](how-to/filter-by-sector.md).
+- Query parameters filter on years, providers, recipients, and pillars at load time. The `filters=` argument extends load-time filtering to sector, purpose, channel, modality, and three more dimensions. See [How to filter by sector](how-to/filter-by-sector.md).
 
 ## Where to start
 
