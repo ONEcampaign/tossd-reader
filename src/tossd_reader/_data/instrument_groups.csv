@@ -1,0 +1,29 @@
+finance_instrument_code,instrument_group,source
+0,Other Instruments,observed
+100,Grants,codelist
+110,Grants,codelist
+310,Other Instruments,codelist
+420,Non-concessional Loans,codelist
+421,Non-concessional Loans,codelist
+422,Non-concessional Loans,codelist
+423,Non-concessional Loans,codelist
+424,Non-concessional Loans,codelist
+425,Non-concessional Loans,codelist
+430,Hybrid/Mezzanine,codelist
+431,Hybrid/Mezzanine,codelist
+432,Hybrid/Mezzanine,codelist
+433,Hybrid/Mezzanine,codelist
+434,Hybrid/Mezzanine,codelist
+500,Equity,codelist
+510,Equity,codelist
+520,Equity,codelist
+1000,Guarantees,codelist
+1100,Guarantees,codelist
+1101,Guarantees,observed
+1102,Guarantees,observed
+2000,Direct Provider Spending,codelist
+2100,Direct Provider Spending,codelist
+3000,Subsidies,codelist
+3100,Subsidies,codelist
+4221,Non-concessional Loans,observed
+4222,Non-concessional Loans,observed

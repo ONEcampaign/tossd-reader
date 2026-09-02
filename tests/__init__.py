@@ -1,1 +1,1 @@
-"""Tests for {{ project_slug }}."""
+"""Tests for tossd_reader."""

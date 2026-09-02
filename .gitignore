@@ -42,6 +42,7 @@ env/
 # Testing
 .pytest_cache/
 .coverage
+coverage.xml
 htmlcov/
 .tox/
 
@@ -57,3 +58,18 @@ AGENTS.md
 
 # local scoping notes, not for the repo
 notes/
+
+# analyst-workflow outputs (export() runs, tutorial byproducts)
+/exports/
+/tossd_*.parquet
+/tossd_*.manifest.json
+/senegal-disbursement-trend.csv
+
+# local docs fact-check baseline, not for the repo
+/fact-check/
+
+# Zensical build output
+site/
+
+# CodeGraph local index
+.codegraph/

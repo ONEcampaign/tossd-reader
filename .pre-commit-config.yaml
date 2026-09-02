@@ -22,12 +22,20 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
-      # Whitespace & endings
+      # Whitespace & endings.
+      # `src/tossd_reader/_data/` is packaged reference data published by the
+      # OECD/TOSSD, not source. Its bytes are the payload: `_export._schema_hash`
+      # publishes a sha256 of schema.csv that the documentation quotes literally,
+      # and the codelists carry ISO3 values a reformatter has no business
+      # touching. Every rewriting hook below excludes it.
       - id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
+        exclude: ^src/tossd_reader/_data/
       - id: end-of-file-fixer
+        exclude: ^src/tossd_reader/_data/
       - id: mixed-line-ending
         args: [--fix=lf]
+        exclude: ^src/tossd_reader/_data/
 
       # Conflicts & platform quirks
       - id: check-case-conflict
@@ -46,6 +54,7 @@ repos:
         args: [--autofix, --indent=2, --no-sort-keys]
         exclude: |
           (?x)^(
+            src/tossd_reader/_data/.*|
             \.idea/.*|
             \.vscode/.*
           )$
@@ -85,9 +94,18 @@ repos:
     rev: v2.4.3
     hooks:
       - id: codespell
-        args: [--write-changes]
+        # `--write-changes` edits in place, so every false positive is a silent
+        # corruption. The ignore list covers the ones this repo actually hits:
+        # `caf`/`som` are ISO3 codes for the Central African Republic and
+        # Somalia, which appear in a documented LDC country-code set;
+        # `get's` guards the possessive in "the GET's own ETag"; `unparseable`
+        # is the spelling this codebase uses.
+        args:
+          - --write-changes
+          - "--ignore-words-list=caf,som,unparseable,get's"
         exclude: |
           (?x)^(
+            src/tossd_reader/_data/.*|
             .*\.lock|
             .*\.parquet|
             .*\.feather
@@ -111,5 +129,6 @@ repos:
         additional_dependencies:
           - mdformat-gfm>=1.0.0
           - mdformat-frontmatter>=2.1.0
-        # Example: limit to docs if desired
-        # files: ^(README\.md|docs/|.*/README\.md)$
+        # docs/ is Zensical markdown (pymdownx admonitions, mkdocstrings
+        # ::: blocks); mdformat is CommonMark-only and corrupts both.
+        exclude: ^docs/

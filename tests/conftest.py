@@ -1,0 +1,161 @@
+"""Shared pytest fixtures for tossd_reader tests."""
+
+import os
+import socket
+from collections.abc import Iterator
+from pathlib import Path
+
+import pytest
+from readerkit import resolve_cache_dir
+
+from tossd_reader import _discovery, _pillars, analysis, config, query
+
+
+def _snapshot_dir(root: Path) -> dict[str, tuple[int, int]]:
+    """`{relative path: (size in bytes, mtime_ns)}` for every file under `root`.
+
+    Empty when `root` is absent. Used only by `_real_cache_dir_guard`, before and after the
+    whole suite, to detect any change to the user's real cache directory without ever writing
+    to it itself. The mtime is part of the snapshot so an overwrite that happens to preserve a
+    file's length still registers as a change.
+    """
+    if not root.is_dir():
+        return {}
+    snapshot: dict[str, tuple[int, int]] = {}
+    for path in root.rglob("*"):
+        if path.is_file():
+            stat = path.stat()
+            snapshot[str(path.relative_to(root))] = (stat.st_size, stat.st_mtime_ns)
+    return snapshot
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _real_cache_dir_guard() -> Iterator[None]:
+    """Session-wide guard: fail loudly if the suite ever touches the user's REAL cache directory.
+
+    Requested as a dependency by ``_session_cache_dir_floor`` below (not just left autouse), so
+    this fixture's setup -- which reads ``TOSSD_READER_CACHE_DIR`` exactly as the environment
+    left it, before the floor fixture's own ``monkeypatch.setenv`` override applies -- runs
+    first. A developer may legitimately point their real cache elsewhere via that env var; this
+    resolves the same directory ``config.get_cache_dir()`` would, and asserts its file set,
+    sizes, and mtimes all survive the whole run unchanged.
+
+    ``ensure_exists=False``: ``resolve_cache_dir`` creates the directory by default, and the
+    guard itself must never create or otherwise mutate the real machine state it's watching.
+    """
+    pre_suite_cache_dir = os.environ.get("TOSSD_READER_CACHE_DIR")
+    real_dir = resolve_cache_dir(
+        app=config._APP_NAME,
+        app_version=config._CACHE_GENERATION,
+        cache_dir=pre_suite_cache_dir,
+        ensure_exists=False,
+    )
+    before = _snapshot_dir(real_dir)
+    yield
+    after = _snapshot_dir(real_dir)
+    if after != before:
+        added = sorted(set(after) - set(before))
+        removed = sorted(set(before) - set(after))
+        changed = sorted(
+            path for path in set(after) & set(before) if after[path] != before[path]
+        )
+        pytest.fail(
+            f"The test suite touched the real tossd_reader cache directory ({real_dir}), "
+            "escaping TOSSD_READER_CACHE_DIR isolation -- a test (or code under test) reached "
+            f"the real cache. Added: {added}. Removed: {removed}. Modified: {changed}. "
+            "A concurrent real tossd_reader process running during this test run can also trip "
+            "this guard."
+        )
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _session_cache_dir_floor(
+    tmp_path_factory: pytest.TempPathFactory, _real_cache_dir_guard: None
+) -> Iterator[None]:
+    """Session-wide floor under the per-test cache-dir override.
+
+    The function-scoped ``_tossd_reader_cache_dir`` fixture only covers each
+    test's own body. Higher-scoped fixtures (instantiated before
+    function-scoped ones) and anything running between tests would otherwise
+    see an unset ``TOSSD_READER_CACHE_DIR`` and fall through to the user's
+    real platformdirs cache directory. Import-time code is beyond any
+    fixture's reach — collection finishes before fixtures run — but
+    ``test_package_init.py`` separately enforces that importing the package
+    touches no cache.
+
+    Depends on ``_real_cache_dir_guard`` (not just co-autouse with it) so that fixture's setup —
+    which must see the pre-suite environment — always runs before this one overrides it.
+    """
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setenv(
+            "TOSSD_READER_CACHE_DIR",
+            str(tmp_path_factory.mktemp("session-cache-floor")),
+        )
+        yield
+
+
+@pytest.fixture(autouse=True)
+def _tossd_reader_cache_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Point ``TOSSD_READER_CACHE_DIR`` at a per-test ``tmp_path``.
+
+    Ensures no test ever reads from or writes to a real user cache directory.
+    """
+    monkeypatch.setenv("TOSSD_READER_CACHE_DIR", str(tmp_path))
+
+
+@pytest.fixture(autouse=True)
+def _reset_discovery_config_query_and_pillars_state() -> None:
+    """Reset _discovery's, config's, query's, analysis's, and _pillars's module state before each test.
+
+    All five modules memoise state at module scope (_discovery's HEAD-sweep
+    memo and warn-once set; config's cache-dir override and cache singleton;
+    query's warn-once set for unknown-decode-code warnings; analysis's
+    warn-once set for unknown-recipient-code warnings; _pillars's warn-once
+    flags for the sub-pillar-narrowing and 2023-coverage warnings), so a
+    test that doesn't reset them can leak fake data or a stale singleton
+    across test files. Fetch's and _schema's own warn-once state is reset
+    locally instead, each via its own per-file fixture.
+    """
+    _discovery._reset_for_tests()
+    config._reset_for_tests()
+    query._reset_for_tests()
+    analysis._reset_for_tests()
+    _pillars._reset_for_tests()
+
+
+class NetworkBlockedError(OSError):
+    """Raised when a test attempts a socket connection without the network marker."""
+
+
+@pytest.fixture(autouse=True)
+def _block_network(request: pytest.FixtureRequest) -> Iterator[None]:
+    """Disable outbound socket connections for tests not marked ``network``.
+
+    Tests marked with ``@pytest.mark.network`` are exempt from blocking (and
+    are already deselected by default via the ``-m "not network"`` addopts).
+
+    Raises ``NetworkBlockedError`` (an ``OSError`` subclass) rather than a
+    plain ``RuntimeError`` so that library code with ``except OSError``
+    cleanup paths (e.g. the stdlib's ``socket.create_connection``) still
+    closes the socket normally instead of leaking an unraisable-exception
+    warning at garbage-collection time.
+    """
+    if request.node.get_closest_marker("network") is not None:
+        yield
+        return
+
+    def _blocked_connect(*_args: object, **_kwargs: object) -> None:
+        raise NetworkBlockedError(
+            "Network access is blocked in tests; mark with "
+            "@pytest.mark.network if this test genuinely needs the network."
+        )
+
+    original_connect = socket.socket.connect
+    original_connect_ex = socket.socket.connect_ex
+    socket.socket.connect = _blocked_connect  # type: ignore[method-assign]
+    socket.socket.connect_ex = _blocked_connect  # type: ignore[method-assign]
+    try:
+        yield
+    finally:
+        socket.socket.connect = original_connect  # type: ignore[method-assign]
+        socket.socket.connect_ex = original_connect_ex  # type: ignore[method-assign]

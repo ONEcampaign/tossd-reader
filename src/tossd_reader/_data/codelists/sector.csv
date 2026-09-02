@@ -1,0 +1,51 @@
+code,name,tossd_only,source,in_published_data
+110,I.1. Education,False,codelist,True
+111,"I.1.a. Education, level nnspecified",False,codelist,False
+112,I.1.b. Basic education,False,codelist,False
+113,I.1.c. Upper secondary education,False,codelist,False
+114,I.1.d. Post-secondary education,False,codelist,False
+120,I.2. Health,False,codelist,True
+121,"I.2.a. Health, general",False,codelist,False
+122,I.2.b. Basic health,False,codelist,False
+123,I.2.c. Non-communicable diseases (NCDs),False,codelist,False
+130,I.3. Population policies/programmes and reproductive health,False,codelist,True
+140,I.4. Water supply and sanitation,False,codelist,True
+150,I.5. Government and civil society,False,codelist,True
+151,"I.5.a. Government and civil society, general",False,codelist,False
+152,"Conflict, Peace & Security",True,codelist,False
+160,I.6. Other social infrastructure and services,False,codelist,True
+210,II.1. Transport and storage,False,codelist,True
+220,II.2. Communications,False,codelist,True
+230,II.3. Energy,False,codelist,True
+231,II.3.a. Energy policy,False,codelist,False
+232,"II.3.b. Energy generation, renewable sources",False,codelist,False
+233,"II.3.c. Energy generation, non-renewable sources",False,codelist,False
+234,II.3.d. Hybrid energy plants,False,codelist,False
+235,II.3.e. Nuclear energy plants,False,codelist,False
+236,II.3.f. Energy distribution,False,codelist,False
+240,II.4. Banking and financial services,False,codelist,True
+250,II.5. Business and other services,False,codelist,True
+310,"III.1. Agriculture, forestry, fishing",False,codelist,True
+311,III.1.a. Agriculture,False,codelist,False
+312,III.1.b. Forestry,False,codelist,False
+313,III.1.c. Fishing,False,codelist,False
+320,"III.2. Industry, mining, construction",False,codelist,True
+321,III.2.a. Industry,False,codelist,False
+322,III.2.b. Mineral resources and mining,False,codelist,False
+323,III.2.c. Construction,False,codelist,False
+330,III.3.a. Trade Policies and Regulations,False,codelist,False
+331,III.3.a. Trade Policies and Regulations,False,codelist,True
+332,III.3.b. Tourism,False,codelist,True
+410,IV.1. General Environment Protection,False,codelist,True
+430,IV.2. Other Multisector,False,codelist,True
+510,VI.1. General Budget Support,False,codelist,True
+520,VI.2. Development Food Assistance,False,codelist,True
+530,VI.3. Other Commodity Assistance,False,codelist,True
+600,VII. Action Relating to Debt,False,codelist,True
+700,VIII. Humanitarian Aid,False,dac-sector-classification,True
+720,VIII.1. Emergency Response,False,codelist,False
+730,VIII.2. Reconstruction and Rehabilitation,False,codelist,False
+740,VIII.3. Disaster Preparedness,False,codelist,False
+910,Administrative Costs,True,codelist,True
+930,Refugee and Asylum Seeker Expenditures (Domestic/Provider Countries),True,codelist,True
+998,XII. Unallocated / Unspecified,False,codelist,True

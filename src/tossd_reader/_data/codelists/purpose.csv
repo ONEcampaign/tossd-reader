@@ -1,0 +1,325 @@
+code,name,tossd_only,in_published_data
+11110,Education policy and administrative management,False,True
+11120,Education facilities and training,False,True
+11130,Teacher training,False,True
+11182,Educational research,False,True
+11220,Primary education,False,True
+11230,Basic life skills for adults,False,True
+11231,Basic life skills for youth,False,True
+11232,Primary education equivalent for adults,False,True
+11240,Early childhood education,False,True
+11250,School feeding,False,True
+11260,Lower secondary education,False,True
+11320,Upper Secondary Education (modified and includes data from 11322),False,True
+11321,Lower secondary education,False,False
+11322,Upper secondary education,False,False
+11330,Vocational training,False,True
+11420,Higher education,False,True
+11430,Advanced technical and managerial training,False,True
+12110,Health policy and administrative management,False,True
+12181,Medical education/training,False,True
+12182,Medical research,False,True
+12191,Medical services,False,True
+12196,Health statistics and data,False,True
+12220,Basic health care,False,True
+12230,Basic health infrastructure,False,True
+12240,Basic nutrition,False,True
+12250,Infectious disease control,False,True
+12261,Health education,False,True
+12262,Malaria control,False,True
+12263,Tuberculosis control,False,True
+12264,COVID-19 control,False,True
+12281,Health personnel development,False,True
+12310,"NCDs control, general",False,True
+12320,Tobacco use control,False,True
+12330,Control of harmful use of alcohol and drugs,False,True
+12340,Promotion of mental health and well-being,False,True
+12350,Other prevention and treatment of NCDs,False,True
+12382,Research for prevention and control of NCDs,False,True
+13010,Population policy and administrative management,False,True
+13020,Reproductive health care,False,True
+13030,Family planning,False,True
+13040,STD control including HIV/AIDS,False,True
+13081,Personnel development for population and reproductive health,False,True
+13096,Population statistics and data,False,True
+14010,Water sector policy and administrative management,False,True
+14015,Water resources conservation (including data collection),False,True
+14020,Water supply and sanitation - large systems,False,True
+14021,Water supply - large systems,False,True
+14022,Sanitation - large systems,False,True
+14030,Basic drinking water supply and basic sanitation,False,True
+14031,Basic drinking water supply,False,True
+14032,Basic sanitation,False,True
+14040,River basins development,False,True
+14050,Waste management/disposal,False,True
+14081,Education and training in water supply and sanitation,False,True
+15110,Public sector policy and administrative management,False,True
+15111,Public finance management (PFM),False,True
+15112,Decentralisation and support to subnational government,False,True
+15113,Anti-corruption organisations and institutions,False,True
+15114,Domestic revenue mobilisation,False,True
+15116,Tax collection,False,True
+15117,Budget planning,False,True
+15118,National audit,False,True
+15119,Debt and aid management,False,True
+15121,Foreign affairs,False,True
+15122,Diplomatic missions,False,True
+15123,Administration of developing countries' foreign aid,False,True
+15124,General personnel services,False,True
+15125,Public Procurement,False,True
+15126,Other general public services,False,True
+15127,National monitoring and evaluation,False,True
+15128,Local government finance,False,True
+15129,Other central transfers to institutions,False,True
+15130,Legal and judicial development,False,True
+15131,"Justice, law and order policy, planning and administration",False,True
+15132,Police,False,True
+15133,Fire and rescue services,False,True
+15134,Judicial affairs,False,True
+15135,Ombudsman,False,True
+15136,Immigration,False,True
+15137,Prisons,False,True
+15142,Macroeconomic policy,False,True
+15143,Meteorological services,False,True
+15144,National standards development,False,True
+15150,Democratic participation and civil society,False,True
+15151,Elections,False,True
+15152,Legislatures and political parties,False,True
+15153,Media and free flow of information,False,True
+15154,Executive office,False,True
+15155,Tax policy and administration support,False,True
+15156,Other non-tax revenue mobilisation,False,True
+15160,Human rights,False,True
+15170,"Women's rights organisations and movements, and government institutions",False,True
+15180,Ending violence against women and girls,False,True
+15185,Local government administration,False,True
+15190,"Facilitation of orderly, safe, regular and responsible migration and mobility",True,True
+15196,Government and civil society statistics and data,False,True
+15210,Security system management and reform,False,True
+15220,"Civilian peace-building, conflict prevention and resolution",False,True
+15230,Participation in international peacekeeping operations,True,True
+15240,Reintegration and SALW control,True,True
+15250,Removal of land mines and explosive remnants of war,True,True
+15261,Child soldiers (prevention and demobilisation),False,True
+16010,Social Protection,False,True
+16011,"Social protection and welfare services policy, planning and administration",False,True
+16012,Social security (excl pensions),False,True
+16013,General pensions,False,True
+16014,Civil service pensions,False,False
+16015,Social services (incl youth development and women+ children),False,True
+16020,Employment creation,False,True
+16030,Housing policy and administrative management,False,True
+16040,Low-cost housing,False,True
+16050,Multisector aid for basic social services,False,True
+16061,Culture and cultural diversity,False,True
+16062,Statistical capacity building,False,True
+16063,Narcotics control,True,True
+16064,Social mitigation of HIV/AIDS,False,True
+16065,Recreation and sport,False,True
+16066,Culture,True,True
+16070,Labour rights,False,True
+16080,Social dialogue,False,True
+21010,Transport policy and administrative management,False,True
+21011,"Transport policy, planning and administration",False,True
+21012,Public transport services,False,True
+21013,Transport regulation,False,True
+21020,Road transport,False,True
+21021,Feeder road construction,False,True
+21022,Feeder road maintenance,False,True
+21023,National road construction,False,True
+21024,National road maintenance,False,True
+21030,Rail transport,False,True
+21040,Water transport,False,True
+21050,Air transport,False,True
+21061,Storage,False,True
+21081,Education and training in transport and storage,False,True
+22010,Communications policy and administrative management,False,True
+22011,"Communications policy, planning and administration",False,True
+22012,Postal services,False,True
+22013,Information services,False,True
+22020,Telecommunications,False,True
+22030,"Radio, television, print and online media",False,True
+22040,Information and communication technology (ICT),False,True
+22081,"Education and training in ICT, telecommunications and media",False,True
+23010,Energy policy and administrative management,False,True
+23020,Power generation/non-renewable sources,False,False
+23030,Power generation/renewable sources,False,False
+23040,Electrical transmission/distribution,False,False
+23050,Gas distribution,False,False
+23061,Oil-fired power plants,False,False
+23062,Gas-fired power plants,False,False
+23063,Coal-fired power plants,False,False
+23064,Nuclear power plants,False,False
+23065,Hydro-electric power plants,False,False
+23066,Geothermal energy,False,False
+23067,Solar energy,False,False
+23068,Wind power,False,False
+23069,Ocean power,False,False
+23070,Biomass,False,False
+23081,Energy education/training,False,False
+23082,Energy research,False,True
+23110,Energy policy and administrative management,False,True
+23111,"Energy sector policy, planning and administration",False,True
+23112,Energy regulation,False,True
+23181,Energy education/training,False,True
+23182,Energy research,False,True
+23183,Energy conservation and demand-side efficiency,False,True
+23210,"Energy generation, renewable sources - multiple technologies",False,True
+23220,Hydro-electric power plants,False,True
+23230,Solar energy for centralised grids,False,True
+23231,Solar energy for isolated grids and standalone systems,False,True
+23232,Solar energy - thermal applications,False,True
+23240,Wind energy,False,True
+23250,Marine energy,False,True
+23260,Geothermal energy,False,True
+23270,Biofuel-fired power plants,False,True
+23310,"Energy generation, non-renewable sources, unspecified",False,True
+23320,Coal-fired electric power plants,False,True
+23330,Oil-fired electric power plants,False,True
+23340,Natural gas-fired electric power plants,False,True
+23350,Fossil fuel electric power plants with carbon capture and storage (CCS),False,True
+23360,Non-renewable waste-fired electric power plants,False,True
+23410,Hybrid energy electric power plants,False,True
+23510,Nuclear energy electric power plants and nuclear safety,False,True
+23610,Heat plants,False,True
+23620,District heating and cooling,False,True
+23630,Electric power transmission and distribution (centralised grids),False,True
+23631,Electric power transmission and distribution (isolated mini-grids),False,True
+23640,Retail gas distribution,False,True
+23641,Retail distribution of liquid or solid fossil fuels,False,True
+23642,Electric mobility infrastructures,False,True
+24010,Financial policy and administrative management,False,True
+24020,Monetary institutions,False,True
+24030,Formal sector financial intermediaries,False,True
+24040,Informal/semi-formal financial intermediaries,False,True
+24050,"Remittance facilitation, promotion and optimisation",False,True
+24081,Education/training in banking and financial services,False,True
+25010,Business policy and administration,False,True
+25020,Privatisation,False,True
+25030,Business development services,False,True
+25040,Responsible business conduct,False,True
+31110,Agricultural policy and administrative management,False,True
+31120,Agricultural development,False,True
+31130,Agricultural land resources,False,True
+31140,Agricultural water resources,False,True
+31150,Agricultural inputs,False,True
+31161,Food crop production,False,True
+31162,Industrial crops/export crops,False,True
+31163,Livestock,False,True
+31164,Agrarian reform,False,True
+31165,Agricultural alternative development,False,True
+31166,Agricultural extension,False,True
+31181,Agricultural education/training,False,True
+31182,Agricultural research,False,True
+31191,Agricultural services,False,True
+31192,Plant and post-harvest protection and pest control,False,True
+31193,Agricultural financial services,False,True
+31194,Agricultural co-operatives,False,True
+31195,Livestock/veterinary services,False,True
+31210,Forestry policy and administrative management,False,True
+31220,Forestry development,False,True
+31261,Fuelwood/charcoal,False,True
+31281,Forestry education/training,False,True
+31282,Forestry research,False,True
+31291,Forestry services,False,True
+31310,Fishing policy and administrative management,False,True
+31320,Fishery development,False,True
+31381,Fishery education/training,False,True
+31382,Fishery research,False,True
+31391,Fishery services,False,True
+32110,Industrial policy and administrative management,False,True
+32120,Industrial development,False,True
+32130,Small and medium-sized enterprises (SME) development,False,True
+32140,Cottage industries and handicraft,False,True
+32161,Agro-industries,False,True
+32162,Forest industries,False,True
+32163,"Textiles, leather and substitutes",False,True
+32164,Chemicals,False,True
+32165,Fertilizer plants,False,True
+32166,Cement/lime/plaster,False,True
+32167,Energy manufacturing (fossil fuels),False,True
+32168,Pharmaceutical production,False,True
+32169,Basic metal industries,False,True
+32170,Non-ferrous metal industries,False,True
+32171,Engineering,False,True
+32172,Transport equipment industry,False,True
+32173,Modern biofuels manufacturing,False,True
+32174,"Clean cooking appliances manufacturing, market development and distribution",False,True
+32182,Technological research and development,False,True
+32210,Mineral/mining policy and administrative management,False,True
+32220,Mineral prospection and exploration,False,True
+32261,Coal,False,True
+32262,Oil and gas (upstream),False,True
+32263,Ferrous metals,False,True
+32264,Nonferrous metals,False,True
+32265,Precious metals/materials,False,True
+32266,Industrial minerals,False,True
+32267,Fertilizer minerals,False,True
+32268,Offshore minerals,False,True
+32310,Construction policy and administrative management,False,True
+33110,Trade policy and administrative management,False,True
+33120,Trade facilitation,False,True
+33130,Regional trade agreements (RTAs),False,True
+33140,Multilateral trade negotiations,False,True
+33150,Trade-related adjustment,False,True
+33181,Trade education/training,False,True
+33210,Tourism policy and administrative management,False,True
+41010,Environmental policy and administrative management,False,True
+41020,Biosphere protection,False,True
+41030,Biodiversity,False,True
+41040,Site preservation,False,True
+41050,Flood prevention/control,False,True
+41081,Environmental education/training,False,True
+41082,Environmental research,False,True
+43010,Multisector aid,False,True
+43030,Urban development and management,False,True
+43031,Urban land policy and management,False,True
+43032,Urban development,False,True
+43040,Rural development,False,True
+43041,Rural land policy and management,False,True
+43042,Rural development,False,True
+43050,Non-agricultural alternative development,False,True
+43060,Disaster Risk Reduction,False,True
+43071,Food security policy and administrative management,False,True
+43072,Household food security programmes,False,True
+43073,Food safety and quality,False,True
+43081,Multisector education/training,False,True
+43082,Research/scientific institutions,False,True
+51010,General budget support-related aid,False,True
+52010,Food assistance,False,True
+53030,Import support (capital goods),False,True
+53040,Import support (commodities),False,True
+60010,Action relating to debt,False,True
+60020,Debt forgiveness,False,True
+60030,Relief of multilateral debt,False,True
+60040,Rescheduling and refinancing,False,True
+60061,Debt for development swap,False,True
+60062,Other debt swap,False,True
+60063,Debt buy-back,False,False
+72010,Material relief assistance and services ,False,True
+72011,Basic Health Care Services in Emergencies,False,True
+72012,Education in emergencies,False,True
+72040,Emergency food assistance,False,True
+72050,Relief co-ordination and support services,False,True
+73010,Immediate post-emergency reconstruction and rehabilitation,False,True
+74010,Disaster prevention and preparedness,False,True
+74020,Multi-hazard response preparedness,False,True
+91010,Administrative costs (non-sector allocable),False,True
+93010,Refugee and Asylum Seeker Expenditures (Domestic/Provider Countries) - non-sector allocable,True,True
+93011,Refugee and Asylum Seeker Expenditures (Domestic/Provider Countries) - food and shelter,True,True
+93012,Refugee and Asylum Seeker Expenditures (Domestic/Provider Countries) - training,True,True
+93013,Refugee and Asylum Seeker Expenditures (Domestic/Provider Countries) - health,True,True
+93014,Refugee and Asylum Seeker Expenditures (Domestic/Provider Countries) - other temporary sustenance,True,True
+93015,Refugee and Asylum Seeker Expenditures (Domestic/Provider Countries) - voluntary repatriation,True,True
+93016,Refugee and Asylum Seeker Expenditures (Domestic/Provider Countries) - transport,True,True
+93017,Refugee and Asylum Seeker Expenditures (Domestic/Provider Countries) - rescue at sea,True,True
+93018,Refugee and Asylum Seeker Expenditures (Domestic/Provider Countries) - administrative costs,True,True
+99810,Sectors not specified,False,True
+99820,Promotion of development awareness (non-sector allocable),True,True
+1513010,Fight against transnational organised crime,True,True
+1513020,Countering violent extremism,True,True
+1513030,Cyber security,True,True
+1516010,Transitional justice,True,True
+1516020,International criminal justice,True,True
+1520010,Disarmament of Weapons of Mass Destruction (WMD),True,True
+1520020,Prevention of Violent Extremism,True,True

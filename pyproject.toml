@@ -1,5 +1,5 @@
 [project]
-name = "tossd_reader"
+name = "tossd-reader"
 version = "0.1.0"
 description = "Python package to access TOSSD activity-level data"
 
@@ -9,9 +9,20 @@ authors = [
 
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "pandas>=2.2",
+    "pyarrow>=19",
+    "readerkit>=0.1.0,<0.2",
+    "resolvekit>=0.1.12,<0.2",
+]
 
-keywords = []  # Add relevant keywords for PyPI discoverability
+keywords = [
+    "tossd",
+    "oecd",
+    "development finance",
+    "sdg",
+    "official development assistance",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -20,20 +31,32 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 
+[project.urls]
+Repository = "https://github.com/ONEcampaign/tossd-reader"
 
 [build-system]
 requires = ["uv_build>=0.12.3,<0.13"]
 build-backend = "uv_build"
 
 [dependency-groups]
+codelists = [
+    "oda-reader",
+    "openpyxl",
+]
 dev = [
 
     "pytest>=9.1.0",
     "pytest-cov>=7.1.0",
+    "pytest-mock>=3.14.0",
 
     "ty>=0.0.59",
     "ruff>=0.15.0",
     "pre-commit>=4.6.0",
+]
+docs = [
+    "mike @ git+https://github.com/squidfunk/mike.git",
+    "mkdocstrings-python>=2.0.7",
+    "zensical>=0.0.57",
 ]
 
 [tool.ruff]
@@ -114,7 +137,13 @@ include = ["src/tossd_reader"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-v --cov=src/tossd_reader --cov-report=term --cov-report=xml"
+addopts = "-v --cov=src/tossd_reader --cov-report=term --cov-report=xml -m \"not network\""
+markers = [
+    "network: hits tossd.online; needs TOSSD_READER_NETWORK_TESTS=1",
+    "slow: long-running even within the network suite (full-file reconciliation)",
+]
+filterwarnings = ["error"]
+xfail_strict = true
 
 [tool.coverage.run]
 source = ["src"]
@@ -122,6 +151,7 @@ branch = true
 omit = [
     "*/tests/*",
     "*/__pycache__/*",
+    "*/site-packages/*",
 ]
 
 [tool.coverage.report]
@@ -136,4 +166,3 @@ exclude_lines = [
 ]
 show_missing = true
 precision = 2
-

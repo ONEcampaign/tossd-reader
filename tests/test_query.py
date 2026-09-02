@@ -1,0 +1,1466 @@
+"""Unit tests for the query layer: get_tossd and its sub-pillar binding semantics."""
+
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+from datetime import datetime
+from pathlib import Path
+
+import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
+import pytest
+
+import tossd_reader
+from tests.factories import _load_schema, build_tossd_table
+from tests.fakes import patch_discovery, patch_fetcher_by_url, url_for
+from tossd_reader import _discovery, _matching, _pillars, config, fetch, query
+from tossd_reader._discovery import VintageInfo
+from tossd_reader.exceptions import (
+    InvalidPillarError,
+    SchemaDriftError,
+    UnknownCodeError,
+)
+
+# --- shared fetch/discovery patching (see tests/fakes.py) ---------------------
+
+
+def _setup_years(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, tables: dict[int, pa.Table]
+) -> None:
+    """Serve `tables` (one per year) through the normal fetch/discovery path."""
+    published: dict[int, VintageInfo] = {}
+    sources: dict[str, tuple[bytes, str | None]] = {}
+    for year, table in tables.items():
+        path = tmp_path / f"fixture_{year}.parquet"
+        pq.write_table(table, path, row_group_size=table.num_rows)
+        url = url_for(year)
+        etag = f'"e{year}"'
+        published[year] = VintageInfo(url=url, etag=etag)
+        sources[url] = (path.read_bytes(), etag)
+    patch_discovery(monkeypatch, published)
+    patch_fetcher_by_url(monkeypatch, sources)
+
+
+def _setup_default_years(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    years: list[int],
+    n_rows: int = 40,
+    seed: int = 0,
+) -> None:
+    tables = {year: build_tossd_table(year, n_rows=n_rows, seed=seed) for year in years}
+    _setup_years(monkeypatch, tmp_path, tables)
+
+
+def _with_bad_parent_channel_code(
+    table: pa.Table, bad_code: str = "99999999"
+) -> pa.Table:
+    """Return a copy of `table` with row 0's `ParentChannelCode` set to `bad_code`."""
+    index = table.column_names.index("ParentChannelCode")
+    values = table.column("ParentChannelCode").to_pylist()
+    values[0] = bad_code
+    return table.set_column(
+        index, "ParentChannelCode", pa.array(values, type=pa.string())
+    )
+
+
+def _with_known_parent_channel_code(table: pa.Table, code: str = "11000") -> pa.Table:
+    """Return a copy of `table` with row 0's `ParentChannelCode` set to `code`.
+
+    `code="11000"` ("Provider Government") is present in the packaged
+    `channel.csv` codelist.
+    """
+    index = table.column_names.index("ParentChannelCode")
+    values = table.column("ParentChannelCode").to_pylist()
+    values[0] = code
+    return table.set_column(
+        index, "ParentChannelCode", pa.array(values, type=pa.string())
+    )
+
+
+# --- categorical dtype survives a multi-year concat ----------------------------
+
+
+def test_multi_year_concat_unifies_divergent_categorical_dictionaries(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A 3-year query keeps `provider_name` dictionary-encoded, even with divergent per-year vocab.
+
+    Each year uses a different `n_rows` (and seed) so its `provider_name`
+    dictionary covers a genuinely different subset of the fixture's 5
+    providers plus the aggregate row (2019: 2 distinct, 2020: all 6, 2021: 4
+    distinct) -- unlike a same-seed/same-size fixture (every year already
+    carrying an identical dictionary), this can't pass merely because
+    `.unify_dictionaries()` was a no-op; only genuinely reconciling
+    different per-chunk dictionaries into one shared dictionary does.
+    """
+    tables = {
+        2019: build_tossd_table(2019, n_rows=4, seed=0),
+        2020: build_tossd_table(2020, n_rows=8, seed=1),
+        2021: build_tossd_table(2021, n_rows=6, seed=2),
+    }
+    _setup_years(monkeypatch, tmp_path, tables)
+
+    combined, _paths = query.build_table(
+        years=[2019, 2020, 2021],
+        providers=None,
+        recipients=None,
+        pillars=None,
+        columns="all",
+        units="usd_thousand",
+        refresh=False,
+        op_name="test:unify_dictionaries",
+    )
+    provider_column = combined.column("provider_name")
+    dictionaries = [chunk.dictionary.to_pylist() for chunk in provider_column.chunks]
+    assert len(dictionaries) > 1, "fixture setup should produce multiple chunks"
+    assert all(dictionary == dictionaries[0] for dictionary in dictionaries), (
+        "unify_dictionaries should give every chunk an identical dictionary"
+    )
+
+    df = combined.to_pandas()
+    assert isinstance(df["provider_name"].dtype, pd.CategoricalDtype)
+    assert set(df["provider_name"]) == {
+        "Aggregate",
+        "Provider Alpha",
+        "Provider Beta",
+        "Provider Delta",
+        "Provider Epsilon",
+        "Provider Gamma",
+    }
+    assert len(df) == 4 + 8 + 6
+
+
+# --- one discovery sweep per call, not once per requested year ----------------
+
+
+def test_get_tossd_multi_year_refresh_sweeps_discovery_exactly_once(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A multi-year get_tossd(refresh=True) call sweeps discovery once, not once per year."""
+    years = [2019, 2020, 2021]
+    _setup_default_years(monkeypatch, tmp_path, years, n_rows=5)
+
+    calls: list[bool] = []
+    real_discover = _discovery.discover
+
+    def _spy(*, refresh: bool = False) -> dict:
+        calls.append(refresh)
+        return real_discover(refresh=refresh)
+
+    monkeypatch.setattr(_discovery, "discover", _spy)
+
+    query.get_tossd(years=years, refresh=True)
+
+    assert len(calls) == 1
+
+
+# --- providers / recipients: code / name / digit-string / miss ----------------
+
+
+def test_provider_filter_by_int_code(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A plain int is trusted directly as a provider code."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    df = query.get_tossd(years=2019, providers=1)
+
+    assert not df.empty
+    assert (df["provider_code"] == 1).all()
+    # Names always come from the file, never the codelist (913/914-style
+    # collisions make name-keyed decode unsafe) -- code 1 is "Austria" in the
+    # packaged codelist, but the file's own fixture name must win.
+    assert set(df["provider_name"]) == {"Provider Alpha"}
+
+
+def test_provider_filter_by_name_case_folded(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A str resolves against the packaged codelist's name column, case-foldedly."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    df = query.get_tossd(years=2019, providers="aUsTrIa")  # code 1 in provider.csv
+
+    assert not df.empty
+    assert (df["provider_code"] == 1).all()
+
+
+def test_provider_filter_by_digit_string_tries_code_first(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A digit-string resolves as a code match before falling back to a name match."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    df = query.get_tossd(years=2019, providers="4")  # code 4 ("France") in provider.csv
+
+    assert not df.empty
+    assert (df["provider_code"] == 4).all()
+
+
+def test_provider_bool_token_raises_type_error_not_silently_matched_as_int(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """bool is rejected as a distinct token type before the int/str checks, since Python's bool subclasses int and would otherwise match providers=1."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=5)
+
+    with pytest.raises(TypeError, match="bool"):
+        query.get_tossd(years=2019, providers=True)
+
+
+def test_recipient_filter_by_name_and_iterable(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`recipients=` accepts an iterable mixing a name and a code."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    df = query.get_tossd(years=2019, recipients=["Türkiye", 269])
+
+    assert not df.empty
+    assert set(df["recipient_code"]) <= {55, 269}
+
+
+def test_provider_int_outside_int16_range_raises_unknown_code_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A plain-int provider code outside Int16 range raises UnknownCodeError, not ArrowInvalid."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=5)
+
+    with pytest.raises(UnknownCodeError, match="123456789"):
+        query.get_tossd(years=2019, providers=123456789)
+
+
+def test_recipient_int_outside_int16_range_raises_unknown_code_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A plain-int recipient code outside Int16 range raises UnknownCodeError, not ArrowInvalid."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=5)
+
+    with pytest.raises(UnknownCodeError, match="-99999"):
+        query.get_tossd(years=2019, recipients=-99999)
+
+
+def test_unknown_provider_name_raises_unknown_code_error_with_suggestions(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A near-miss provider name raises `UnknownCodeError`, naming the token + a suggestion."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=5)
+
+    with pytest.raises(UnknownCodeError, match="Austrai") as excinfo:
+        query.get_tossd(years=2019, providers="Austrai")
+
+    assert "Austria" in str(excinfo.value)
+
+
+# --- lazy resolvekit import (module-level import is forbidden) ----------------
+
+
+def test_resolvekit_is_imported_lazily_only_on_the_unknown_code_error_path() -> None:
+    """`resolvekit` is imported only on an actual miss, never by the module itself."""
+    script = (
+        "import sys\n"
+        "import tossd_reader.query as query\n"
+        "import tossd_reader._matching as _matching\n"
+        "assert 'resolvekit' not in sys.modules\n"
+        "try:\n"
+        "    _matching.resolve_dimension_codes(\n"
+        "        'Definitely Not A Real Provider', dimension='provider', label='providers'\n"
+        "    )\n"
+        "except Exception:\n"
+        "    pass\n"
+        "assert 'resolvekit' in sys.modules\n"
+        "print('OK')\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "OK"
+
+
+def test_suggestion_falls_back_to_difflib_when_resolvekit_raises(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """If resolvekit's suggestion helper raises, the difflib fallback still suggests sensibly."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=5)
+
+    def _boom(dimension: str, token: str) -> list[str]:
+        raise RuntimeError("resolvekit exploded")
+
+    monkeypatch.setattr(_matching, "_suggest_with_resolvekit", _boom)
+
+    with pytest.raises(UnknownCodeError, match="Austrai") as excinfo:
+        query.get_tossd(years=2019, providers="Austrai")
+
+    assert "Austria" in str(excinfo.value)
+
+
+# --- pillars: filter semantics, pillar-0 ----------------------------------------
+
+
+def test_pillar_filter_matches_tossd_pillar_and_excludes_pillar_zero(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """pillars=1/2 filter tossd_pillar; pillar-0 placeholder rows are always excluded."""
+    _setup_default_years(monkeypatch, tmp_path, [2022], n_rows=10)
+
+    unfiltered = query.get_tossd(years=2022)
+    assert (unfiltered["tossd_pillar"] == 0).any(), "fixture must carry pillar-0 rows"
+
+    pillar_1 = query.get_tossd(years=2022, pillars=1)
+    assert not pillar_1.empty
+    assert (pillar_1["tossd_pillar"] == 1).all()
+
+    pillar_2 = query.get_tossd(years=2022, pillars="II")
+    assert not pillar_2.empty
+    assert (pillar_2["tossd_pillar"] == 2).all()
+
+
+def test_pillar_none_includes_pillar_zero_placeholder_rows(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """pillars=None (the default) includes the pillar-0 placeholder rows."""
+    _setup_default_years(monkeypatch, tmp_path, [2022], n_rows=10)
+
+    df = query.get_tossd(years=2022)
+
+    assert (df["tossd_pillar"] == 0).any()
+
+
+def test_pillars_standard_matches_pillars_1_and_2_excludes_pillar_zero(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """pillars="standard" keeps pillar 1 and 2 rows together, still excluding pillar-0."""
+    _setup_default_years(monkeypatch, tmp_path, [2022], n_rows=10)
+
+    df = query.get_tossd(years=2022, pillars="standard")
+
+    assert not df.empty
+    assert set(df["tossd_pillar"].unique()) == {1, 2}
+
+
+def test_subpillar_filter_matches_only_that_subpillar(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """pillars=21/'II.A' matches only tossd_subpillar=='21' rows, all under pillar 2."""
+    _setup_default_years(monkeypatch, tmp_path, [2024], n_rows=60)
+
+    df = query.get_tossd(years=2024, pillars="II.A")
+
+    assert not df.empty
+    assert (df["tossd_subpillar"] == "21").all()
+    assert (df["tossd_pillar"] == 2).all()
+
+
+# --- sub-pillar year policy -----------------------------------------------------
+
+
+def test_subpillar_with_explicit_year_2022_raises_invalid_pillar_error() -> None:
+    """A sub-pillar filter with an explicit year before 2023 raises, naming 2022's trace rows.
+
+    Raises before any fetch/discovery I/O, so no fixtures are needed here.
+    """
+    with pytest.raises(InvalidPillarError, match="24") as excinfo:
+        query.get_tossd(years=2022, pillars="II.A")
+
+    assert "pillars=2" in str(excinfo.value)
+
+
+def test_subpillar_with_explicit_year_2021_raises_invalid_pillar_error() -> None:
+    """A sub-pillar filter with any other pre-2023 explicit year also raises."""
+    with pytest.raises(InvalidPillarError, match="2021"):
+        query.get_tossd(years=2021, pillars=22)
+
+
+def test_subpillar_default_years_auto_narrows_with_one_warning(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """years=None + a sub-pillar filter narrows to >=2023 years, warning once.
+
+    The narrowed default (>=2023) always includes 2023 itself, so the
+    coverage warning fires alongside the narrowing warning in the same
+    call: `pytest.warns` is used unmatched here and both are asserted
+    explicitly, rather than `match=`, which only tolerates a single warning
+    under this suite's `filterwarnings = ["error"]`.
+    """
+    _setup_default_years(monkeypatch, tmp_path, [2023, 2024], n_rows=40)
+
+    with pytest.warns(UserWarning) as record:
+        df = query.get_tossd(pillars="II.A")
+
+    messages = [str(warning.message) for warning in record]
+    assert any("narrowing" in message for message in messages)
+    assert any("49%" in message for message in messages)
+    assert not df.empty
+    assert (df["tossd_subpillar"] == "21").all()
+
+
+def test_subpillar_touching_2023_warns_coverage_once(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """An explicit sub-pillar query that includes 2023 warns about incomplete coverage."""
+    _setup_default_years(monkeypatch, tmp_path, [2023, 2024], n_rows=40)
+
+    with pytest.warns(UserWarning, match="49%"):
+        query.get_tossd(years=[2023, 2024], pillars=21)
+
+    # Same warning, same session: suppressed the second time (filterwarnings
+    # = ["error"] globally means an unexpected repeat would fail this test).
+    query.get_tossd(years=[2023, 2024], pillars=21)
+
+
+def test_warn_once_per_session_and_reset_hook(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The narrowing warning fires once per session, and again after `_reset_for_tests`."""
+    _setup_default_years(monkeypatch, tmp_path, [2023, 2024], n_rows=20)
+
+    with pytest.warns(UserWarning) as record:
+        query.get_tossd(pillars="II.A")
+    assert any("narrowing" in str(warning.message) for warning in record)
+
+    query.get_tossd(
+        pillars="II.A"
+    )  # no repeat warning: would fail under filterwarnings=error
+
+    _pillars._reset_for_tests()
+
+    with pytest.warns(UserWarning) as record:
+        query.get_tossd(pillars="II.A")
+    assert any("narrowing" in str(warning.message) for warning in record)
+
+
+# --- sub-pillar NA semantics (tossd_subpillar) -----------------------------------
+
+
+def test_subpillar_na_unless_real_tag_pinned_counts(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Pillar-1, untagged pillar-2, and pillar-0 rows all read NA; only a real tag survives.
+
+    Pinned against the deterministic n_rows=200/seed=0 fixture for 2022
+    (carries pillar-0 rows and the 2022 sub-pillar trace): 99 pillar-1 rows
+    (published '1'), 97 untagged pillar-2 rows (published '2'), and 2
+    pillar-0 rows (published '0') all collapse to NA -- 198 of 200 rows;
+    only the 2 real '21' trace rows survive.
+    """
+    _setup_default_years(monkeypatch, tmp_path, [2022], n_rows=200)
+
+    df = query.get_tossd(years=2022)
+
+    assert df["tossd_subpillar"].isna().sum() == 198
+    assert df["tossd_subpillar"].notna().sum() == 2
+    assert set(df.loc[df["tossd_subpillar"].notna(), "tossd_subpillar"]) == {"21"}
+    assert (df.loc[df["tossd_subpillar"].notna(), "tossd_pillar"] == 2).all()
+
+
+def test_subpillar_notna_means_real_tag_not_pillar_two(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """.notna() on tossd_subpillar picks out only tagged rows, strictly narrower than tossd_pillar==2.
+
+    Pinned against the deterministic n_rows=200/seed=0 fixture for 2024: 46
+    untagged pillar-2 rows (published '2') read NA even though they're
+    pillar 2, alongside every pillar-1 row.
+    """
+    _setup_default_years(monkeypatch, tmp_path, [2024], n_rows=200)
+
+    df = query.get_tossd(years=2024)
+
+    untagged_pillar_two = df.loc[
+        (df["tossd_pillar"] == 2) & df["tossd_subpillar"].isna()
+    ]
+    assert len(untagged_pillar_two) == 46
+    assert df["tossd_subpillar"].notna().sum() == 29 + 25
+
+
+def test_subpillar_categories_are_exactly_21_and_22(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The delivered tossd_subpillar category set is {"21", "22"} -- every sentinel dropped."""
+    _setup_default_years(monkeypatch, tmp_path, [2024], n_rows=200)
+
+    df = query.get_tossd(years=2024)
+
+    assert set(df["tossd_subpillar"].cat.categories) == {"21", "22"}
+
+
+def test_subpillar_ii_b_filter_still_matches_only_that_subpillar(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """pillars=22/'II.B' still matches only tossd_subpillar=='22' rows, unaffected by the NA remap."""
+    _setup_default_years(monkeypatch, tmp_path, [2024], n_rows=200)
+
+    df = query.get_tossd(years=2024, pillars="II.B")
+
+    assert not df.empty
+    assert (df["tossd_subpillar"] == "22").all()
+    assert (df["tossd_pillar"] == 2).all()
+
+
+def test_get_tossd_raw_still_shows_published_subpillar_sentinels(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """get_tossd_raw() stays verbatim: every published sentinel survives, untouched by the NA remap."""
+    _setup_default_years(monkeypatch, tmp_path, [2022], n_rows=200)
+
+    raw = fetch.get_tossd_raw(years=2022)
+
+    assert set(raw["Tossdpillar2"]) == {"0", "1", "2", "21"}
+
+
+# --- filters= dict (sector/purpose/channel/modality/finance_instrument/         --
+# --- financing_arrangement/framework_of_collaboration) --------------------------
+
+
+def test_filters_int_coded_dimension_by_code(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """filters={"sector": ...} resolves a digit-string code and filters sector_code (Int16)."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    df = query.get_tossd(years=2019, filters={"sector": "110"}, columns="all")
+
+    assert not df.empty
+    assert (df["sector_code"] == 110).all()
+
+
+def test_filters_int_coded_dimension_by_iterable_of_names_and_codes(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """filters={"finance_instrument": [...]} accepts an iterable mixing a code and a name."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    df = query.get_tossd(
+        years=2019,
+        filters={"finance_instrument": ["110", "Standard loan"]},
+        columns="all",
+    )
+
+    assert not df.empty
+    assert set(df["finance_instrument_code"]) <= {110, 421}
+
+
+def test_filters_channel_and_purpose_are_int32_columns(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """filters={"purpose": ...} and {"channel": ...} both filter their own Int32 code column."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    df = query.get_tossd(years=2019, filters={"purpose": "11240"}, columns="all")
+    assert not df.empty
+    assert (df["purpose_code"] == 11240).all()
+
+
+def test_filters_modality_by_code_and_name_never_packs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """filters={"modality": ...} filters the category<string> modality_code exactly (never packed)."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    df = query.get_tossd(years=2019, filters={"modality": "B02"}, columns="all")
+    assert not df.empty
+    assert set(df["modality_code"]) == {"B02"}
+
+    by_name = query.get_tossd(
+        years=2019,
+        filters={"modality": "Core contributions to multilateral institutions"},
+        columns="all",
+    )
+    assert set(by_name["modality_code"]) == {"B02"}
+
+
+def test_filters_financing_arrangement_token_membership_matches_packed_rows(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A financing_arrangement filter matches a pipe-packed "FA01|FA02" row containing the code.
+
+    The fixture's forced packed row (see tests/factories.py) guarantees at
+    least one "FA01|FA02" value is present for n_rows=40.
+    """
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    df = query.get_tossd(
+        years=2019, filters={"financing_arrangement": "FA02"}, columns="all"
+    )
+
+    assert not df.empty
+    assert (df["financing_arrangement_code"].astype(str).str.contains("FA02")).all()
+    assert "FA01|FA02" in set(df["financing_arrangement_code"].astype(str))
+
+
+def test_filters_framework_of_collaboration_token_membership_matches_packed_rows(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A framework_of_collaboration filter matches a pipe-packed "FC01|FC02" row containing the code."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    df = query.get_tossd(
+        years=2019, filters={"framework_of_collaboration": "FC01"}, columns="all"
+    )
+
+    assert not df.empty
+    assert (
+        df["framework_of_collaboration_code"].astype(str).str.contains("FC01")
+    ).all()
+    assert "FC01|FC02" in set(df["framework_of_collaboration_code"].astype(str))
+
+
+def test_filters_token_membership_does_not_match_an_unpacked_different_code(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A financing_arrangement filter for a code never present excludes every row, packed included."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    with pytest.warns(UserWarning, match="matched no rows"):
+        df = query.get_tossd(
+            years=2019, filters={"financing_arrangement": "FA05"}, columns="all"
+        )
+
+    assert df.empty
+
+
+def test_filters_provider_recipient_pillar_keys_redirect_to_dedicated_kwarg(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """filters={"provider"/"recipient"/"pillar": ...} raises, naming the dedicated kwarg."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=5)
+
+    with pytest.raises(ValueError, match="providers="):
+        query.get_tossd(years=2019, filters={"provider": 1})
+    with pytest.raises(ValueError, match="recipients="):
+        query.get_tossd(years=2019, filters={"recipients": 55})
+    with pytest.raises(ValueError, match="pillars="):
+        query.get_tossd(years=2019, filters={"pillar": 1})
+
+
+def test_filters_unknown_dimension_raises_value_error_with_suggestion(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """An unrecognised filters= dimension raises ValueError, naming the valid ones."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=5)
+
+    with pytest.raises(ValueError, match="Unknown filters= dimension") as excinfo:
+        query.get_tossd(years=2019, filters={"sektor": "110"})
+
+    assert "sector" in str(excinfo.value)
+
+
+def test_filters_unknown_code_raises_unknown_code_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A filters= value that matches no code/name raises UnknownCodeError."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=5)
+
+    with pytest.raises(UnknownCodeError):
+        query.get_tossd(years=2019, filters={"sector": "not-a-real-sector"})
+
+
+def test_filters_empty_dict_is_a_no_op(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """filters={} behaves exactly like filters=None -- no filter applied."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=10)
+
+    unfiltered = query.get_tossd(years=2019)
+    empty_filters = query.get_tossd(years=2019, filters={})
+
+    assert len(unfiltered) == len(empty_filters)
+
+
+def test_filters_combine_with_providers_and_pillars(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """filters= composes with providers=/pillars= -- every condition applies together."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    df = query.get_tossd(
+        years=2019,
+        providers=1,
+        pillars="standard",
+        filters={"modality": "B02"},
+        columns="all",
+    )
+
+    assert not df.empty
+    assert (df["provider_code"] == 1).all()
+    assert set(df["modality_code"]) == {"B02"}
+    assert set(df["tossd_pillar"].unique()) <= {1, 2}
+
+
+def test_filters_with_minimal_columns_still_filters_and_reads_the_code_column(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """filters= narrows rows even when the filtered dimension's own column isn't in the output."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    unfiltered = query.get_tossd(years=2019, columns="minimal")
+    filtered = query.get_tossd(
+        years=2019, filters={"modality": "B02"}, columns="minimal"
+    )
+
+    assert "modality_code" not in filtered.columns
+    assert len(filtered) < len(unfiltered)
+    assert not filtered.empty
+
+
+def test_filters_runs_the_categorical_strip(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A filters= filter alone (no providers=/recipients=/pillars=) triggers the categorical strip."""
+    _setup_default_years(monkeypatch, tmp_path, [2019, 2020], n_rows=40)
+
+    df = query.get_tossd(years=[2019, 2020], filters={"modality": "B02"}, columns="all")
+
+    assert set(df["modality_name"].cat.categories) == set(df["modality_name"].unique())
+
+
+# --- columns / presets ----------------------------------------------------------
+
+
+def test_minimal_preset_still_carries_always_present_columns(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """columns='minimal' still carries is_aggregate/unit alongside the pillar columns."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=10)
+
+    df = query.get_tossd(years=2019, columns="minimal")
+
+    for name in ("year", "tossd_pillar", "tossd_subpillar", "is_aggregate", "unit"):
+        assert name in df.columns
+    assert "project_description" not in df.columns  # analysis/all-only column
+
+
+def test_user_column_list_forces_always_present_columns(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """An explicit columns= list still gets FORCED_COLUMNS appended, year included."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=10)
+
+    df = query.get_tossd(years=2019, columns=["provider_code"])
+
+    assert next(iter(df.columns)) == "provider_code"
+    for name in ("year", "tossd_pillar", "tossd_subpillar", "is_aggregate", "unit"):
+        assert name in df.columns
+
+
+def test_forced_columns_is_public_and_exported() -> None:
+    """`FORCED_COLUMNS` is the public tuple `tossd_reader.FORCED_COLUMNS` resolves to."""
+    assert query.FORCED_COLUMNS == (
+        "year",
+        "tossd_pillar",
+        "tossd_subpillar",
+        "is_aggregate",
+        "unit",
+    )
+    assert tossd_reader.FORCED_COLUMNS is query.FORCED_COLUMNS
+
+
+def test_year_survives_explicit_columns_list_on_a_multi_year_query(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`year` is forced onto an explicit columns= list -- the documented multi-year KeyError is gone."""
+    _setup_default_years(monkeypatch, tmp_path, [2019, 2020], n_rows=10)
+
+    df = query.get_tossd(years=[2019, 2020], columns=["provider_code"])
+
+    assert "year" in df.columns
+    assert set(df["year"]) == {2019, 2020}
+
+
+# --- read-time column projection ------------------------------------------------
+
+
+def _spy_on_read_table(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, object]]:
+    """Wrap `pyarrow.parquet.read_table` to record each call's kwargs, real read intact."""
+    calls: list[dict[str, object]] = []
+    real_read_table = pq.read_table
+
+    def _spy(path: object, **kwargs: object) -> pa.Table:
+        calls.append(kwargs)
+        return real_read_table(path, **kwargs)
+
+    monkeypatch.setattr(query.pq, "read_table", _spy)
+    return calls
+
+
+def test_minimal_preset_only_reads_published_columns_it_needs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """columns='minimal' pushes projection down: an analysis/all-only column is never read."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=10)
+    calls = _spy_on_read_table(monkeypatch)
+
+    query.get_tossd(years=2019, columns="minimal")
+
+    assert len(calls) == 1
+    requested = calls[0]["columns"]
+    assert requested is not None
+    assert "ProjectDescription" not in requested  # project_description: not in minimal
+    assert (
+        "provider" in requested
+    )  # provider_code: in minimal, and is_aggregate needs it
+
+
+def test_columns_all_reads_every_column_no_projection(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """columns='all' (the default) still reads the whole file -- no columns= kwarg at all."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=10)
+    calls = _spy_on_read_table(monkeypatch)
+
+    query.get_tossd(years=2019, columns="all")
+
+    assert len(calls) == 1
+    assert calls[0].get("columns") is None
+
+
+def test_recipients_filter_with_minimal_columns_reads_recipientcode_and_filters(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """recipients= + columns='minimal': recipientcode is projected in, and the filter works."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+    calls = _spy_on_read_table(monkeypatch)
+
+    df = query.get_tossd(years=2019, recipients=269, columns="minimal")
+
+    assert len(calls) == 1
+    requested = calls[0]["columns"]
+    assert requested is not None
+    assert "recipientcode" in requested
+    assert not df.empty
+    assert (df["recipient_code"] == 269).all()
+
+
+def test_explicit_parent_channel_name_column_reads_its_code_dependency(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """columns=["parent_channel_name"] pulls in ParentChannelCode and decodes it cleanly."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=10)
+    calls = _spy_on_read_table(monkeypatch)
+
+    df = query.get_tossd(years=2019, columns=["parent_channel_name"])
+
+    assert len(calls) == 1
+    requested = calls[0]["columns"]
+    assert requested is not None
+    assert "ParentChannelCode" in requested
+    assert "parent_channel_name" in df.columns
+
+
+def test_minimal_columns_without_recipients_filter_does_not_read_modality(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """columns='minimal' never reads a column genuinely outside the preset (modality).
+
+    `recipient_code` is already in the minimal preset, so it can't serve as a
+    negative control for "only forced columns get pulled in"; `modality` is
+    outside both the minimal preset and every forced-include branch, so it's
+    the column that actually catches a forced-include branch pulling in more
+    than it should.
+    """
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=10)
+    calls = _spy_on_read_table(monkeypatch)
+
+    query.get_tossd(years=2019, columns="minimal")
+
+    assert len(calls) == 1
+    requested = calls[0]["columns"]
+    assert requested is not None
+    assert "modality" not in requested
+
+
+def test_missing_column_raises_drift_even_when_projection_would_not_have_read_it(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A file genuinely missing a schema column is still caught under a narrow projection.
+
+    `project_description` isn't in the `minimal` preset, so a naive
+    projection-only read would never notice it's gone; the missing check
+    runs against the file's full column list (`pq.read_schema`), not the
+    narrowed read, so it still raises.
+    """
+    table = build_tossd_table(2019, n_rows=5, seed=0).drop_columns(
+        ["ProjectDescription"]
+    )
+    _setup_years(monkeypatch, tmp_path, {2019: table})
+
+    with pytest.raises(SchemaDriftError, match="ProjectDescription"):
+        query.get_tossd(years=2019, columns="minimal")
+
+
+def test_extra_column_warns_under_minimal_projection_even_though_not_read(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """An unrecognised extra column still warns once under a narrow projection, but stays absent.
+
+    Unlike `columns="all"`'s own passthrough contract, a preset never
+    surfaces the extra in its output -- it just was never read.
+    """
+    table = build_tossd_table(2019, n_rows=5, seed=0)
+    with_extra = table.append_column(
+        "SurpriseColumnUnderProjection", pa.array(["x"] * table.num_rows)
+    )
+    _setup_years(monkeypatch, tmp_path, {2019: with_extra})
+
+    with pytest.warns(UserWarning, match="SurpriseColumnUnderProjection"):
+        df = query.get_tossd(years=2019, columns="minimal")
+
+    assert "SurpriseColumnUnderProjection" not in df.columns
+
+
+def test_columns_all_preserves_schema_drift_extra_columns(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A schema-drift passthrough column survives columns="all" and export(), not presets/lists.
+
+    `_schema.apply_schema` passes an unknown extra column through raw (with a
+    warning), documented as "only visible with columns='all'" -- this checks
+    that promise actually holds end to end, for both `get_tossd` and
+    `export()`.
+    """
+    table = build_tossd_table(2019, n_rows=10, seed=0)
+    with_extra = table.append_column(
+        "SurpriseNewColumn", pa.array(["x"] * table.num_rows)
+    )
+    _setup_years(monkeypatch, tmp_path, {2019: with_extra})
+
+    with pytest.warns(UserWarning, match="SurpriseNewColumn"):
+        df_all = query.get_tossd(years=2019, columns="all")
+    assert "SurpriseNewColumn" in df_all.columns
+    assert df_all["SurpriseNewColumn"].tolist() == ["x"] * 10
+    # schema columns first, extras appended before the always-forced derived
+    # columns (is_aggregate/unit).
+    assert list(df_all.columns)[-3:] == ["SurpriseNewColumn", "is_aggregate", "unit"]
+
+    df_minimal = query.get_tossd(years=2019, columns="minimal")
+    assert "SurpriseNewColumn" not in df_minimal.columns
+
+    df_analysis = query.get_tossd(years=2019, columns="analysis")
+    assert "SurpriseNewColumn" not in df_analysis.columns
+
+    df_explicit = query.get_tossd(years=2019, columns=["provider_code"])
+    assert "SurpriseNewColumn" not in df_explicit.columns
+
+    destination = tossd_reader.export(tmp_path / "out", years=2019)
+    written = pq.read_table(destination)
+    assert "SurpriseNewColumn" in written.column_names
+    assert written.column("SurpriseNewColumn").to_pylist() == ["x"] * 10
+
+
+def test_unknown_column_name_raises_value_error_with_suggestion(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """An unrecognised columns= entry raises ValueError naming it and a close match."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=5)
+
+    with pytest.raises(ValueError, match="provider_cod") as excinfo:
+        query.get_tossd(years=2019, columns=["provider_cod"])  # typo
+
+    assert "provider_code" in str(excinfo.value)
+
+
+# --- units ------------------------------------------------------------------
+
+
+def test_units_usd_million_divides_exact_8_amount_columns(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """units='usd_million' divides exactly the 8 is_usd_thousand_amount columns by 1000."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=30)
+
+    thousands = query.get_tossd(years=2019, units="usd_thousand")
+    millions = query.get_tossd(years=2019, units="usd_million")
+
+    amount_columns = [
+        "usd_commitment",
+        "usd_commitment_deflated",
+        "usd_disbursement",
+        "usd_disbursement_deflated",
+        "usd_reflow",
+        "usd_reflow_deflated",
+        "usd_amount_mobilised",
+        "usd_amount_mobilised_deflated",
+    ]
+    for name in amount_columns:
+        pd.testing.assert_series_equal(
+            millions[name], thousands[name] / 1000, check_names=False
+        )
+    # A non-amount numeric column is untouched.
+    pd.testing.assert_series_equal(
+        millions["salary_cost"], thousands["salary_cost"], check_names=False
+    )
+
+
+def test_units_usd_multiplies_exact_8_amount_columns(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """units='usd' multiplies the 8 is_usd_thousand_amount columns by 1000 (published scale is thousands)."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=30)
+
+    thousands = query.get_tossd(years=2019, units="usd_thousand")
+    dollars = query.get_tossd(years=2019, units="usd")
+
+    amount_columns = [
+        "usd_commitment",
+        "usd_commitment_deflated",
+        "usd_disbursement",
+        "usd_disbursement_deflated",
+        "usd_reflow",
+        "usd_reflow_deflated",
+        "usd_amount_mobilised",
+        "usd_amount_mobilised_deflated",
+    ]
+    for name in amount_columns:
+        pd.testing.assert_series_equal(
+            dollars[name], thousands[name] * 1000, check_names=False
+        )
+    # A non-amount numeric column is untouched.
+    pd.testing.assert_series_equal(
+        dollars["salary_cost"], thousands["salary_cost"], check_names=False
+    )
+
+
+def test_unit_column_travels_and_survives_minimal_preset(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The derived `unit` column carries the right value even under columns='minimal'."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=5)
+
+    df = query.get_tossd(years=2019, units="usd_million", columns="minimal")
+
+    assert set(df["unit"]) == {"usd_million"}
+    assert isinstance(df["unit"].dtype, pd.CategoricalDtype)
+
+
+def test_unit_column_carries_usd(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The derived `unit` column carries "usd" when requested, surviving columns='minimal'."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=5)
+
+    df = query.get_tossd(years=2019, units="usd", columns="minimal")
+
+    assert set(df["unit"]) == {"usd"}
+    assert isinstance(df["unit"].dtype, pd.CategoricalDtype)
+
+
+def test_units_usd_flows_through_a_multi_year_query(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """units='usd' scales correctly across a multi-year query, not just a single year."""
+    _setup_default_years(monkeypatch, tmp_path, [2019, 2020], n_rows=20)
+
+    thousands = query.get_tossd(years=[2019, 2020], units="usd_thousand")
+    dollars = query.get_tossd(years=[2019, 2020], units="usd")
+
+    assert set(dollars["year"]) == {2019, 2020}
+    pd.testing.assert_series_equal(
+        dollars["usd_disbursement"],
+        thousands["usd_disbursement"] * 1000,
+        check_names=False,
+    )
+    assert set(dollars["unit"]) == {"usd"}
+
+
+def test_invalid_units_raises_value_error() -> None:
+    """An unrecognised units= value raises ValueError naming all three valid options."""
+    with pytest.raises(ValueError, match="units") as excinfo:
+        query.get_tossd(units="usd_billion")
+
+    message = str(excinfo.value)
+    assert "usd_thousand" in message
+    assert "usd_million" in message
+    assert "usd" in message
+
+
+# --- is_aggregate ------------------------------------------------------------
+
+
+def test_is_aggregate_matches_provider_zero(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """is_aggregate is True exactly for provider_code == 0 rows, always present."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=10)
+
+    df = query.get_tossd(years=2019)
+
+    assert (df.loc[df["provider_code"] == 0, "is_aggregate"]).all()
+    assert not (df.loc[df["provider_code"] != 0, "is_aggregate"]).any()
+
+
+# --- categorical strip: unused categories dropped only when a row filter ran ----
+
+
+def _spy_on_strip_unused_categories(monkeypatch: pytest.MonkeyPatch) -> list[int]:
+    """Wrap `query._strip_unused_categories`, recording one entry per call, real behavior intact."""
+    calls: list[int] = []
+    real_strip = query._strip_unused_categories
+
+    def _spy(table: pa.Table) -> pa.Table:
+        calls.append(table.num_rows)
+        return real_strip(table)
+
+    monkeypatch.setattr(query, "_strip_unused_categories", _spy)
+    return calls
+
+
+def test_unfiltered_query_never_strips_categories(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """No providers=/recipients=/pillars= filter: the categorical strip never runs."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=20)
+    calls = _spy_on_strip_unused_categories(monkeypatch)
+
+    query.get_tossd(years=2019)
+
+    assert calls == []
+
+
+def test_provider_filter_runs_the_categorical_strip_exactly_once(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A providers= filter runs the categorical strip exactly once, after concat -- not per year."""
+    _setup_default_years(monkeypatch, tmp_path, [2019, 2020], n_rows=20)
+    calls = _spy_on_strip_unused_categories(monkeypatch)
+
+    query.get_tossd(years=[2019, 2020], providers=1)
+
+    assert len(calls) == 1
+
+
+def test_provider_filter_strips_unused_categories_from_provider_name(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A providers= filter leaves provider_name's dictionary carrying only the filtered value."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    unfiltered = query.get_tossd(years=2019)
+    assert len(set(unfiltered["provider_name"])) > 1, (
+        "fixture must carry more than one distinct provider_name for this test to mean anything"
+    )
+
+    df = query.get_tossd(years=2019, providers=1)
+
+    assert set(df["provider_name"]) == {"Provider Alpha"}
+    assert list(df["provider_name"].cat.categories) == ["Provider Alpha"]
+
+
+# --- include_aggregates ---------------------------------------------------------
+
+
+def test_get_tossd_include_aggregates_defaults_to_true(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The default (`include_aggregates=True`) matches an un-flagged call byte for byte."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=20)
+
+    default_call = query.get_tossd(years=2019)
+    explicit_call = query.get_tossd(years=2019, include_aggregates=True)
+
+    pd.testing.assert_frame_equal(default_call, explicit_call)
+
+
+def test_get_tossd_include_aggregates_false_drops_aggregate_rows(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`include_aggregates=False` drops every `provider_code == 0` row; none remain."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    with_aggregates = query.get_tossd(years=2019)
+    n_aggregate_rows = int(with_aggregates["is_aggregate"].sum())
+    assert n_aggregate_rows > 0, (
+        "fixture must carry at least one aggregate row for this test to mean anything"
+    )
+
+    without_aggregates = query.get_tossd(years=2019, include_aggregates=False)
+
+    assert not without_aggregates["is_aggregate"].any()
+    assert len(without_aggregates) == len(with_aggregates) - n_aggregate_rows
+
+
+def test_include_aggregates_false_runs_the_categorical_strip_exactly_once(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`include_aggregates=False` counts as a row filter for the wave-0 categorical strip."""
+    _setup_default_years(monkeypatch, tmp_path, [2019, 2020], n_rows=20)
+    calls = _spy_on_strip_unused_categories(monkeypatch)
+
+    query.get_tossd(years=[2019, 2020], include_aggregates=False)
+
+    assert len(calls) == 1
+
+
+def test_build_table_include_aggregates_default_keeps_export_unaffected(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`build_table` called without `include_aggregates=` (as `export()` does) keeps every row."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=20)
+
+    combined, _paths = query.build_table(
+        years=2019,
+        providers=None,
+        recipients=None,
+        pillars=None,
+        columns="all",
+        units="usd_thousand",
+        refresh=False,
+        op_name="test:include_aggregates_default",
+    )
+
+    is_aggregate = combined.column("is_aggregate").to_pylist()
+    assert any(is_aggregate)
+
+
+# --- empty result --------------------------------------------------------------
+
+
+def test_empty_result_after_filtering_warns_and_returns_typed_frame(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A filter matching nothing returns an empty, correctly-typed frame, with one warning."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=10)
+
+    with pytest.warns(UserWarning, match="no rows"):
+        df = query.get_tossd(years=2019, providers=9999)
+
+    assert df.empty
+    assert "provider_code" in df.columns
+    assert str(df["provider_code"].dtype) in {"int16", "Int16"}
+
+
+def test_delivered_dtypes_match_the_packaged_schema(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Every non-string column arrives as the `target_dtype` `schema.csv` declares.
+
+    A bare `to_pandas()` hands back numpy `int16` where the schema says `Int16`,
+    and widens any integer column holding nulls to `float64`, which is how
+    `sector_code` came to read `910.0`. The `types_mapper` keeps the delivered
+    frame matching the packaged contract, and this pins it.
+    """
+    _setup_default_years(monkeypatch, tmp_path, [2019])
+
+    df = query.get_tossd(years=2019, columns="all")
+    declared = _load_schema()
+
+    mismatches = {
+        row["snake_name"]: (row["target_dtype"], str(df[row["snake_name"]].dtype))
+        for _, row in declared.iterrows()
+        if row["snake_name"] in df.columns
+        and row["target_dtype"] != "string"
+        and str(df[row["snake_name"]].dtype) != row["target_dtype"]
+    }
+
+    assert mismatches == {}
+
+
+# --- unknown decode codes: aggregated end-of-query warning --------------------
+
+
+def test_unknown_parent_channel_code_warns_aggregated_and_passes_through_null(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A parent_channel_code absent from the channel codelist decodes to null, warns once."""
+    table = _with_bad_parent_channel_code(build_tossd_table(2019, n_rows=20, seed=0))
+    _setup_years(monkeypatch, tmp_path, {2019: table})
+
+    with pytest.warns(UserWarning, match="not in the packaged codelists"):
+        df = query.get_tossd(years=2019)
+
+    assert pd.isna(df.loc[0, "parent_channel_name"])
+
+    # Same unknown code, same session: no repeat warning (aggregated per new
+    # code only). filterwarnings=["error"] means an unexpected repeat would
+    # fail this test outright.
+    query.get_tossd(years=2019)
+
+
+def test_known_parent_channel_code_decodes_to_channel_codelist_name(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A parent_channel_code present in the packaged channel codelist decodes to its label."""
+    table = _with_known_parent_channel_code(build_tossd_table(2019, n_rows=20, seed=0))
+    _setup_years(monkeypatch, tmp_path, {2019: table})
+
+    df = query.get_tossd(years=2019)
+
+    assert df.loc[0, "parent_channel_name"] == "Provider Government"
+
+
+def test_reset_for_tests_clears_unknown_code_warn_state(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`_reset_for_tests` clears the unknown-decode-code warn state too."""
+    table = _with_bad_parent_channel_code(build_tossd_table(2019, n_rows=20, seed=0))
+    _setup_years(monkeypatch, tmp_path, {2019: table})
+
+    with pytest.warns(UserWarning, match="not in the packaged codelists"):
+        query.get_tossd(years=2019)
+
+    query._reset_for_tests()
+
+    with pytest.warns(UserWarning, match="not in the packaged codelists"):
+        query.get_tossd(years=2019)
+
+
+# --- warning stacklevels point at the caller, not query.py's own frames -------
+
+
+def test_empty_result_warning_points_at_the_caller(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=5)
+
+    with pytest.warns(UserWarning) as record:
+        query.get_tossd(years=2019, providers=9999)
+
+    assert record[0].filename.endswith("test_query.py")
+
+
+def test_subpillar_narrowed_warning_points_at_the_caller(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _setup_default_years(monkeypatch, tmp_path, [2023, 2024], n_rows=10)
+
+    # Narrowing default years always ends up including 2023, so the coverage
+    # warning also fires in the same call; `record[0]` is still the
+    # narrowing warning since it's issued first.
+    with pytest.warns(UserWarning) as record:
+        query.get_tossd(pillars="II.A")
+    assert "narrowing" in str(record[0].message)
+
+    assert record[0].filename.endswith("test_query.py")
+
+
+def test_unknown_decode_code_warning_points_at_the_caller(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    table = _with_bad_parent_channel_code(build_tossd_table(2019, n_rows=10, seed=0))
+    _setup_years(monkeypatch, tmp_path, {2019: table})
+
+    with pytest.warns(UserWarning, match="not in the packaged codelists") as record:
+        query.get_tossd(years=2019)
+
+    assert record[0].filename.endswith("test_query.py")
+
+
+# --- attrs provenance -----------------------------------------------------------
+
+
+def test_get_tossd_attrs_shape_and_json_serializable(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`df.attrs["tossd_reader"]` carries package_version/created_at/query/years, all JSON-able."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=10)
+
+    df = query.get_tossd(years=2019, columns="minimal", units="usd_million")
+
+    provenance = df.attrs["tossd_reader"]
+    assert set(provenance) == {"package_version", "created_at", "query", "years"}
+    assert provenance["package_version"] == tossd_reader.__version__
+    datetime.fromisoformat(provenance["created_at"])
+
+    q = provenance["query"]
+    assert q == {
+        "years": (2019,),
+        "providers": None,
+        "recipients": None,
+        "pillars": None,
+        "filters": {},
+        "columns": "minimal",
+        "units": "usd_million",
+        "include_aggregates": True,
+        "refresh": False,
+    }
+
+    assert set(provenance["years"]) == {"2019"}
+    year_entry = provenance["years"]["2019"]
+    assert year_entry["etag"] == '"e2019"'
+    assert year_entry["url"] == url_for(2019)
+    datetime.fromisoformat(year_entry["retrieved_at"])
+
+    json.dumps(provenance)  # never raises: every value is JSON-serializable
+
+
+def test_get_tossd_attrs_resolves_providers_and_recipients_to_codes(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`providers=`/`recipients=` land in the provenance `query` dict as resolved codes, not the raw token."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    # "Austria" is provider_code 1 in the packaged codelist (resolution reads that
+    # codelist, not the fixture's own synthetic provider_name column).
+    df = query.get_tossd(years=2019, providers="Austria", recipients=55)
+
+    q = df.attrs["tossd_reader"]["query"]
+    assert q["providers"] == (1,)
+    assert q["recipients"] == (55,)
+
+
+def test_get_tossd_attrs_resolves_filters_to_codes(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`filters=` values land in the provenance `query` dict as resolved codes, not the raw token."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    df = query.get_tossd(years=2019, filters={"modality": "B02"})
+
+    q = df.attrs["tossd_reader"]["query"]
+    assert q["filters"] == {"modality": ("B02",)}
+
+
+def test_get_tossd_attrs_multi_year_covers_every_requested_year(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A multi-year call's `"years"` provenance mapping carries one entry per requested year."""
+    _setup_default_years(monkeypatch, tmp_path, [2019, 2020], n_rows=10)
+
+    df = query.get_tossd(years=[2019, 2020])
+
+    provenance = df.attrs["tossd_reader"]
+    assert provenance["query"]["years"] == (2019, 2020)
+    assert set(provenance["years"]) == {"2019", "2020"}
+
+
+def test_get_tossd_attrs_include_aggregates_reflected_verbatim(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`include_aggregates=False` (a non-default value) is carried through unchanged."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=10)
+
+    df = query.get_tossd(years=2019, include_aggregates=False)
+
+    assert df.attrs["tossd_reader"]["query"]["include_aggregates"] is False
+
+
+# --- offline mode ------------------------------------------------------------------
+
+
+def test_get_tossd_offline_refresh_conflict_raises() -> None:
+    """`refresh=True` while offline mode is active raises before any fetch attempt."""
+    config.set_offline(True)
+    with pytest.raises(ValueError, match="get_tossd"):
+        query.get_tossd(years=2019, refresh=True)
+
+
+def test_get_tossd_offline_serves_cache_with_warning(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Offline mode makes `get_tossd` serve a cached vintage instead of touching the network."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=10)
+    query.get_tossd(years=2019)  # warm the cache
+
+    config.set_offline(True)
+
+    with pytest.warns(UserWarning, match="[Oo]ffline mode"):
+        df = query.get_tossd(years=2019)
+
+    assert len(df) == 10

@@ -1,0 +1,24 @@
+code,name,tossd_only,in_published_data
+100,GRANTS,False,False
+110,Standard grant,False,True
+310,Capital subscription on deposit basis,False,True
+420,DEBT INSTRUMENTS,False,False
+421,Standard loan,True,True
+422,Reimbursable grant ,False,True
+423,Bonds,True,True
+424,Asset-backed securities ,True,True
+425,Other debt securities,False,True
+430,MEZZANINE FINANCE INSTRUMENTS,False,False
+431,Subordinated loan ,True,True
+432,Preferred equity ,True,True
+433,Other hybrid instruments ,False,True
+434,Multilateral hybrid capital,False,True
+500,EQUITY AND SHARES IN COLLECTIVE INVESTMENT VEHICLES,False,False
+510,Common equity,True,True
+520,Shares in collective investment vehicles ,True,True
+1000,GUARANTEES AND OTHER UNFUNDED CONTINGENT LIABILITIES,False,False
+1100,Guarantees/insurance ,True,True
+2000,Direct provider spending,True,False
+2100,Direct provider spending,True,True
+3000,Subsidies and similar transfers,True,False
+3100,Subsidies and similar transfers,True,False

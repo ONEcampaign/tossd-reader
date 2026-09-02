@@ -3,8 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
+  # No base-branch filter: stacked PRs target the previous branch in the
+  # stack, not main, and still need CI.
   pull_request:
-    branches: [main]
 
 jobs:
   lint:
@@ -38,11 +39,36 @@ jobs:
       - name: Run ty
         run: uv run ty check 'src/tossd_reader'
 
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.0.0
+
+      - name: Cache uv
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Set up Python 3.12
+        run: uv python install '3.12'
+
+      - name: Install dependencies
+        run: uv sync --frozen --group docs
+
+      - name: Build docs site
+        run: uv run zensical build
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ubuntu-latest, windows-latest]
         python-version: ["3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v7
@@ -67,9 +93,12 @@ jobs:
       - name: Run tests
         run: uv run pytest --cov='src/tossd_reader' --cov-report=xml --cov-report=term
 
+      - name: Run doctests
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        run: uv run pytest --doctest-modules src/tossd_reader --no-cov
+
       - name: Upload coverage
         uses: codecov/codecov-action@v7
-        if: matrix.python-version == '3.12'
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
         with:
           files: ./coverage.xml
-

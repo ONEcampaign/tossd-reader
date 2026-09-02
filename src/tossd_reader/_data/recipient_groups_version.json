@@ -1,0 +1,9 @@
+{
+  "version": "ldc-2024review/wb-fy27",
+  "fetched_at": "2026-09-01T00:00:00+00:00",
+  "sources": {
+    "ldc": "https://www.un.org/ohrlls/content/list-ldcs",
+    "income": "https://datahelpdesk.worldbank.org/knowledgebase/articles/906519-world-bank-country-and-lending-groups",
+    "region": "derived from the packaged TOSSD archive's own (recipient_code, region_name) pairs, 2019-2024"
+  }
+}

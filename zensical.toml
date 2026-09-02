@@ -1,0 +1,63 @@
+[project]
+site_name = "tossd-reader"
+site_description = "Python package to access TOSSD activity-level data"
+site_url = "https://onecampaign.github.io/tossd-reader/"
+repo_url = "https://github.com/ONEcampaign/tossd-reader"
+extra_css = ["stylesheets/extra.css"]
+
+[project.extra.version]
+provider = "mike"
+
+nav = [
+  "index.md",
+  { "Get started" = [
+    { "Your first analysis" = "tutorials/first-analysis.md" },
+    { "A reproducible extract" = "tutorials/reproducible-extract.md" },
+  ] },
+  { "How-to guides" = [
+    { "Look up provider and recipient codes" = "how-to/look-up-codes.md" },
+    { "Filter by sector, purpose, channel, or modality" = "how-to/filter-by-sector.md" },
+    { "Rank providers by disbursement" = "how-to/rank-providers.md" },
+    { "Compare totals across years" = "how-to/compare-years.md" },
+    { "Aggregate by recipient country groups" = "how-to/aggregate-by-recipient-group.md" },
+    { "Analyse financial instruments and concessionality" = "how-to/analyse-instruments-and-debt.md" },
+    { "Split disbursements across SDG goals" = "how-to/analyse-by-sdg.md" },
+    { "Measure climate and gender finance" = "how-to/analyse-by-keyword.md" },
+    { "Split Pillar II into sub-pillars" = "how-to/analyse-by-subpillar.md" },
+    { "Measure Pillar II expenditures in the provider country" = "how-to/provider-costs.md" },
+    { "Join TOSSD to other country datasets" = "how-to/join-other-datasets.md" },
+    { "Check a figure against published totals" = "how-to/reconcile-a-figure.md" },
+    { "Read published columns unchanged" = "how-to/read-published-columns.md" },
+    { "Work offline and manage the cache" = "how-to/work-offline.md" },
+  ] },
+  { "Reference" = [
+    { "Query" = "reference/query.md" },
+    { "Export" = "reference/export.md" },
+    { "Helpers" = "reference/helpers.md" },
+    { "Verbs" = "reference/verbs.md" },
+    { "Columns, presets, and units" = "reference/columns.md" },
+    { "Configuration, warnings, and errors" = "reference/configuration.md" },
+  ] },
+  { "Understanding the data" = [
+    { "Pillars and aggregate rows" = "about/pillars-and-aggregates.md" },
+    { "The amount columns" = "about/amounts.md" },
+    { "Why TOSSD totals rise" = "about/comparability.md" },
+    { "Reproducibility and the cache" = "about/reproducibility.md" },
+  ] },
+]
+
+[project.markdown_extensions]
+admonition = {}
+pymdownx.details = {}
+pymdownx.superfences = {}
+pymdownx.tabbed = { alternate_style = true }
+pymdownx.highlight.anchor_linenums = true
+pymdownx.highlight.pygments_lang_class = true
+pymdownx.inlinehilite = {}
+tables = {}
+
+[project.plugins.mkdocstrings.handlers.python]
+paths = ["src"]
+inventories = ["https://docs.python.org/3/objects.inv"]
+options.docstring_style = "google"
+options.show_source = false
