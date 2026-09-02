@@ -8,11 +8,11 @@ The official portal provides one endpoint per calendar year (`https://tossd.onli
 
 ## Cache keys and provenance tracking
 
-An HTTP ETag (entity tag) is a standard web header that fingerprints a specific version of a file. When the International Forum on TOSSD publishes a revised dataset to `tossd.online`, the web server generates a new ETag for the file. That direction holds. The reverse doesn't hold as reliably. The publisher's host has served different ETag formats for the same unchanged bytes, so two different ETag strings aren't on their own proof the file changed.
+An HTTP ETag (entity tag) is a standard web header that fingerprints a specific version of a file. When the International Forum on TOSSD publishes a revised dataset to `tossd.online`, the web server generates a new ETag for the file. Conversely, the host server occasionally formats ETags differently for unchanged content, so differing ETag strings do not by themselves indicate that the underlying data changed.
 
 `tossd-reader` uses this ETag to distinguish between different revisions of the same reporting year. Cache keys combine the target year and the server ETag (such as `tossd_{year}_{etag}`).
 
-Every downloaded vintage generates a JSON provenance sidecar file (`<stem>.provenance.json`) saved in the local cache directory:
+Every downloaded vintage generates a JSON provenance sidecar file (`<stem>.provenance.json`) saved in the local cache directory.
 
 ```json
 {
@@ -30,9 +30,9 @@ The provenance record stores the source URL, HTTP ETag, file size in bytes, SHA-
 
 ## Provenance on query results
 
-Every `get_tossd()`, `get_tossd_raw()`, and `load_export()` call stamps `df.attrs["tossd_reader"]` on its result before any filtering or unit conversion happens. Every verb and `df.tossd` accessor method copies `df.attrs` onto whatever it returns, so provenance survives a chain like `df.tossd.rank_entities()` or `explode_sdg(df)`. A plain pandas operation (a merge, a concat, some groupbys) can drop `attrs` along the way. Read provenance early, or keep the original query result around to read from.
+Every `get_tossd()`, `get_tossd_raw()`, and `load_export()` call stamps `df.attrs["tossd_reader"]` on its result before filtering or unit conversion occurs. Every verb and `df.tossd` accessor method copies `df.attrs` onto its return value, preserving provenance across chained calls such as `df.tossd.rank_entities()` or `explode_sdg(df)`. Standard pandas operations (such as merges, concatenations, or aggregations) can drop `attrs`. Read provenance early or retain the original query result to access metadata.
 
-`get_provenance(df)` (also `df.tossd.provenance()`) reads that record back as a deep copy, so the caller can mutate the returned dict freely:
+`get_provenance(df)` (also `df.tossd.provenance()`) reads that record back as a deep copy, allowing callers to mutate the returned dictionary freely.
 
 ```python
 import tossd_reader as tossd
@@ -59,9 +59,9 @@ pprint(tossd.get_provenance(df))
                     'url': 'https://tossd.online/tossddata_2024.parquet'}}}
 ```
 
-`df.tossd.provenance()` returns the identical dict. The whole payload is JSON-serializable, so it drops straight into a run log or an audit record of your own.
+`df.tossd.provenance()` returns the identical dict. The whole payload is JSON-serialisable, ready for direct storage in run logs or audit records.
 
-`get_tossd_raw()` carries the same shape, with a smaller `query` holding only `years` and `refresh`, since it has no filtering or unit options of its own to record. `load_export()` frames carry only `package_version`, `created_at`, and `years`. An export isn't the output of one filtered query, so there's no `query` key to hold:
+`get_tossd_raw()` produces the same structure, with a smaller `query` dictionary holding only `years` and `refresh`, as it applies no filtering or unit conversion. DataFrames loaded with `load_export()` contain `package_version`, `created_at`, and `years`. Export files store complete annual extracts, so their provenance records omit the `query` key.
 
 ```python
 loaded = tossd.load_export("exports/tossd_2019.parquet")
@@ -75,7 +75,7 @@ pprint(tossd.get_provenance(loaded))
                     'retrieved_at': '2026-09-02T12:20:30.461811+00:00'}}}
 ```
 
-Calling `get_provenance` on a frame that never carried this key raises, naming the three functions that set it:
+Calling `get_provenance()` on a DataFrame lacking this metadata raises a `ValueError`, identifying the three functions that attach provenance attributes.
 
 ```text
 ValueError: get_provenance() found no df.attrs['tossd_reader'] -- that key is set by get_tossd(), get_tossd_raw(), and load_export(); a frame built some other way (or a plain pandas operation that dropped attrs along the way) carries none.
@@ -83,7 +83,7 @@ ValueError: get_provenance() found no df.attrs['tossd_reader'] -- that key is se
 
 ## Export manifests for research reproducibility
 
-When creating analytical extracts using `tossd.export()`, the package compiles an export manifest (`<stem>.manifest.json`) alongside the exported Parquet file:
+When creating analytical extracts using `tossd.export()`, the package compiles an export manifest (`<stem>.manifest.json`) alongside the exported Parquet file.
 
 <!-- prettier-ignore -->
 ```json
@@ -107,20 +107,19 @@ When creating analytical extracts using `tossd.export()`, the package compiles a
 
 The manifest records provenance metadata, upstream ETags, retrieval timestamps, schema hashes, payload hashes, row counts, export timestamps, and package versions.
 
-`verify_export()` recomputes `payload_sha256` from the Parquet file and confirms it matches the manifest. `load_export()` calls `verify_export()` before reading the file back, so a file that no longer matches its manifest raises before it reaches analysis.
+`verify_export()` recomputes `payload_sha256` from the Parquet file and confirms that it matches the manifest. `load_export()` calls `verify_export()` before reading the file, raising an error if the file no longer matches its manifest.
 
 ## Offline workflows and vintage stability
 
 `tossd-reader` executes queries against local disk storage once files are cached. In offline environments or during upstream server maintenance, `get_tossd()` serves the latest cached vintage and issues a structured warning detailing the retrieval timestamp and ETag.
 
-Setting offline mode explicitly (`tossd.set_offline(True)`, or the `TOSSD_READER_OFFLINE` environment variable) turns that pinning into policy. Every fetch is confined to local vintages, and a query for anything uncached raises `TossdNetworkError`, loud and immediate. See [How to work offline and manage the cache](../how-to/work-offline.md) for the full mechanics.
+Setting offline mode explicitly (`tossd.set_offline(True)` or the `TOSSD_READER_OFFLINE` environment variable) restricts all operations to the local cache. In offline mode, queries for uncached years raise `TossdNetworkError`. See [How to work offline and manage the cache](../how-to/work-offline.md) for offline cache management.
 
-`get_vintages()` and `cache_info()` answer two different questions about which vintage is in play. `get_vintages()` runs a live discovery sweep and reports what the publisher currently has at each year's URL, ETag included. `cache_info()` reports what's actually downloaded instead, one row per retrieved vintage, not per year, so a year fetched twice under two different ETags shows up twice.
+`get_vintages()` and `cache_info()` inspect available data vintages. `get_vintages()` performs a live discovery sweep and reports the current file metadata and ETag at each year's URL. `cache_info()` inspects locally cached files with one row per retrieved vintage, displaying multiple entries when a single year has been downloaded under multiple ETags.
 
 <!-- prettier-ignore -->
-!!! warning "Heads up"
-
-    The publisher's host doesn't always format an ETag the same way twice for the same file. A `get_vintages()` ETag that doesn't string-match a `cache_info()` ETag isn't proof the data changed. Re-verify before assuming a new vintage.
+!!! warning "Inconsistent ETag formatting on upstream server"
+    The upstream server occasionally formats ETags differently for unchanged files. An ETag difference between `get_vintages()` and `cache_info()` can occur without changes to the underlying data. Verify file contents before assuming a new vintage.
 
 ## Related
 

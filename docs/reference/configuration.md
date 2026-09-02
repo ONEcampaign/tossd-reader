@@ -27,7 +27,7 @@ Resolution precedence, in order of highest priority, evaluates `set_cache_dir(pa
 The cache retains the newest 24 artifacts or up to 4 GB of data, whichever limit is reached first. Both limits are fixed.
 
 <!-- prettier-ignore -->
-??? abstract "Under the hood"
+??? abstract "ETag discovery and network resolution"
 
     Discovery runs a HEAD request sweep to identify candidate `ETag` values for requested years. The `ETag` returned by the subsequent GET response is authoritative. When the GET `ETag` differs from the candidate, the download retries under the corrected key (up to two total attempts). If the `ETag` continues changing across both attempts, the fetch raises `TossdNetworkError` detailing the observed values.
 
@@ -45,7 +45,7 @@ The cache retains the newest 24 artifacts or up to 4 GB of data, whichever limit
 
 ## Offline mode
 
-`TOSSD_READER_OFFLINE` recognises `1`, `true`, and `yes` (case-insensitive) as true, and `0`, `false`, and `no` as false. Unset or empty stays false silently. Anything else (a typo like `on`, or a stray `2`) still resolves to `False`, but warns once per process, since a caller who set the variable almost certainly meant to turn offline mode on:
+`TOSSD_READER_OFFLINE` recognises `1`, `true`, and `yes` (case-insensitive) as true, and `0`, `false`, and `no` as false. Unset or empty stays false silently. Anything else (a typo like `on`, or a stray `2`) still resolves to `False`, but warns once per process, since a caller who set the variable almost certainly meant to turn offline mode on.
 
 ```bash
 TOSSD_READER_OFFLINE=on python analysis.py
@@ -57,7 +57,7 @@ UserWarning: TOSSD_READER_OFFLINE='on' is not a recognized value; offline mode i
 
 `set_offline(True)` or `set_offline(False)` overrides the environment variable outright, for the rest of the process. `set_offline(None)` resets to reading `TOSSD_READER_OFFLINE` again, the same state as never having called `set_offline` at all.
 
-With offline mode active, a fetch that has a cached vintage to fall back on serves it and warns, naming the retrieval timestamp and ETag:
+With offline mode active, a fetch that has a cached vintage to fall back on serves it and warns, naming the retrieval timestamp and ETag.
 
 ```python
 import tossd_reader as tossd
@@ -70,7 +70,7 @@ df = tossd.get_tossd(years=2024, columns="minimal")
 UserWarning: Offline mode is active (tossd_reader.config.set_offline(False), or the TOSSD_READER_OFFLINE env var, would allow network access); serving the cached 2024 vintage retrieved 2026-09-02T12:21:52.639935+00:00 (etag "69e6ac8d-5728379").
 ```
 
-`refresh=True` needs the network by definition, and offline mode exists to rule the network out, so combining the two raises `ValueError` naming the conflict. The same check guards `get_tossd()`, `get_tossd_raw()`, `export()`, and `get_vintages()`, with the same message shape aside from the leading function name:
+`refresh=True` needs the network by definition, and offline mode exists to rule the network out, so combining the two raises `ValueError` naming the conflict. The same check guards `get_tossd()`, `get_tossd_raw()`, `export()`, and `get_vintages()`, with the same message shape aside from the leading function name.
 
 ```python
 tossd.set_offline(True)
@@ -95,7 +95,7 @@ The message spells out the full module path. `tossd.set_offline(False)` at the t
 
 ## Inspecting and clearing the cache
 
-`cache_info()` lists every locally cached vintage, one row per vintage, not per year. A year re-downloaded after a republish shows up twice, once for each ETag retrieved. `path` is a local absolute path. The example below drops it to fit the page.
+`cache_info()` lists every locally cached vintage, producing one row per vintage. A year re-downloaded after a republish appears twice, once for each retrieved ETag. `path` is a local absolute path. The example below drops it to fit the page.
 
 ```python
 import tossd_reader as tossd
@@ -115,7 +115,7 @@ tossd.cache_info().drop(columns=["path"])
 
 `etag` and `retrieved_at` come from that vintage's own provenance sidecar and read `None` if the sidecar is missing or corrupt. `downloaded_at` comes from the cache's own metadata, always present even when the sidecar is missing or corrupt.
 
-`clear_cache()` with no arguments removes exactly the superseded vintages, the ones `keep_latest=True` (the default) doesn't need to protect, because a newer download for the same year already exists. A cache holding exactly one vintage per year has nothing superseded, so the bare call removes nothing:
+`clear_cache()` with no arguments removes superseded vintages where a newer download for the same reporting year already exists. A cache holding exactly one vintage per year contains no superseded entries, so the bare call removes nothing.
 
 ```python
 tossd.clear_cache()
@@ -125,7 +125,7 @@ tossd.clear_cache()
 0
 ```
 
-`keep_latest` protects each year's single newest entry even when `years=` or `before=` would otherwise match it. Pass `keep_latest=False` to drop that protection. With no other arguments, that empties the cache entirely:
+`keep_latest` protects each year's single newest entry even when `years=` or `before=` matches it. Pass `keep_latest=False` to remove that protection and empty the cache entirely when passed no other arguments.
 
 ```python
 tossd.clear_cache(keep_latest=False)
@@ -146,9 +146,9 @@ len(tossd.cache_info())
 `before=` accepts a `date`, a `datetime`, or an ISO 8601 string. A naive value (no timezone) is treated as UTC. Every call returns the number of entries removed.
 
 <!-- prettier-ignore -->
-!!! warning "Heads up"
+!!! warning "Partial cache clearance on filesystem errors"
 
-    A filesystem fault removing an entry (a permission error, say) propagates as `OSError` instead of being caught and skipped per-entry. The cache can be left partially cleared. The `removed` count from a prior, non-raising call is the only record of how much of a partial run completed.
+    A filesystem fault removing an entry (such as a permission error) propagates as `OSError` instead of being skipped per-entry. The cache can be left partially cleared. The `removed` count from a prior, non-raising call is the only record of how much of a partial run completed.
 
 ## Warnings
 
@@ -168,7 +168,7 @@ len(tossd.cache_info())
 
 ## Errors
 
-All package exceptions inherit from `TossdReaderError`. Catching `TossdReaderError` intercepts all package-specific exceptions. A few argument- and state-validation failures raise a plain `ValueError` instead, including the offline/refresh conflict above. Catching `TossdReaderError` alone won't intercept those.
+All package exceptions inherit from `TossdReaderError`. Catching `TossdReaderError` intercepts all package-specific exceptions. Selected argument- and state-validation failures raise a plain `ValueError` instead, including the offline/refresh conflict described above.
 
 <!-- prettier-ignore -->
 ::: tossd_reader.exceptions.TossdReaderError

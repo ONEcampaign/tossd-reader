@@ -3,8 +3,8 @@
 Call `get_tossd_raw` to get a year of TOSSD data with the publisher's original column names, dtypes, and ordering across every row.
 
 <!-- prettier-ignore -->
-!!! info "Why"
-    Three practical reasons to use `get_tossd_raw`:
+!!! info "Use cases for raw published data"
+    `get_tossd_raw` serves three primary use cases:
 
     - Inspecting raw published records directly before relying on normalised columns.
     - Isolating specific values when diagnosing a `SchemaDriftError`, which triggers during normalisation.
@@ -12,91 +12,91 @@ Call `get_tossd_raw` to get a year of TOSSD data with the publisher's original c
 
 ## Steps
 
-1. **Query the year with `get_tossd_raw`.** The function accepts `years` and `refresh` parameters.
+1. **Query data with `get_tossd_raw`.** The function accepts `years` and `refresh` parameters.
 
-   ```python
-   import tossd_reader as tossd
+    ```python
+    import tossd_reader as tossd
 
-   raw = tossd.get_tossd_raw(years=2024)
-   raw.shape
-   ```
+    raw = tossd.get_tossd_raw(years=2024)
+    raw.shape
+    ```
 
-   ```text
-   (474026, 53)
-   ```
+    ```text
+    (474026, 53)
+    ```
 
-   The resulting frame contains 474,026 rows, matching the full row count of `get_tossd(years=2024)`, across all 53 original published columns.
+    The resulting frame contains 474,026 rows, matching the full row count of `get_tossd(years=2024)`, across all 53 original published columns.
 
 2. **Inspect the column names.** The frame retains the publisher's unrenamed headers.
 
-   ```python
-   list(raw.columns[:10])
-   ```
+    ```python
+    list(raw.columns[:10])
+    ```
 
-   ```text
-   ['Year', 'provider', 'ProviderNameE', 'agencyname_E', 'tossdid', 'ProjectNumber', 'recipientcode', 'recipientnamee', 'regionnamee', 'Channel']
-   ```
+    ```text
+    ['Year', 'provider', 'ProviderNameE', 'agencyname_E', 'tossdid', 'ProjectNumber', 'recipientcode', 'recipientnamee', 'regionnamee', 'Channel']
+    ```
 
-   The first three columns correspond to `year`, `provider_code`, and `provider_name` in `get_tossd`.
+    The first three columns correspond to `year`, `provider_code`, and `provider_name` in `get_tossd`.
 
 3. **Check the data types.** Every column is stored as `str` or `float64`, representing the direct output of parquet reading without schema casting.
 
-   ```python
-   raw.dtypes.value_counts()
-   ```
+    ```python
+    raw.dtypes.value_counts()
+    ```
 
-   ```text
-   str        44
-   float64     9
-   Name: count, dtype: int64
-   ```
+    ```text
+    str        44
+    float64     9
+    Name: count, dtype: int64
+    ```
 
-   A code column delivered as a nullable integer in `get_tossd` remains a string in the raw frame.
+    A code column delivered as a nullable integer in `get_tossd` remains a string in the raw frame.
 
-   ```python
-   raw["provider"].dtype
-   ```
+    ```python
+    raw["provider"].dtype
+    ```
 
-   ```text
-   <StringDtype(na_value=nan)>
-   ```
+    ```text
+    <StringDtype(na_value=nan)>
+    ```
 
-   ```python
-   raw.loc[5, "provider"]
-   ```
+    ```python
+    raw.loc[5, "provider"]
+    ```
 
-   ```text
-   '4'
-   ```
+    ```text
+    '4'
+    ```
 
-4. **Query the same year with `get_tossd` to compare.** `get_tossd` returns the same rows with typed columns and a focused set under the `"minimal"` preset.
+4. **Compare results with `get_tossd`.** `get_tossd` returns the same rows with typed columns and a focused set under the `"minimal"` preset.
 
-   ```python
-   h = tossd.get_tossd(years=2024, columns="minimal")
-   h.shape
-   ```
+    ```python
+    h = tossd.get_tossd(years=2024, columns="minimal")
+    h.shape
+    ```
 
-   ```text
-   (474026, 19)
-   ```
+    ```text
+    (474026, 19)
+    ```
 
-   ```python
-   h["provider_code"].dtype
-   ```
+    ```python
+    h["provider_code"].dtype
+    ```
 
-   ```text
-   Int16Dtype()
-   ```
+    ```text
+    Int16Dtype()
+    ```
 
-   ```python
-   int(h.loc[5, "provider_code"])
-   ```
+    ```python
+    int(h.loc[5, "provider_code"])
+    ```
 
-   ```text
-   4
-   ```
+    ```text
+    4
+    ```
 
-   `raw.loc[5, "provider"]` and `h.loc[5, "provider_code"]` hold the same provider code (4), represented respectively as a string and an integer.
+    `raw.loc[5, "provider"]` and `h.loc[5, "provider_code"]` hold the same provider code (4), represented respectively as a string and an integer.
 
 ## Verify it worked
 
@@ -149,7 +149,7 @@ int(h["project_number"].isna().sum())
 ```
 
 <!-- prettier-ignore -->
-!!! warning "Heads up"
+!!! warning "Absence of derived columns and filters in raw frames"
     A frame from `get_tossd_raw` provides only the raw published columns. Filter and convert units in pandas, or query `get_tossd` to get typed columns, the derived `is_aggregate` flag, and built-in filters.
 
 ## Troubleshooting

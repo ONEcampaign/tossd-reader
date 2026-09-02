@@ -1,6 +1,6 @@
 # Columns, presets, and units
 
-The `tossd-reader` package processes 53 columns from each official TOSSD activity-level file, standardised into snake_case names and typed according to `schema.csv`. The `columns` parameter of `get_tossd` accepts a preset name (`"minimal"`, `"analysis"`, or `"all"`) or a list of specific snake_case column names. Five columns always appear in query results regardless of selection, exposed as the `FORCED_COLUMNS` tuple: `year`, `tossd_pillar`, `tossd_subpillar`, `is_aggregate`, and `unit`. The `is_aggregate` flag (`provider_code == 0`) and `unit` indicator are derived columns added by the package, bringing the `"all"` preset to 55 total columns.
+The `tossd-reader` package processes 53 columns from each official TOSSD activity-level file, standardised into snake_case names and typed according to `schema.csv`. The `columns` parameter of `get_tossd` accepts a preset name (`"minimal"`, `"analysis"`, or `"all"`) or a list of specific snake_case column names. Five columns always appear in query results regardless of selection, exposed as the `FORCED_COLUMNS` tuple (`year`, `tossd_pillar`, `tossd_subpillar`, `is_aggregate`, and `unit`). The `is_aggregate` flag (`provider_code == 0`) and `unit` indicator are derived columns added by the package, bringing the `"all"` preset to 55 total columns.
 
 ## Presets
 
@@ -36,14 +36,14 @@ Columns are listed in source file order from `schema.csv`.
 | `recipient_name`                  | `category` |   Yes   |   Yes    | Standard English name of the recipient country, territory, or region.                                                                                               |
 | `region_name`                     | `category` |         |   Yes    | Geographic region of the recipient.                                                                                                                                 |
 | `channel_raw_text`                | `string`   |         |          | Unstructured channel text as reported by the provider.                                                                                                              |
-| `channel_code`                    | `Int32`    |         |   Yes    | Numeric code for the implementing channel organization.                                                                                                             |
-| `parent_channel_code`             | `Int32`    |         |          | Numeric code for the parent organization of the implementing channel.                                                                                               |
-| `parent_channel_name`             | `string`   |         |          | Decoded English name of the parent channel organization from the channel codelist.                                                                                  |
+| `channel_code`                    | `Int32`    |         |   Yes    | Numeric code for the implementing channel organisation.                                                                                                             |
+| `parent_channel_code`             | `Int32`    |         |          | Numeric code for the parent organisation of the implementing channel.                                                                                               |
+| `parent_channel_name`             | `string`   |         |          | Decoded English name of the parent channel organisation from the channel codelist.                                                                                  |
 | `other_partners`                  | `string`   |         |          | Names of co-financing entities or implementing partners.                                                                                                            |
 | `channel_name`                    | `category` |         |   Yes    | Standard category of the implementing channel.                                                                                                                      |
 | `finance_instrument_code`         | `Int16`    |         |   Yes    | Numeric code for the financial instrument (grants, debt, equity).                                                                                                   |
 | `finance_instrument_name`         | `category` |         |   Yes    | Name of the financial instrument.                                                                                                                                   |
-| `financing_arrangement_code`      | `category` |         |   Yes    | Code for the financing arrangement: blended finance, Islamic finance, recipient-counterpart co-financing, officially supported export credits, or SDR transactions. |
+| `financing_arrangement_code`      | `category` |         |   Yes    | Code for the financing arrangement (blended finance, Islamic finance, recipient-counterpart co-financing, officially supported export credits, or SDR transactions). |
 | `financing_arrangement_name`      | `category` |         |   Yes    | Name of the financing arrangement.                                                                                                                                  |
 | `framework_of_collaboration_code` | `category` |         |   Yes    | Code for South-South or triangular collaboration frameworks.                                                                                                        |
 | `framework_of_collaboration_name` | `category` |         |   Yes    | Name of the collaboration framework.                                                                                                                                |
@@ -99,7 +99,7 @@ Each current price column has the identical non-null count as its corresponding 
 
 ## Always present columns
 
-`FORCED_COLUMNS` names the five columns present in every query output, whatever `columns=` requests:
+`FORCED_COLUMNS` names the five columns present in every query output, regardless of `columns=` requested.
 
 ```python
 from tossd_reader import FORCED_COLUMNS
@@ -119,7 +119,7 @@ FORCED_COLUMNS
 | `is_aggregate`    | `bool`     | True for summary records (`provider_code == 0`) and False for individual activity records.                                                  |
 | `unit`            | `category` | Denomination unit (`"usd_thousand"`, `"usd_million"`, or `"usd"`).                                                                          |
 
-`tossd_subpillar` is `NA` unless the row carries a real `"21"`/`"22"` tag. A Pillar I row, an untagged Pillar II row, and a Pillar 0 row all read `NA`:
+`tossd_subpillar` is `NA` unless the row carries a real `"21"`/`"22"` tag. A Pillar I row, an untagged Pillar II row, and a Pillar 0 row all read `NA`.
 
 ```python
 import tossd_reader as tossd
@@ -156,7 +156,7 @@ list(df["tossd_subpillar"].cat.categories)
 During data loading, `tossd_reader` compares published columns against `schema.csv`. A missing expected column, an unconvertible data type, or duplicate normalised column names raises `SchemaDriftError` identifying the affected column and offending value.
 
 <!-- prettier-ignore -->
-!!! warning "Heads up"
+!!! warning "Unmodelled publisher columns"
 
     Columns present in source files that do not appear in `schema.csv` emit a single warning per process and pass through under their original names when using `columns="all"`.
 

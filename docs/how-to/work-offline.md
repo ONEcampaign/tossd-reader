@@ -1,10 +1,10 @@
 # How to work offline and manage the cache
 
-Prime the local cache while connected, then switch `tossd-reader` into offline mode so `get_tossd` and `get_vintages` serve from disk with no network access at all.
+Prime the local cache while connected, then switch `tossd-reader` into offline mode so `get_tossd` and `get_vintages` serve from disk without requiring network access.
 
-## Prime the cache while you're online
+## Prime the cache while connected
 
-Fetch every year you'll need before you disconnect. Each requested year downloads once and caches locally.
+Fetch every required year before disconnecting. Each requested year downloads once and caches locally.
 
 ```python
 import tossd_reader as tossd
@@ -14,9 +14,9 @@ tossd.get_tossd(years=range(2019, 2025))
 
 All six published years together cache to about 0.45 GB on disk.
 
-## Turn on offline mode
+## Enable offline mode
 
-Turn it on for the running session, or for the whole environment.
+Enable offline mode for the running session or across the shell environment.
 
 ```python
 import tossd_reader as tossd
@@ -28,11 +28,11 @@ tossd.set_offline(True)
 export TOSSD_READER_OFFLINE=1
 ```
 
-Recognized truthy values for the environment variable are `1`, `true`, and `yes`, case-insensitive; `0`, `false`, `no`, and unset all leave offline mode off. `set_offline(True)`/`set_offline(False)` overrides the environment variable for the running process. `set_offline(None)` drops the override and goes back to reading the environment variable.
+Recognised truthy values for the environment variable are `1`, `true`, and `yes`, case-insensitive; `0`, `false`, `no`, and unset all leave offline mode off. `set_offline(True)` and `set_offline(False)` override the environment variable for the running process. `set_offline(None)` removes the override and resumes reading the environment variable.
 
-## What offline serving looks like
+## Offline query behaviour
 
-With a year already cached, `get_tossd` returns it and warns that it's serving from disk instead of the network.
+With a year already cached, `get_tossd` returns the local vintage and emits a warning that it is serving from disk.
 
 ```python
 tossd.set_offline(True)
@@ -43,7 +43,7 @@ df = tossd.get_tossd(years=2024)
 UserWarning: Offline mode is active (tossd_reader.config.set_offline(False), or the TOSSD_READER_OFFLINE env var, would allow network access); serving the cached 2024 vintage retrieved 2026-08-28T19:32:28.617740+00:00 (etag "69e6ac8d-5728379").
 ```
 
-Request a year that was never primed and there's nothing to serve. `get_tossd` raises `TossdNetworkError` instead of warning.
+Requesting an unprimed year raises `TossdNetworkError`.
 
 ```python
 tossd.get_tossd(years=2010)
@@ -53,11 +53,11 @@ tossd.get_tossd(years=2010)
 TossdNetworkError: Cannot fetch 2010: offline mode is active (tossd_reader.config.set_offline(False), or the TOSSD_READER_OFFLINE env var, would allow network access), and no cached vintage for 2010 exists in <your cache directory>.
 ```
 
-The real message names your resolved cache directory. See [Cache location and bounds](../reference/configuration.md#cache-location-and-bounds) for the default per platform.
+The full error message names the resolved cache directory. See [Cache location and bounds](../reference/configuration.md#cache-location-and-bounds) for default platform paths.
 
-## Forcing a refresh while offline
+## Refresh behaviour in offline mode
 
-`refresh=True` needs the network to check for a newer vintage, which is exactly what offline mode rules out. Passing both raises immediately, before any fetch is attempted.
+Passing `refresh=True` requires network connectivity to check for updated vintages. Combining `refresh=True` with offline mode raises `ValueError` immediately.
 
 ```python
 tossd.get_tossd(years=2024, refresh=True)
@@ -67,11 +67,11 @@ tossd.get_tossd(years=2024, refresh=True)
 ValueError: get_tossd(refresh=True) conflicts with offline mode (config.get_offline() is True): a forced refresh needs the network. Call tossd_reader.config.set_offline(False) first, or omit refresh=True.
 ```
 
-The same conflict fires from `get_tossd_raw`, `export`, and `get_vintages` whenever `refresh=True` and offline mode is active.
+The same conflict occurs with `get_tossd_raw`, `export`, and `get_vintages` whenever `refresh=True` and offline mode is active.
 
-## Inspect what's cached and what's live
+## Inspect cached and live vintages
 
-`cache_info()` lists every locally cached vintage, one row per download. A re-downloaded, republished year gets more than one row.
+`cache_info()` lists every locally cached vintage, with one row per download. A re-downloaded or republished year generates multiple rows.
 
 ```python
 tossd.cache_info().drop(columns=["path"])
@@ -87,7 +87,7 @@ tossd.cache_info().drop(columns=["path"])
 5  2023  "69e6ac8c-56469db"  2026-08-28T21:15:12.643113+00:00 2026-08-28 21:15:12.608318+00:00    90466779
 ```
 
-`get_vintages()` reports what the publisher has live right now, one row per year.
+`get_vintages()` reports live vintages published on the remote host, with one row per year.
 
 ```python
 tossd.get_vintages()
@@ -104,10 +104,10 @@ tossd.get_vintages()
 ```
 
 <!-- prettier-ignore -->
-!!! warning "Heads up"
-    The publisher's host doesn't always serve the same ETag format for identical bytes. Compare 2019 above (`"347a653-64fec0e08ffa0"`) against the same year in `cache_info()` (`"69e6ac86-347a653"`). Don't equality-check the two. A revised file does get a new ETag, but a mismatch between `get_vintages()` and `cache_info()` means "re-verify," not "new data."
+!!! warning "Comparing ETag values between cache and server"
+    The publisher's host serves different ETag formats for identical payloads across requests. Compare 2019 above (`"347a653-64fec0e08ffa0"`) against the same year in `cache_info()` (`"69e6ac86-347a653"`). Avoid direct equality checks between the two. A revised file receives a new ETag, but a mismatch between `get_vintages()` and `cache_info()` indicates a need to re-verify rather than confirming new data.
 
-Offline, or when the publisher is unreachable, `get_vintages()` falls back to listing whatever's cached locally instead of raising.
+In offline mode or when the publisher is unreachable, `get_vintages()` falls back to listing locally cached vintages.
 
 ```python
 tossd.get_vintages()
@@ -120,11 +120,11 @@ UserWarning: Offline mode is active (config.get_offline() is True); listing vint
 ...
 ```
 
-`last_modified` reads `None` in the fallback. That header only comes from the publisher's own HEAD response, and it's never persisted locally.
+The `last_modified` field contains `None` in fallback mode because that metadata is populated directly from the publisher's HTTP response headers.
 
 ## Free up cache space
 
-`clear_cache()` returns the number of entries it removed. The bare call, with every argument at its default, drops only superseded vintages, the ones a republish has since replaced.
+`clear_cache()` returns the number of entries removed. A default call without arguments removes superseded vintages that a newer download has replaced.
 
 ```python
 tossd.clear_cache()
@@ -134,7 +134,7 @@ tossd.clear_cache()
 0
 ```
 
-On a cache holding one vintage per year, nothing is superseded, so a bare call removing 0 entries is the point of its default, not a bug. `keep_latest=True` protects each year's newest vintage even from `years=`/`before=` filters below.
+On a cache holding one vintage per year, nothing is superseded, so a default `clear_cache()` call removes 0 entries. The `keep_latest=True` setting protects each year's newest vintage, including when filtering with `years=` or `before=`.
 
 ```python
 tossd.clear_cache(keep_latest=False)
@@ -152,18 +152,18 @@ len(tossd.cache_info())
 0
 ```
 
-`keep_latest=False` drops the newest vintage too, so with no other filters it empties the whole cache. Narrow to specific years, or to vintages retrieved before a given point, without touching the rest.
+Setting `keep_latest=False` without other filters empties the entire cache. Provide `years=` or `before=` to remove targeted subsets.
 
 ```python
 tossd.clear_cache(years=2019)
 tossd.clear_cache(before="2026-01-01")
 ```
 
-`years=` takes a single year or an iterable of years. `before=` takes a `date`, a `datetime`, or an ISO 8601 string; a naive value (no timezone) is treated as UTC. Both still default to `keep_latest=True`, so add `keep_latest=False` to also remove the newest match.
+`years=` accepts a single year or an iterable of years. `before=` accepts a `date`, a `datetime`, or an ISO 8601 string, treating naive timestamps without timezone information as UTC. Both arguments default to `keep_latest=True`; set `keep_latest=False` to remove the latest matching vintage as well.
 
 ## Verify it worked
 
-Confirm every year you primed is in the cache.
+Confirm that every primed year exists in the cache.
 
 ```python
 sorted(tossd.cache_info()["year"])
@@ -173,13 +173,13 @@ sorted(tossd.cache_info()["year"])
 [2019, 2020, 2021, 2022, 2023, 2024]
 ```
 
-Then query one of them with the network disconnected, as in [What offline serving looks like](#what-offline-serving-looks-like) above. A `UserWarning` naming the cached vintage, not a `TossdNetworkError`, confirms offline mode is serving from disk.
+Querying a cached year while disconnected emits a `UserWarning` naming the local vintage, confirming that offline serving is active.
 
 ## Troubleshooting
 
-**A query raises `TossdNetworkError` for a year you expected to work offline.** That year was never cached. Reconnect, prime it with `get_tossd`, and try again. See [Prime the cache while you're online](#prime-the-cache-while-youre-online).
+**A query raises `TossdNetworkError` for a year expected to work offline.** That year was not primed. Reconnect, prime it with `get_tossd`, and query again. See [Prime the cache while connected](#prime-the-cache-while-connected).
 
-**`TOSSD_READER_OFFLINE` is set but offline mode doesn't seem active.** The value isn't one of the recognized truthy forms.
+**`TOSSD_READER_OFFLINE` is set but offline mode is not active.** The value is not one of the recognised truthy forms.
 
 ```bash
 TOSSD_READER_OFFLINE=on python analysis.py
@@ -193,5 +193,5 @@ Use `1`, `true`, or `yes` instead.
 
 ## See also
 
-- [Configuration reference](../reference/configuration.md) for cache location defaults, the full warnings and errors table, and the `set_cache_dir`/`get_cache_dir` functions.
-- [About reproducibility and the cache](../about/reproducibility.md) for why vintages and ETags matter for reproducible analysis.
+- [Configuration reference](../reference/configuration.md) for cache location defaults, the full warnings and errors table, and cache directory configuration.
+- [About reproducibility and the cache](../about/reproducibility.md) for tracking data vintages and ETags.

@@ -1,55 +1,55 @@
 # How to measure climate and gender finance with keyword markers
 
-Tag a `get_tossd` frame with the twelve packaged keyword markers, then total disbursement per marker, or combine several, without double-counting activities tagged for more than one.
+Tag a `get_tossd` frame with the twelve packaged keyword markers, then calculate disbursements per marker or combine multiple markers without double-counting activities tagged under several categories.
 
 ## Steps
 
-1. **Query with the `"analysis"` column preset.** `extract_keywords` and `keyword_totals` both read `keywords_raw`, which ships in the `"analysis"` preset. The `"minimal"` preset omits it.
+1. **Query data using the `"analysis"` column preset.** Both `extract_keywords` and `keyword_totals` read `keywords_raw`, which is included in the `"analysis"` preset. The `"minimal"` preset omits it.
 
-   ```python
-   import tossd_reader as tossd
+    ```python
+    import tossd_reader as tossd
 
-   df = tossd.get_tossd(years=2024, columns="analysis", units="usd_million")
-   ```
+    df = tossd.get_tossd(years=2024, columns="analysis", units="usd_million")
+    ```
 
-2. **Add the marker columns for row-level work.** `extract_keywords` adds one boolean `kw_<marker>` column per marker, including `kw_gender`, `kw_adaptation`, and `kw_mitigation`. Select rows with a boolean mask when the task needs the matching rows themselves and not just a total, for example breaking a marker down by another dimension.
+2. **Extract marker columns for row-level analysis.** The `extract_keywords()` method adds a boolean `kw_<marker>` column for each marker, including `kw_gender`, `kw_adaptation`, and `kw_mitigation`. Filter rows with a boolean mask to analyse matching records directly, such as breaking down marker disbursements by recipient.
 
-   ```python
-   kw = df.tossd.extract_keywords()
-   gender = kw[kw.kw_gender]
-   gender.groupby("recipient_name", observed=True)["usd_disbursement"].sum().sort_values(
-       ascending=False
-   ).round(1).head(3)
-   ```
+    ```python
+    kw = df.tossd.extract_keywords()
+    gender = kw[kw.kw_gender]
+    gender.groupby("recipient_name", observed=True)["usd_disbursement"].sum().sort_values(
+        ascending=False
+    ).round(1).head(3)
+    ```
 
-   ```text
-   recipient_name
-   Developing countries, unspecified    9080.0
-   India                                7420.9
-   Indonesia                            3874.6
-   Name: usd_disbursement, dtype: float64
-   ```
+    ```text
+    recipient_name
+    Developing countries, unspecified    9080.0
+    India                                7420.9
+    Indonesia                            3874.6
+    Name: usd_disbursement, dtype: float64
+    ```
 
-3. **Total disbursement per marker with `df.tossd.keyword_totals(markers=…)`, without double-counting activities tagged for more than one.** It recomputes marker masks from `keywords_raw` internally and adds a final `"Combined"` row, the union of every requested marker's mask.
+3. **Aggregate disbursements per marker with `df.tossd.keyword_totals(markers=...)`.** This method aggregates disbursements per marker without double-counting activities tagged for multiple categories. It recomputes marker masks from `keywords_raw` internally and appends a `"Combined"` row containing the union of all requested marker masks.
 
-   ```python
-   df.tossd.keyword_totals(markers=["adaptation", "mitigation"])
-   ```
+    ```python
+    df.tossd.keyword_totals(markers=["adaptation", "mitigation"])
+    ```
 
-   ```text
-          marker  usd_disbursement  n_rows
-   0  adaptation      38414.214244   41524
-   1  mitigation      61608.343767   34279
-   2    Combined      78643.461436   53822
-   ```
+    ```text
+           marker  usd_disbursement  n_rows
+    0  adaptation      38414.214244   41524
+    1  mitigation      61608.343767   34279
+    2    Combined      78643.461436   53822
+    ```
 
-   The marker rows sum to 100,022.6 million, more than `"Combined"`'s 78,643.5. A row tagged for both adaptation and mitigation counts once under each marker row but only once in `"Combined"`, the honest total for climate finance.
+    The individual marker rows sum to 100,022.6 million, exceeding `"Combined"`'s 78,643.5 million. An activity tagged for both adaptation and mitigation appears under each individual marker row, but only once in `"Combined"`, providing an unduplicated total for climate finance.
 
-   `n_rows` counts matching rows, not distinct activities. The publisher can split one activity across several rows, and those rows can carry different keyword tags from each other, so a multi-row activity may count more than once here. Omit `markers=` for all twelve packaged markers plus `"Combined"`.
+    The `n_rows` column counts matching rows rather than distinct activities. Reporting providers may split a single activity across multiple rows with different keyword tags. Omit `markers=` to compute totals across all twelve packaged markers and the `"Combined"` summary.
 
 <!-- prettier-ignore -->
-!!! warning "Heads up"
-    The twelve markers are independent booleans without weights or partitioning. Marker totals overlap by design. The vocabulary is a fixed twelve. A row reading False on every `kw_` column carries none of the packaged twelve. 10.9% of 2024 rows (51,436 of 474,026) carry a `keywords_raw` token outside that vocabulary and still read False on every `kw_` column.
+!!! warning "Marker overlaps and vocabulary scope"
+    The twelve markers operate as independent boolean flags without weights or partitioning, so marker totals overlap by design. A row reading False across all `kw_` columns carries none of the packaged markers. In 2024, 10.9% of rows (51,436 of 474,026) contain `keywords_raw` tokens outside this twelve-marker vocabulary and remain False across every `kw_` column.
 
 ## Verify it worked
 
@@ -72,11 +72,11 @@ print(kw[kw_cols].any(axis=1).sum())
 170206
 ```
 
-The 258,001 marker instances span 170,206 rows. The gap is rows carrying more than one marker, the same overlap `keyword_totals()`'s `"Combined"` row accounts for.
+The 258,001 marker instances span 170,206 rows. The difference represents rows carrying multiple markers, corresponding to the overlap accounted for by the `"Combined"` row in `keyword_totals()`.
 
 ## Troubleshooting
 
-**`ValueError` naming `keywords_raw`.** `extract_keywords` and `keyword_totals` both require it. That column ships in the `"analysis"` and `"all"` presets. The `"minimal"` preset omits it.
+**`ValueError` naming `keywords_raw`.** Both `extract_keywords` and `keyword_totals` require `keywords_raw`. That column is included in the `"analysis"` and `"all"` presets. The `"minimal"` preset omits it.
 
 ```python
 tossd.get_tossd(years=2024, columns="minimal").tossd.keyword_totals()
@@ -86,7 +86,7 @@ tossd.get_tossd(years=2024, columns="minimal").tossd.keyword_totals()
 ValueError: keyword_totals() needs column(s) keywords_raw, not present in df. Re-query with columns='analysis', or add keywords_raw to your columns= list.
 ```
 
-**`ValueError` naming a `markers=` value.** `keyword_totals` rejects a name it doesn't recognise and names the closest matches.
+**`ValueError` naming a `markers=` value.** `keyword_totals` rejects an unrecognised marker name and suggests the closest matches.
 
 ```python
 df.tossd.keyword_totals(markers="adaptaion")

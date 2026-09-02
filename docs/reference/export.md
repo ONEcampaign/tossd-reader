@@ -80,7 +80,7 @@ print(sorted(df.attrs["tossd_reader"]))
 ['created_at', 'package_version', 'years']
 ```
 
-`load_export` sets `df.attrs["tossd_reader"]` to this same three-key shape on every call. An export is an unfiltered snapshot, so it carries no `query` key the way a `get_tossd()` or `get_tossd_raw()` result does. `tossd.get_provenance(df)` returns the payload as a deep copy, so mutating the result never touches `df`'s own attrs the way editing `df.attrs["tossd_reader"]` directly would. See [Verbs](verbs.md) for `get_provenance` and its `df.tossd.provenance()` accessor equivalent.
+`load_export` sets `df.attrs["tossd_reader"]` to this same three-key shape on every call. An export is an unfiltered snapshot, so it carries no `query` key the way a `get_tossd()` or `get_tossd_raw()` result does. `tossd.get_provenance(df)` returns the payload as a deep copy, ensuring mutations to the returned dictionary do not affect `df.attrs`. See [Verbs](verbs.md) for `get_provenance` and its `df.tossd.provenance()` accessor equivalent.
 
 `verify_export` checks only `payload_sha256` and `row_count`. An export written by an older or newer package version can carry a different `schema_hash` without being corrupted, so that field sits outside the check.
 
@@ -95,11 +95,11 @@ print(sorted(df.attrs["tossd_reader"]))
       heading_level: 2
 
 <!-- prettier-ignore -->
-!!! warning "Heads up"
+!!! warning "Manifest validation when verify=False"
 
     `verify=False` skips the payload-hash and row-count checks. `load_export` still reads `<stem>.manifest.json` for `df.attrs` provenance, so a missing or unreadable manifest raises `ExportIntegrityError` either way.
 
-A tampered or truncated file fails at the hash check. Flipping a single byte mid-file is enough:
+A tampered or truncated file fails at the hash check. Flipping a single byte mid-file is enough.
 
 ```python
 with open("tossd_2024.parquet", "r+b") as f:
@@ -122,7 +122,7 @@ ExportIntegrityError: tossd_2024.parquet does not match its manifest: sha256 86f
 
 ## Performance and memory
 
-Exporting the default full dataset (`years=None`, covering 2019 through 2024) materialises approximately 2.4 million rows in memory as an Apache Arrow table before writing to disk. Peak resident memory reaches roughly 4.4 GB. The finished table itself accounts for about 2.1 GB of that. Per-year tables stay alive alongside it until concatenation completes. Pass specific years to `years=` when working in memory-constrained environments, or pass `max_rows=` to fail fast instead of writing an export larger than expected:
+Exporting the default full dataset (`years=None`, covering 2019 through 2024) materialises approximately 2.4 million rows in memory as an Apache Arrow table before writing to disk. Peak resident memory reaches roughly 4.4 GB. The finished table itself accounts for about 2.1 GB of that. Per-year tables stay alive alongside it until concatenation completes. Pass specific years to `years=` when working in memory-constrained environments, or pass `max_rows=` to enforce a maximum row threshold before writing to disk.
 
 ```python
 tossd.export("out", years=2019, max_rows=100_000)

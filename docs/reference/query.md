@@ -33,12 +33,7 @@ UnknownCodeError: 'Germny' did not match any providers code or name in the packa
 
 ### Filtering to pillars 1 and 2
 
-`pillars="standard"` filters to pillars 1 and 2 together, excluding the
-pillar-0 placeholder rows a few years carry. Every other `pillars=`
-value already excludes pillar-0. Only the default `pillars=None` keeps
-it. See [Pillars and aggregate
-rows](../about/pillars-and-aggregates.md#transitional-pillar-0-classifications)
-for what those rows are.
+`pillars="standard"` filters to pillars 1 and 2 together, excluding the pillar-0 placeholder rows a few years carry. Every other `pillars=` value already excludes pillar-0. Only the default `pillars=None` keeps it. See [Pillars and aggregate rows](../about/pillars-and-aggregates.md#transitional-pillar-0-classifications) for what those rows are.
 
 ```python
 import tossd_reader as tossd
@@ -60,13 +55,7 @@ len(tossd.get_tossd(years=2023, columns="minimal", pillars="standard"))
 
 ### Filtering by dimension
 
-`filters=` narrows results by any of seven dimensions with no dedicated
-keyword: `sector`, `purpose`, `channel`, `modality`, `finance_instrument`,
-`financing_arrangement`, `framework_of_collaboration`. Each key takes a
-single code, a single codelist name, or an iterable mixing both, resolved
-the same way `providers=` and `recipients=` resolve their own values.
-Filtering on more than one dimension at once narrows to rows matching
-every dimension given.
+`filters=` narrows results by any of seven dimensions with no dedicated keyword (`sector`, `purpose`, `channel`, `modality`, `finance_instrument`, `financing_arrangement`, `framework_of_collaboration`). Each key takes a single code, a single codelist name, or an iterable mixing both, resolved the same way `providers=` and `recipients=` resolve their own values. Filtering on more than one dimension at once narrows to rows matching every dimension given.
 
 ```python
 df = tossd.get_tossd(
@@ -90,14 +79,9 @@ round(df["usd_disbursement"].sum(), 1)
 30794.2
 ```
 
-Resolve a token before filtering with `tossd.codes.lookup(dimension,
-token)` to check what a code or name matches (see [Codes](#codes)
-below).
+Resolve a token before filtering with `tossd.codes.lookup(dimension, token)` to check what a code or name matches (see [Codes](#codes) below).
 
-`financing_arrangement` and `framework_of_collaboration` match by token
-membership. Real data packs multiple codes into one row (`"FA02|FA03"`),
-so a filter for `"FA02"` also matches a packed row carrying it alongside
-another code. The other five dimensions match by exact equality.
+`financing_arrangement` and `framework_of_collaboration` match by token membership. Real data packs multiple codes into one row (`"FA02|FA03"`), so a filter for `"FA02"` also matches a packed row carrying it alongside another code. The other five dimensions match by exact equality.
 
 ```python
 fa = tossd.get_tossd(
@@ -123,8 +107,7 @@ FA02         11557
 FA02|FA03        4
 ```
 
-`provider`, `recipient`, and `pillar` keys raise, naming the dedicated
-keyword to use instead.
+`provider`, `recipient`, and `pillar` keys raise a `ValueError`, naming the dedicated keyword to use instead.
 
 ```python
 tossd.get_tossd(years=2024, filters={"provider": "France"})
@@ -134,7 +117,7 @@ tossd.get_tossd(years=2024, filters={"provider": "France"})
 ValueError: filters={'provider': ...} is not supported; use providers= directly.
 ```
 
-An unrecognized dimension raises the same way, with closest matches.
+An unrecognised dimension raises the same way, with closest matches.
 
 ```python
 tossd.get_tossd(years=2024, filters={"sectors": "x"})
@@ -144,8 +127,7 @@ tossd.get_tossd(years=2024, filters={"sectors": "x"})
 ValueError: Unknown filters= dimension 'sectors'; expected one of channel, finance_instrument, financing_arrangement, framework_of_collaboration, modality, purpose, sector. Closest matches: sector.
 ```
 
-An unresolved code or name raises `UnknownCodeError` with closest
-matching names.
+An unresolved code or name raises `UnknownCodeError` with closest matching names.
 
 ```python
 tossd.get_tossd(years=2024, filters={"sector": "Helth"})
@@ -155,10 +137,7 @@ tossd.get_tossd(years=2024, filters={"sector": "Helth"})
 UnknownCodeError: 'Helth' did not match any sector code or name in the packaged codelist. Closest matches: I.2. Health, I.2.a. Health, general, I.2.b. Basic health, I.3. Population policies/programmes and reproductive health.
 ```
 
-A codelist entry can resolve cleanly and still match no row. The
-packaged `sector` codelist carries sub-sector codes the published data
-folds into their top-level group before publishing, so a sub-sector
-filter resolves the code and returns nothing.
+A codelist entry can resolve cleanly and still match no row. The packaged `sector` codelist carries sub-sector codes the published data folds into their top-level group before publishing, so a sub-sector filter resolves the code and returns nothing.
 
 ```python
 tossd.get_tossd(years=2024, filters={"sector": "I.2.b. Basic health"})
@@ -168,12 +147,9 @@ tossd.get_tossd(years=2024, filters={"sector": "I.2.b. Basic health"})
 UserWarning: get_tossd's filters matched no rows; returning an empty (but correctly typed) frame. A codelist entry can sit at a finer granularity than the published data uses (sector sub-codes, for example, fold into their top-level group) -- compare against the column's own values, e.g. df['sector_code'].unique().
 ```
 
-`purpose_code` carries that sub-sector-level detail instead. Filter on
-`purpose` for questions finer than the 25 top-level sector groups.
+`purpose_code` carries that sub-sector-level detail instead. Filter on `purpose` for questions finer than the 25 top-level sector groups.
 
-`export()` takes no `filters=`. Its contract is an unfiltered snapshot
-of a requested year (see [Export](export.md)). Build a filtered extract
-with `get_tossd(filters=...)` and your own `DataFrame.to_parquet` call.
+`export()` takes no `filters=`. Its contract is an unfiltered snapshot of a requested year (see [Export](export.md)). Build a filtered extract with `get_tossd(filters=...)` and your own `DataFrame.to_parquet` call.
 
 ### Checking the forced columns
 
@@ -189,7 +165,7 @@ tossd.FORCED_COLUMNS
 ('year', 'tossd_pillar', 'tossd_subpillar', 'is_aggregate', 'unit')
 ```
 
-An explicit `columns=` list still gets every forced column appended, so a multi-year query can group by `year` without naming it:
+An explicit `columns=` list still gets every forced column appended, so a multi-year query can group by `year` without naming it.
 
 ```python
 df = tossd.get_tossd(
@@ -238,7 +214,7 @@ print(round(us["usd_disbursement"].sum(), 1))
 497675981440.9
 ```
 
-An unrecognised value raises `ValueError` naming the valid options:
+An unrecognised value raises `ValueError` naming the valid options.
 
 ```python
 tossd.get_tossd(years=2024, units="usd_billion")
@@ -250,12 +226,7 @@ ValueError: Unknown units 'usd_billion'; expected one of ('usd_thousand', 'usd_m
 
 ### Excluding aggregate rows
 
-`include_aggregates=True` (the default) keeps every row `get_tossd()`
-loads, including the `provider_code == 0` pseudo-aggregate rows the
-publisher reports alongside individual providers' own records, so the
-output matches the published files in full. Pass
-`include_aggregates=False` to drop them before anything downstream
-aggregates the frame.
+`include_aggregates=True` (the default) keeps every row `get_tossd()` loads, including the `provider_code == 0` pseudo-aggregate rows the publisher reports alongside individual providers' own records, so the output matches the published files in full. Pass `include_aggregates=False` to drop them before downstream operations aggregate the frame.
 
 ```python
 df = tossd.get_tossd(years=2024, columns="analysis", units="usd_million")
@@ -285,11 +256,7 @@ tossd.rank_entities(df, top=3, include_aggregates=False)[
              4          France      25444.627005   6.388365     3
 ```
 
-Passed to `get_tossd()` itself, `include_aggregates=False` removes the
-same rows one step earlier, before any grouping or ranking runs. Every
-`tossd_reader.verbs` function defaults `include_aggregates=False` on its
-own (see [Verbs](verbs.md)), so a query already excluding aggregates
-needs no further filtering before ranking, comparing, or totalling.
+Passed to `get_tossd()` itself, `include_aggregates=False` removes the same rows one step earlier, before any grouping or ranking runs. Every `tossd_reader.verbs` function defaults `include_aggregates=False` on its own (see [Verbs](verbs.md)), so a query already excluding aggregates needs no further filtering before ranking, comparing, or totalling.
 
 ### Inspecting available filters
 
@@ -310,11 +277,7 @@ code        name  tossd_only
 
 ### Reading back query provenance
 
-`get_tossd()` stamps `df.attrs["tossd_reader"]` with the call's own
-provenance: the package version, a UTC timestamp, the normalised query,
-and each fetched year's etag, retrieval time, and source URL.
-`get_provenance(df)` (documented in [Verbs](verbs.md)) returns a deep
-copy of that dict.
+`get_tossd()` stamps `df.attrs["tossd_reader"]` with the call's own provenance, including the package version, a UTC timestamp, the normalised query, and each fetched year's etag, retrieval time, and source URL. `get_provenance(df)` (documented in [Verbs](verbs.md)) returns a deep copy of that dict.
 
 ```python
 import tossd_reader as tossd
@@ -341,15 +304,9 @@ pprint(tossd.get_provenance(df))
                     'url': 'https://tossd.online/tossddata_2024.parquet'}}}
 ```
 
-`df.tossd.provenance()` returns the identical dict. `get_tossd_raw()`
-sets the same key with a minimal query: `"years"` and `"refresh"`, the
-only two keywords it takes.
+`df.tossd.provenance()` returns the identical dict. `get_tossd_raw()` sets the same key with a minimal query dictionary containing `"years"` and `"refresh"`, the only two keywords it takes.
 
-`tossd_reader.verbs` functions and `df.tossd` accessor methods copy
-`df.attrs` onto their results, so provenance survives `rank_entities`,
-`explode_sdg`, and the rest. A plain pandas operation like `merge`,
-`concat`, or some `groupby` calls can drop `attrs`. Read provenance
-from the query result itself, or early.
+`tossd_reader.verbs` functions and `df.tossd` accessor methods copy `df.attrs` onto their results, so provenance survives `rank_entities`, `explode_sdg`, and the rest. Plain pandas operations like `merge`, `concat`, or some `groupby` calls can drop `attrs`. Read provenance from the query result itself, or early in the pipeline.
 
 ### Passing filter arguments to `get_tossd_raw`
 
@@ -387,12 +344,7 @@ TypeError: get_tossd_raw() got unexpected keyword argument(s): providers. get_to
 
 ## Codes
 
-`tossd_reader.codes` browses and resolves the packaged codelists that
-`filters=`, `providers=`, and `recipients=` all draw on. `browse(dimension)`
-returns one dimension's full codelist frame. `lookup(dimension, token)`
-resolves a single code or name to the packaged code, through the same
-resolution path a filter uses, so a lookup and a filter built from its
-result always agree.
+`tossd_reader.codes` browses and resolves the packaged codelists that `filters=`, `providers=`, and `recipients=` all draw on. `browse(dimension)` returns one dimension's full codelist frame. `lookup(dimension, token)` resolves a single code or name to the packaged code, through the same resolution path a filter uses, so a lookup and a filter built from its result always agree.
 
 ```python
 import tossd_reader as tossd
@@ -411,12 +363,7 @@ code                                                                     name  t
 
 Every dimension's frame carries `code`, `name`, and `tossd_only`. Every dimension but `pillar` also carries `in_published_data`, marking whether the code occurs in the published data. `provider` and `recipient` add `iso3`, and `sector` adds `source`.
 
-`browse()` covers all 10 packaged dimensions, `pillar` included.
-`lookup()` covers the 9 that resolve to a flat code, every `filters=`
-dimension plus `provider` and `recipient`, and returns `int` for the
-int-coded dimensions (`provider`, `recipient`, `sector`, `purpose`,
-`channel`, `finance_instrument`) or `str` for the str-coded ones
-(`modality`, `financing_arrangement`, `framework_of_collaboration`).
+`browse()` covers all 10 packaged dimensions, `pillar` included. `lookup()` covers the 9 that resolve to a flat code, every `filters=` dimension plus `provider` and `recipient`, and returns `int` for the int-coded dimensions (`provider`, `recipient`, `sector`, `purpose`, `channel`, `finance_instrument`) or `str` for the str-coded ones (`modality`, `financing_arrangement`, `framework_of_collaboration`).
 
 ```python
 tossd.codes.lookup("sector", "I.2.b. Basic health")
@@ -442,8 +389,7 @@ tossd.codes.lookup("modality", "B02")
 'B02'
 ```
 
-`lookup()` excludes `pillar`. Resolve a pillar token like `"II.A"`
-through `get_tossd(pillars=...)` instead.
+`lookup()` excludes `pillar`. Resolve a pillar token like `"II.A"` through `get_tossd(pillars=...)` instead.
 
 ```python
 tossd.codes.lookup("pillar", "II.A")

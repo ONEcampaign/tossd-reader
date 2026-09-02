@@ -3,6 +3,7 @@ site_name = "tossd-reader"
 site_description = "Python package to access TOSSD activity-level data"
 site_url = "https://onecampaign.github.io/tossd-reader/"
 repo_url = "https://github.com/ONEcampaign/tossd-reader"
+extra_css = ["stylesheets/extra.css"]
 
 [project.extra.version]
 provider = "mike"

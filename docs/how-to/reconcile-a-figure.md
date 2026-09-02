@@ -33,7 +33,7 @@ iso3_unmatched_share_pct               29.616479
 dtype: object
 ```
 
-`reconcile()` is a read-out, not a validator. It never warns or raises on what the data says, only on a frame that isn't `get_tossd()`-shaped. Every share is of `df`'s own `usd_disbursement` total, aggregate rows included, so it takes no `include_aggregates=` argument.
+`reconcile()` provides a diagnostic summary of the DataFrame structure. It validates schema conformity rather than asserting data values. Every share is calculated against `df`'s own `usd_disbursement` total, aggregate rows included, so it accepts no `include_aggregates=` argument.
 
 Read the entries against the figure you're checking:
 
@@ -42,49 +42,49 @@ Read the entries against the figure you're checking:
 - `pillars_present`, `year_min`, `year_max`, and `n_years` cover pillar and year coverage.
 - `has_provenance` confirms `df` carries a vintage record. Read it with `df.tossd.provenance()`.
 
-Three entries go past the checks below: `b02_core_contribution_*` sums core contributions to multilateral institutions (`modality_code == "B02"`), `estimate_derived_*` sums rows whose `source_name` names them as an estimate (a heuristic reading of the source name, not a packaged flag), and `iso3_unmatched_*` sums rows `add_iso3` can't match to a country (regional and multi-country codes, TOSSD-only entities). `usd_disbursement_deflated_total` equals `usd_disbursement_total` above because 2024 is the deflator base year. That equality doesn't hold on other years. See [Verbs](../reference/verbs.md#reconcile-in-practice) for the full entry list, including a multi-year example.
+Three entries extend beyond the checks below: `b02_core_contribution_*` sums core contributions to multilateral institutions (`modality_code == "B02"`), `estimate_derived_*` sums rows whose `source_name` designates them as an estimate (a heuristic derived from the source name), and `iso3_unmatched_*` sums rows `add_iso3` leaves unassigned to country codes (such as regional and multi-country codes or TOSSD-only entities). `usd_disbursement_deflated_total` equals `usd_disbursement_total` above because 2024 is the deflator base year. Other reporting years reflect deflator price adjustments. See [Verbs](../reference/verbs.md#reconcile-in-practice) for the full entry list, including a multi-year example.
 
 ## Checks
 
-1. **Units.** `reconcile()`'s `unit` field already names the active scale. `get_tossd` defaults to `usd_thousand`. Pass `units="usd_million"` to match figures published in millions.
+1. **Verify active units.** `reconcile()`'s `unit` field reports the active scale. `get_tossd` defaults to `usd_thousand`. Pass `units="usd_million"` to match figures published in millions.
 
-2. **Aggregate rows.** `n_aggregate_rows`, `aggregate_value`, and `aggregate_share_pct` cover this. Above, aggregates contribute USD 99.4 billion of the USD 497.7 billion total across all rows. Keep aggregate rows when reconciling the publisher's headline total. Exclude them for provider rankings or other calculations restricted to named reporting institutions (`~df["is_aggregate"]`, or `df.tossd.exclude_aggregates()`). See [How to rank providers by disbursement](rank-providers.md).
+2. **Check aggregate row inclusion.** `n_aggregate_rows`, `aggregate_value`, and `aggregate_share_pct` report summary rows. Above, aggregates contribute USD 99.4 billion of the USD 497.7 billion total across all rows. Keep aggregate rows when reconciling the publisher's headline total. Exclude them for provider rankings or calculations restricted to named reporting institutions (`~df["is_aggregate"]`, or `df.tossd.exclude_aggregates()`). See [How to rank providers by disbursement](rank-providers.md).
 
-3. **Price basis (current versus constant).** Current prices (`usd_disbursement`) capture nominal flows. Deflated prices (`usd_disbursement_deflated`) hold constant prices adjusted for inflation. `usd_disbursement_total` and `usd_disbursement_deflated_total` give both bases side by side. Confirm which basis the figure you're checking used. See [How to compare TOSSD totals across years](compare-years.md).
+3. **Confirm the price basis.** Current prices (`usd_disbursement`) capture nominal flows. Deflated prices (`usd_disbursement_deflated`) hold constant prices adjusted for inflation. `usd_disbursement_total` and `usd_disbursement_deflated_total` present both bases side by side. Confirm which basis the external figure uses. See [How to compare TOSSD totals across years](compare-years.md).
 
-4. **Pillar filtering.** `pillars_present` lists the distinct `tossd_pillar` values in `df`, above `(1, 2)`, since 2024 carries no unassigned-pillar rows. Filtering by `pillars=1` or `pillars=2` on `get_tossd()` restricts to Pillar I (cross-border flows) or Pillar II (global public goods). The default `pillars=None` includes everything `pillars_present` reports. Confirm whether the figure you're checking applies a pillar filter.
+4. **Verify pillar coverage.** `pillars_present` lists the distinct `tossd_pillar` values in `df`, showing `(1, 2)` above where all rows carry pillar assignments. Filtering by `pillars=1` or `pillars=2` on `get_tossd()` restricts rows to Pillar I (cross-border flows) or Pillar II (global public goods). The default `pillars=None` includes all pillars present. Confirm whether the figure you are checking applies a pillar filter.
 
-5. **Data vintage and ETag.** `has_provenance` confirms `df` carries a vintage record, but `reconcile()` doesn't surface the ETag itself. Read it with [`df.tossd.provenance()`](../reference/verbs.md#get_provenance-in-practice), or from an export manifest. The IFT updates annual data files in place at tossd.online, and `export` records each file's ETag and retrieval timestamp in the manifest.
+5. **Compare data vintages and ETags.** `has_provenance` confirms `df` carries a vintage record, while [`df.tossd.provenance()`](../reference/verbs.md#get_provenance-in-practice) or an export manifest provides the ETag string. The IFT updates annual data files in place at tossd.online, and `export` records each file's ETag and retrieval timestamp in the manifest.
 
-   ```python
-   from pathlib import Path
+    ```python
+    from pathlib import Path
 
-   tossd.export("exports", years=2019)
-   print(Path("exports/tossd_2019.manifest.json").read_text())
-   ```
+    tossd.export("exports", years=2019)
+    print(Path("exports/tossd_2019.manifest.json").read_text())
+    ```
 
-   ```text
-   {
-     "created_at": "2026-09-02T08:23:28.437587+00:00",
-     "payload_sha256": "8a6eed10875a87fcd5faedece760bc461aa5926113ba1686613728c8c27d30bf",
-     "row_count": 290914,
-     "schema_hash": "0a95f2c54852817a9db1a2174cffa5bd371d601e5d137a37cb27491182367df9",
-     "tossd_reader_version": "0.1.0",
-     "vintages": {
-       "2019": {
-         "etag": "\"69e6ac86-347a653\"",
-         "retrieved_at": "2026-08-28T21:14:14.414671+00:00"
-       }
-     },
-     "years": [
-       2019
-     ]
-   }
-   ```
+    ```text
+    {
+      "created_at": "2026-09-02T08:23:28.437587+00:00",
+      "payload_sha256": "8a6eed10875a87fcd5faedece760bc461aa5926113ba1686613728c8c27d30bf",
+      "row_count": 290914,
+      "schema_hash": "0a95f2c54852817a9db1a2174cffa5bd371d601e5d137a37cb27491182367df9",
+      "tossd_reader_version": "0.1.0",
+      "vintages": {
+        "2019": {
+          "etag": "\"69e6ac86-347a653\"",
+          "retrieved_at": "2026-08-28T21:14:14.414671+00:00"
+        }
+      },
+      "years": [
+        2019
+      ]
+    }
+    ```
 
-   Matching `etag` values confirm identical data releases. A mismatched `etag` means re-verify, not necessarily new data. The publisher's host doesn't always serve a stable ETag format for unchanged files.
+    Matching `etag` values confirm identical data releases. A mismatched `etag` indicates the source file should be re-verified, because some server configurations alter ETags across requests without underlying content changes.
 
-6. **Year coverage.** `year_min`, `year_max`, and `n_years` cover this too. Confirm both figures span the same set of reporting years. A figure produced before an annual release reflects a narrower span than `reconcile()` shows for the current data. `reconcile()` also works on a multi-year frame. `year_min`, `year_max`, and `n_years` then span the full range.
+6. **Check the reporting year range.** `year_min`, `year_max`, and `n_years` report the temporal range. Confirm both figures span the same set of reporting years. A figure produced before an annual release reflects a narrower span than `reconcile()` shows for current data. On multi-year frames, `year_min`, `year_max`, and `n_years` span the entire query window.
 
 ## Verify it worked
 

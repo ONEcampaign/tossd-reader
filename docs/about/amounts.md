@@ -1,6 +1,6 @@
 # About the amount columns
 
-Published TOSSD datasets record financial transactions across eight numeric amount fields, expressed in thousands of US dollars. The `minimal` column preset includes all eight fields. `get_tossd()` takes a `units=` argument with three options: `"usd_thousand"` (the default, matching the published scale), `"usd_million"`, and `"usd"` for plain US dollars. The `unit` metadata column accompanies every DataFrame to record which scale is active.
+Published TOSSD datasets record financial transactions across eight numeric amount fields, expressed in thousands of US dollars. The `minimal` column preset includes all eight fields. The `units=` argument on `get_tossd()` accepts `"usd_thousand"` (the default matching the published scale), `"usd_million"`, or `"usd"` for plain US dollars. The `unit` metadata column accompanies every DataFrame to record which scale is active.
 
 ```python
 import tossd_reader as tossd
@@ -93,8 +93,8 @@ Net financial flows equal gross disbursements minus reflows (`usd_disbursement -
 TOSSD measures mobilised private finance as an indicator of private capital leverage in sustainable development. Official headline disbursement totals for Pillar I and Pillar II reflect official direct resources in `usd_disbursement`.
 
 <!-- prettier-ignore -->
-!!! warning "Heads up"
-    Do not add `usd_amount_mobilised` directly to `usd_disbursement`. The `usd_amount_mobilised` field measures private commercial capital mobilised through official interventions, whereas `usd_disbursement` captures direct official fiscal transfers.
+!!! warning "Keep mobilised private finance separate from disbursements"
+    Keep `usd_amount_mobilised` separate from `usd_disbursement`. The `usd_amount_mobilised` field measures private commercial capital mobilised through official interventions, while `usd_disbursement` captures direct official fiscal transfers.
 
 ## Related
 

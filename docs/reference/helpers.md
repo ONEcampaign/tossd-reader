@@ -2,9 +2,9 @@
 
 The `tossd_reader.analysis` module provides analytical helper functions for working with `get_tossd()` outputs. Six functions accept a `pandas.DataFrame` and return a new DataFrame, leaving the input data unchanged. Three take no DataFrame: `get_structural_breaks` (call it with an optional `years=` to narrow the packaged structural-break reference table to the years a query touches, or with no arguments for all five rows), `get_recipient_groups_version`, and `get_instrument_groups_version` (each returns the version stamp of a packaged classification table). All nine functions operate entirely offline without network access.
 
-Function names spell one verb per operation, used consistently across the package: `get_` fetches, `add_` annotates rows, `explode_` expands rows, `extract_` derives flag columns, `filter_` subsets rows.
+Function names use one verb per operation consistently across the package (`get_` fetches, `add_` annotates rows, `explode_` expands rows, `extract_` derives flag columns, and `filter_` subsets rows).
 
-Each DataFrame helper validates required columns before processing and raises a `ValueError` naming any missing column. When a missing column ships in the `"analysis"` preset, the message also names the fix:
+Each DataFrame helper validates required columns before processing and raises a `ValueError` naming any missing column. When a missing column ships in the `"analysis"` preset, the message also names the fix.
 
 ```python
 tossd.explode_sdg(tossd.get_tossd(years=2024, columns="minimal"))
@@ -129,10 +129,7 @@ tossd.get_instrument_groups_version()
 'oecd-dac-cl15-2026-09-01/instrument-groups-methodology-v2'
 ```
 
-The `NaN` row (pseudo-aggregates plus blank-concessionality loans) carries
-roughly 20% of 2024 dollar volume. `dropna=False` keeps it visible.
-pandas' default `groupby` drops `NaN` keys, which silently loses that
-share.
+The `NaN` row (pseudo-aggregates plus blank-concessionality loans) carries roughly 20% of 2024 dollar volume. `dropna=False` keeps it visible. pandas' default `groupby` drops `NaN` keys, which silently loses that share.
 
 <!-- prettier-ignore -->
 ::: tossd_reader.analysis.filter_provider_costs

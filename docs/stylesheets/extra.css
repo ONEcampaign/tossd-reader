@@ -1,0 +1,4 @@
+/* Prevent inline code in table cells from wrapping mid-word */
+.md-typeset table td code {
+  white-space: nowrap;
+}

@@ -64,11 +64,11 @@ n_columns                    19
 dtype: object
 ```
 
-Setting `columns="minimal"` selects 19 core fields covering activity identifiers, provider and recipient names, pillars, and financial amounts. Setting `units="usd_million"` converts values from thousands to millions of US dollars for direct alignment with headline reporting figures. `df.tossd.summary()` is a quick way to confirm a query landed the way you expected before analysing it: 4802 rows, split between pillars, with 77 rows already flagged `is_aggregate`. Step 2 explains why that flag matters.
+Setting `columns="minimal"` selects 19 core fields covering activity identifiers, provider and recipient names, pillars, and financial amounts. Setting `units="usd_million"` converts values from thousands to millions of US dollars for direct alignment with headline reporting figures. `df.tossd.summary()` confirms a query landed as expected before analysis, displaying 4,802 rows split between pillars with 77 rows flagged `is_aggregate`. Step 2 explains why that flag matters.
 
 ## Step 2: Rank the providers
 
-A plain `groupby` over `provider_name` looks like the fastest way to rank Senegal's funders.
+Grouping directly by `provider_name` demonstrates standard aggregation behaviour.
 
 ```python
 sen.groupby("provider_name", observed=True)["usd_disbursement"].sum().sort_values(
@@ -88,7 +88,7 @@ Name: usd_disbursement, dtype: float64
 
 Two problems sit in that table. `Aggregate` is provider code 0. It combines bilateral non-concessional flows and export credits reported without naming an individual bilateral reporter, and TOSSD Secretariat estimates built from OECD DAC reporting for providers such as Germany and the World Bank Group. The summary above already counted its 77 rows. And `provider_name` alone merges distinct reporting entities that share a family label. The African Development Bank Group covers the African Development Bank (provider code 913) and the African Development Fund (914). 164.1 combines both providers' totals into one row.
 
-`rank_entities()` fixes both by default: it drops `is_aggregate` rows before summing, and groups by `(provider_code, provider_name)` so shared-name entities stay apart.
+`rank_entities()` resolves both issues by default, dropping `is_aggregate` rows before summing and grouping by `(provider_code, provider_name)` so shared-name entities stay distinct.
 
 ```python
 ranked = sen.tossd.rank_entities(top=5).round(1)
@@ -125,12 +125,13 @@ multi.shape
 ```
 
 <!-- prettier-ignore -->
-!!! warning "Heads up"
+!!! warning "Initial dataset download sizes"
+
     Each annual dataset downloads during its initial query (55MB to 91MB per year). Subsequent queries for cached years execute immediately from disk.
 
 ## Step 4: Switch to constant prices
 
-Nominal values in `usd_disbursement` reflect price levels of the reporting year, so a year-over-year comparison mixes real funding changes with inflation. `compare_years()` sums one value column per year and reports the swing as `pct_change`. By default it also restricts every year to the `(provider_code, provider_name)` pairs that reported to Senegal in all six years, so a provider that only shows up in some years doesn't skew the comparison.
+Nominal values in `usd_disbursement` reflect price levels of the reporting year, so a year-over-year comparison mixes real funding changes with inflation. `compare_years()` sums one value column per year and reports the swing as `pct_change`. By default it also restricts every year to the `(provider_code, provider_name)` pairs that reported to Senegal in all six years, so that only providers reporting across all six years are included.
 
 ```python
 nominal = multi.tossd.compare_years(value="usd_disbursement").round(1)
@@ -210,6 +211,6 @@ The exported file carries `year`, `usd_disbursement_deflated`, `n_providers`, an
 ## What's next
 
 - [How to rank providers by disbursement](../how-to/rank-providers.md) covers `dimension=` for ranking recipients or sectors instead of providers, and `include_aggregates=True` for when aggregate rows belong in the total.
-- [How to compare TOSSD totals across years](../how-to/compare-years.md) covers `cohort="all"`, which counts every reporting provider each year rather than a consistent cohort.
+- [How to compare TOSSD totals across years](../how-to/compare-years.md) covers `cohort="all"`, which counts every reporting provider each year.
 - [Why TOSSD totals rise](../about/comparability.md) explains provider base expansion and sub-pillar adoption behind the structural breaks table.
 - [Build an extract someone else can reproduce](reproducible-extract.md) demonstrates how to package analytical datasets into parquet files with provenance manifests.
