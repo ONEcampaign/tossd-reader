@@ -1,0 +1,3418 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Python package to access TOSSD activity-level data">
+      
+      
+      
+        <link rel="canonical" href="https://onecampaign.github.io/tossd-reader/dev/reference/helpers/">
+      
+      
+        <link rel="prev" href="../export/">
+      
+      
+        <link rel="next" href="../query/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.57">
+    
+    
+      
+        <title>Helpers - tossd-reader</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.5da3a30f.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#helpers" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="tossd-reader" class="md-header__button md-logo" aria-label="tossd-reader" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            tossd-reader
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Helpers
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="Search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+        <a href="https://github.com/ONEcampaign/tossd-reader" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="tossd-reader" class="md-nav__button md-logo" aria-label="tossd-reader" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
+
+    </a>
+    tossd-reader
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ONEcampaign/tossd-reader" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  tossd-reader
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  About
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  About
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../about/amounts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  About the amount columns
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../about/comparability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Why TOSSD totals rise
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../about/pillars-and-aggregates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  About pillars and aggregate rows
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../about/reproducibility/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  About reproducibility and the cache
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  How to
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  How to
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/aggregate-by-recipient-group/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  How to aggregate disbursements by recipient country groups
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/analyse-by-keyword/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  How to measure climate and gender finance with keyword markers
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/analyse-by-sdg/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  How to split disbursements across SDG goals
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/analyse-by-subpillar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  How to split Pillar II into its sub-pillars
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/analyse-instruments-and-debt/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  How to analyse financial instruments and concessionality
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/compare-years/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  How to compare TOSSD totals across years
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/filter-by-sector/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  How to filter by sector
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/join-other-datasets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  How to join TOSSD to other country datasets
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/look-up-codes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  How to look up codes and names
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/provider-costs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  How to measure Pillar II expenditures in the provider country
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/rank-providers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  How to rank providers by disbursement
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/read-published-columns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  How to read the published columns unchanged
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/reconcile-a-figure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  How to check a figure against the published total
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/work-offline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  How to work offline and manage the cache
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Reference
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Reference
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../columns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Columns, presets, and units
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Configuration, warnings, and errors
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Export
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Helpers
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Helpers
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#tossd_reader.analysis.explode_sdg" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        explode_sdg
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tossd_reader.analysis.extract_keywords" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        extract_keywords
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tossd_reader.analysis.add_iso3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        add_iso3
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tossd_reader.analysis.add_recipient_group" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        add_recipient_group
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tossd_reader.analysis.get_recipient_groups_version" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        get_recipient_groups_version
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tossd_reader.analysis.add_instrument_group" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        add_instrument_group
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tossd_reader.analysis.get_instrument_groups_version" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        get_instrument_groups_version
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tossd_reader.analysis.filter_provider_costs" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        filter_provider_costs
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tossd_reader.analysis.get_structural_breaks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        get_structural_breaks
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Next
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../query/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Query
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verbs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Verbs
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Tutorials
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Tutorials
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/first-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Build a six-year Senegal disbursement trend
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tutorials/reproducible-extract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Build an extract someone else can reproduce
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#tossd_reader.analysis.explode_sdg" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        explode_sdg
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tossd_reader.analysis.extract_keywords" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        extract_keywords
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tossd_reader.analysis.add_iso3" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        add_iso3
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tossd_reader.analysis.add_recipient_group" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        add_recipient_group
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tossd_reader.analysis.get_recipient_groups_version" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        get_recipient_groups_version
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tossd_reader.analysis.add_instrument_group" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        add_instrument_group
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tossd_reader.analysis.get_instrument_groups_version" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        get_instrument_groups_version
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tossd_reader.analysis.filter_provider_costs" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        filter_provider_costs
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tossd_reader.analysis.get_structural_breaks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        get_structural_breaks
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Next
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+  
+  
+
+
+<h1 id="helpers">Helpers</h1>
+<p>The <code>tossd_reader.analysis</code> module provides analytical helper functions for working with <code>get_tossd()</code> outputs. Six functions accept a <code>pandas.DataFrame</code> and return a new DataFrame, leaving the input data unchanged. Three take no DataFrame: <code>get_structural_breaks</code> (call it with an optional <code>years=</code> to narrow the packaged structural-break reference table to the years a query touches, or with no arguments for all five rows), <code>get_recipient_groups_version</code>, and <code>get_instrument_groups_version</code> (each returns the version stamp of a packaged classification table). All nine functions operate entirely offline without network access.</p>
+<p>Function names use one verb per operation consistently across the package (<code>get_</code> fetches, <code>add_</code> annotates rows, <code>explode_</code> expands rows, <code>extract_</code> derives flag columns, and <code>filter_</code> subsets rows).</p>
+<p>Each DataFrame helper validates required columns before processing and raises a <code>ValueError</code> naming any missing column. When a missing column ships in the <code>"analysis"</code> preset, the message also names the fix.</p>
+<div class="language-python highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">tossd</span><span class="o">.</span><span class="n">explode_sdg</span><span class="p">(</span><span class="n">tossd</span><span class="o">.</span><span class="n">get_tossd</span><span class="p">(</span><span class="n">years</span><span class="o">=</span><span class="mi">2024</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="s2">"minimal"</span><span class="p">))</span>
+</code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>ValueError: explode_sdg() needs column(s) sdg_codes_raw, not present in df. Re-query with columns='analysis', or add sdg_codes_raw to your columns= list.
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Helper</th>
+<th>Input Requirements</th>
+<th>Minimum Preset</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>explode_sdg</code></td>
+<td><code>sdg_codes_raw</code> (plus <code>value</code> when <code>value=</code> is given)</td>
+<td><code>"analysis"</code></td>
+<td>Expanded DataFrame with <code>sdg_code</code>, <code>sdg_goal</code>, <code>sdg_is_target</code>, <code>sdg_weight</code>, and (with <code>value=</code>) <code>{value}_weighted</code></td>
+</tr>
+<tr>
+<td><code>extract_keywords</code></td>
+<td><code>keywords_raw</code></td>
+<td><code>"analysis"</code></td>
+<td>DataFrame with 12 <code>kw_&lt;marker&gt;</code> boolean columns</td>
+</tr>
+<tr>
+<td><code>add_iso3</code></td>
+<td><code>provider_code</code> or <code>recipient_code</code></td>
+<td><code>"minimal"</code></td>
+<td>DataFrame with <code>provider_iso3</code> or <code>recipient_iso3</code> categoricals</td>
+</tr>
+<tr>
+<td><code>add_recipient_group</code></td>
+<td><code>recipient_code</code></td>
+<td><code>"minimal"</code></td>
+<td>DataFrame with a <code>recipient_group</code> categorical (<code>scheme="ldc"</code>/<code>"income"</code>/<code>"region"</code>)</td>
+</tr>
+<tr>
+<td><code>get_recipient_groups_version</code></td>
+<td>None</td>
+<td>n/a</td>
+<td>Version stamp (<code>str</code>) of the packaged recipient-groups table</td>
+</tr>
+<tr>
+<td><code>add_instrument_group</code></td>
+<td><code>finance_instrument_code</code>, <code>concessionality_flag</code></td>
+<td><code>"analysis"</code></td>
+<td>DataFrame with an <code>instrument_group</code> categorical</td>
+</tr>
+<tr>
+<td><code>get_instrument_groups_version</code></td>
+<td>None</td>
+<td>n/a</td>
+<td>Version stamp (<code>str</code>) of the packaged instrument-groups table</td>
+</tr>
+<tr>
+<td><code>filter_provider_costs</code></td>
+<td><code>tossd_pillar</code>, <code>sector_code</code></td>
+<td><code>"analysis"</code></td>
+<td>DataFrame filtered to Pillar II domestic expenditures (sectors 910 and 930)</td>
+</tr>
+<tr>
+<td><code>get_structural_breaks</code></td>
+<td>None; optional <code>years=</code> narrows the rows</td>
+<td>n/a</td>
+<td>Reference DataFrame of dataset discontinuities (5 rows, fewer with <code>years=</code>)</td>
+</tr>
+</tbody>
+</table>
+<!-- prettier-ignore -->
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<a id="tossd_reader.analysis.explode_sdg"></a>
+    <div class="doc doc-contents first">
+
+        <p>Explode <code>sdg_codes_raw</code> into one row per SDG code token.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>df</code>
+            </td>
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A <code>get_tossd()</code>-shaped frame carrying <code>sdg_codes_raw</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>value</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>An amount column name. When given, the result gains a sibling
+<code>{value}_weighted</code> column (<code>df[value] * sdg_weight</code>) alongside
+the untouched original <code>value</code> column -- never overwriting it,
+since the same column name would mean a different thing
+depending on what last touched the frame. <code>None</code> (the default):
+today's behaviour, byte-identical output.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A new frame: every input column, plus one row per <code>;</code>-delimited SDG</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>token found in <code>sdg_codes_raw</code> -- <code>sdg_code</code> (the token exactly as</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>published), <code>sdg_goal</code> (<code>Int8</code>, the token's integer goal part),</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>sdg_is_target</code> (<code>bool</code>, whether the token names a specific target</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>rather than the goal as a whole), and <code>sdg_weight</code> (<code>float64</code>,</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>1 / n</code> for the <code>n</code> tokens that source row carried, so a grouped sum</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>of <code>amount * sdg_weight</code> renormalises to that row's original</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>amount). When <code>value</code> is given, also <code>{value}_weighted</code></p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>(<code>df[value] * sdg_weight</code>, <code>float64</code>) -- a grouped sum of it equals</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>the SDG-tagged subset's original <code>value</code> total, the same</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>renormalisation identity <code>sdg_weight</code> already gives any ad hoc</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>amount * sdg_weight</code> multiplication, just precomputed and named.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Rows with no SDG tag at all (an empty or null <code>sdg_codes_raw</code>)</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>contribute nothing to the result: the exploded frame's weighted</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>total equals only the SDG-tagged subset of <code>df</code>'s totals, never</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>df</code>'s grand total. Row order is otherwise preserved.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#ValueError">ValueError</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>df</code> has no <code>sdg_codes_raw</code> column (or, when <code>value</code> is
+given, no <code>value</code> column); <code>value</code> is given but <code>df[value]</code> isn't
+numeric-dtyped; or <code>df</code> already carries one of this function's
+own output columns (<code>sdg_code</code>, <code>sdg_goal</code>, <code>sdg_is_target</code>,
+<code>sdg_weight</code>, and <code>{value}_weighted</code> when <code>value</code> is given) --
+re-running <code>explode_sdg</code> on its own output would otherwise
+silently duplicate them.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>import pandas as pd
+from tossd_reader import explode_sdg
+df = pd.DataFrame({"sdg_codes_raw": ["1;4", ""]})
+result = explode_sdg(df)
+result["sdg_code"].tolist()
+['1', '4']
+result["sdg_weight"].tolist()
+[0.5, 0.5]</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+    </div>
+
+</div><!-- prettier-ignore -->
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<a id="tossd_reader.analysis.extract_keywords"></a>
+    <div class="doc doc-contents first">
+
+        <p>Add one boolean <code>kw_&lt;marker&gt;</code> column per packaged keyword marker.</p>
+<p>Matching casefolds each <code>keywords_raw</code> token and strips a leading <code>#</code>,
+so <code>"COVID-19"</code> and <code>"#COVID-19"</code> both count as the <code>covid_19</code> marker.
+Only the fixed 12-marker vocabulary shipped as <code>_data/keyword_markers.csv</code>
+is recognised; every other token in <code>keywords_raw</code> (315 distinct tokens
+across the full vocabulary) is ignored.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>df</code>
+            </td>
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A <code>get_tossd()</code>-shaped frame carrying <code>keywords_raw</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>df</code> plus one <code>kw_&lt;marker&gt;</code> boolean column per packaged marker</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>(<code>kw_gender</code>, <code>kw_adaptation</code>, <code>kw_mitigation</code>, <code>kw_biodiversity</code>,</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>kw_ppr_preparedness</code>, <code>kw_ppr_response</code>, <code>kw_covid_19</code>,</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>kw_refugees_hostcommunities</code>, <code>kw_idps_hostcommunities</code>,</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>kw_voluntaryrefugeereturn_reintegration</code>,</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>kw_transnational_benefits_global</code>, <code>kw_non_17_3_1</code>).</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>keywords_raw</code> itself is left untouched.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#ValueError">ValueError</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>df</code> has no <code>keywords_raw</code> column.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>import pandas as pd
+from tossd_reader import extract_keywords
+df = pd.DataFrame({"keywords_raw": ["#GENDER", "#MITIGATION"]})
+extract_keywords(df)["kw_gender"].tolist()
+[True, False]</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+    </div>
+
+</div><div class="language-python highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">tossd_reader</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tossd</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">sen_a</span> <span class="o">=</span> <span class="n">tossd</span><span class="o">.</span><span class="n">get_tossd</span><span class="p">(</span><span class="n">years</span><span class="o">=</span><span class="mi">2024</span><span class="p">,</span> <span class="n">recipients</span><span class="o">=</span><span class="s2">"Senegal"</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="s2">"analysis"</span><span class="p">)</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">kw</span> <span class="o">=</span> <span class="n">tossd</span><span class="o">.</span><span class="n">extract_keywords</span><span class="p">(</span><span class="n">sen_a</span><span class="p">)</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">kw_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">kw</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"kw_"</span><span class="p">)]</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="nb">print</span><span class="p">(</span><span class="n">kw</span><span class="p">[</span><span class="n">kw_cols</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">6</span><span class="p">))</span>
+</code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kw_gender              1308
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>kw_adaptation           599
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>kw_biodiversity         398
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>kw_mitigation           378
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>kw_ppr_preparedness     119
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>kw_covid_19              83
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>dtype: int64
+</code></pre></div>
+<!-- prettier-ignore -->
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<a id="tossd_reader.analysis.add_iso3"></a>
+    <div class="doc doc-contents first">
+
+        <p>Add <code>provider_iso3</code>/<code>recipient_iso3</code> via resolvekit's OECD numeric-code link.</p>
+<p>ISO3 is looked up by code. <code>provider_code</code> <code>913</code> and <code>914</code> both carry
+<code>provider_name</code> "African Development Bank Group" in the published files,
+as do <code>909</code> and <code>1019</code> for "Inter-American Development Bank Group", so a
+name-keyed join would collapse distinct providers into one row. The
+packaged codelist names them apart, so codes carry no such collision.</p>
+<p>Uses <code>resolvekit</code>'s bundled <code>geo.countries</code> module, which runs entirely
+offline, with no download step. That module carries the OECD DAC
+provider/recipient numeric codelists as the <code>oecd:provider</code> and
+<code>oecd:recipient</code> code systems, linked to <code>iso3</code>, and its link was
+checked against all 159 packaged provider codes and all 177 recipient
+codes with no mismatch against the packaged codelist's own <code>iso3</code>
+column.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>df</code>
+            </td>
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A <code>get_tossd()</code>-shaped frame carrying <code>provider_code</code> and/or
+<code>recipient_code</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>df</code> plus <code>provider_iso3</code> and/or <code>recipient_iso3</code> (<code>category</code></p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>dtype), for whichever of <code>provider_code</code>/<code>recipient_code</code> is</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>present. Aggregates (code <code>0</code>), multilaterals, and TOSSD-only</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>entities all map to <code>NA</code>.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#ValueError">ValueError</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Neither <code>provider_code</code> nor <code>recipient_code</code> is present
+in <code>df</code>.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>import pandas as pd
+from tossd_reader import add_iso3
+df = pd.DataFrame({"recipient_code": [55]})
+add_iso3(df)["recipient_iso3"].tolist()
+['TUR']</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+    </div>
+
+</div><!-- prettier-ignore -->
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<a id="tossd_reader.analysis.add_recipient_group"></a>
+    <div class="doc doc-contents first">
+
+        <p>Add <code>recipient_group</code>, joined from the packaged recipient-groups table.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>df</code>
+            </td>
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A <code>get_tossd()</code>-shaped frame carrying <code>recipient_code</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>scheme</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a>[&#39;ldc&#39;, &#39;income&#39;, &#39;region&#39;]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Which grouping to apply -- <code>"ldc"</code> (Least Developed
+Countries / Other Developing Countries), <code>"income"</code> (World Bank
+income group), or <code>"region"</code> (the UN region TOSSD itself
+publishes per recipient, the same value <code>get_tossd()</code>'s own
+<code>region_name</code> column carries).</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;ldc&#39;</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>df</code> plus <code>recipient_group</code> (<code>category</code>), one value per</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>recipient_code</code> read from the table <code>get_recipient_groups_version()</code></p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>names.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Regional/multi-country recipient codes (e.g. "Europe, regional",</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>"Global" -- codes with no <code>iso3</code> in the packaged recipient codelist)</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>carry an explicit <code>"Regional / Multi-country Unallocated"</code> value under</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>"ldc"</code>/<code>"income"</code>; <code>"region"</code> never produces it, since TOSSD</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>publishes a real region for these codes too. Six non-self-governing</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>territories the World Bank does not publish independent GNI data for</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>(Saint Helena, Montserrat, Cook Islands, Niue, Tokelau, Wallis and</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Futuna) carry <code>"Unclassified"</code> under <code>"income"</code> -- distinct from</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>"Regional / Multi-country Unallocated"</code>, since these are real,</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>single-territory codes, not aggregates.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A <code>recipient_code</code> absent from the packaged table (a TOSSD vintage</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>newer than the snapshot) resolves to <code>NA</code> and triggers a</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>once-per-code warning rather than an error, so a full-frame call</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>stays usable.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>São Tomé and Príncipe (<code>recipient_code</code> 268) graduated from LDC</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>status on 2024-12-06. The packaged table reflects the <em>current</em> LDC</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>list, so it classifies STP as <code>"Other Developing Countries"</code> even</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>for 2024 rows reported before that date -- an analyst reconciling</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>against a 2024-vintage LDC classification should treat STP as LDC</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>for that year instead of trusting this column.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#ValueError">ValueError</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>df</code> has no <code>recipient_code</code> column, <code>scheme</code> is not one
+of <code>"ldc"</code>/<code>"income"</code>/<code>"region"</code>, or <code>df</code> already carries a
+<code>recipient_group</code> column.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>import pandas as pd
+from tossd_reader import add_recipient_group
+df = pd.DataFrame({"recipient_code": [269]})  # Senegal
+add_recipient_group(df)["recipient_group"].tolist()
+['Least Developed Countries']</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+    </div>
+
+</div><!-- prettier-ignore -->
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<a id="tossd_reader.analysis.get_recipient_groups_version"></a>
+    <div class="doc doc-contents first">
+
+        <p>Return the packaged recipient-groups table's version stamp.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The composite stamp recorded in <code>_data/recipient_groups_version.json</code></p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>(its <code>"version"</code> field), e.g. <code>"ldc-2024review/wb-fy27"</code> --</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>independently naming the UN LDC-list vintage (<code>ldc</code>/<code>region</code> schemes</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>don't move on their own cadence) and the World Bank income</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>classification's fiscal year (<code>income</code> scheme) the packaged table</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>was built from.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div><div class="language-python highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">tossd_reader</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tossd</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">df</span> <span class="o">=</span> <span class="n">tossd</span><span class="o">.</span><span class="n">get_tossd</span><span class="p">(</span><span class="n">years</span><span class="o">=</span><span class="mi">2024</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="s2">"analysis"</span><span class="p">,</span> <span class="n">units</span><span class="o">=</span><span class="s2">"usd_million"</span><span class="p">)</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">rg</span> <span class="o">=</span> <span class="n">tossd</span><span class="o">.</span><span class="n">add_recipient_group</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">scheme</span><span class="o">=</span><span class="s2">"ldc"</span><span class="p">)</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">rg</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">"recipient_group"</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="s2">"usd_disbursement"</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>Least Developed Countries                88056.9
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>Other Developing Countries              262225.0
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>Regional / Multi-country Unallocated    147394.1
+</code></pre></div>
+<div class="language-python highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">tossd</span><span class="o">.</span><span class="n">get_recipient_groups_version</span><span class="p">()</span>
+</code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>'ldc-2024review/wb-fy27'
+</code></pre></div>
+<!-- prettier-ignore -->
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<a id="tossd_reader.analysis.add_instrument_group"></a>
+    <div class="doc doc-contents first">
+
+        <p>Add <code>instrument_group</code>, joined from the packaged instrument-groups table.</p>
+<p><code>finance_instrument_code</code> alone decides every group except the
+debt-instrument family (<code>420</code> "DEBT INSTRUMENTS" and its children <code>421</code>
+"Standard loan" through <code>425</code> "Other debt securities", plus <code>4221</code>
+"Loan-type reimbursable grant" and <code>4222</code> "Reflow-based reimbursable
+grant" -- both <code>422</code> "Reimbursable grant" sub-variants by name and
+real-data concessionality profile), which additionally needs
+<code>concessionality_flag</code>: flag <code>1</code> -&gt; <code>"Concessional Loans"</code>, flag <code>0</code> -&gt;
+<code>"Non-concessional Loans"</code>, a blank flag -&gt; <code>NA</code> (46 rows in the 2024
+vintage, spread across the debt codes, 17 of them on code <code>421</code>, the
+highest-volume debt instrument -- there is no separate
+concessional/non-concessional code, only the one flag column).</p>
+<p>Groups: <code>"Grants"</code> (<code>100</code>/<code>110</code>), <code>"Non-concessional Loans"</code> /
+<code>"Concessional Loans"</code> (the debt family, see above),
+<code>"Hybrid/Mezzanine"</code> (<code>430</code>-<code>434</code>, the mezzanine-finance family),
+<code>"Equity"</code> (<code>500</code>/<code>510</code>/<code>520</code>), <code>"Guarantees"</code> (<code>1000</code>/<code>1100</code>, plus
+<code>1101</code> "Individual loan guarantee" and <code>1102</code> "Loan portfolio
+guarantee" by name and real-data concessionality profile -- overwhelmingly
+blank, matching <code>1100</code>, not the debt family's mixed split),
+<code>"Direct Provider Spending"</code> (<code>2000</code>/<code>2100</code>, its own group -- not a
+transfer to a recipient at all), <code>"Subsidies"</code> (<code>3000</code>/<code>3100</code>), and
+<code>"Other Instruments"</code> (<code>310</code> "Capital subscription on deposit basis",
+orphaned in the codelist's own header hierarchy -- no <code>300</code> parent row
+exists unlike every other family; and <code>0</code> "NON FLOW ITEMS", 3 real rows
+across 2019-2024, one provider (Korea, <code>provider_code</code> 742), each
+carrying a real <code>usd_disbursement</code> -- OECD's own List 15 flags it
+CRS-only, and its name argues for excluding it from a financing-flow
+breakdown entirely, but it is a real, non-blank code on real rows with
+real dollar amounts, not a structurally-blank pseudo-aggregate, so it
+gets an honest bucket here rather than <code>NA</code>).</p>
+<p><code>100</code>, <code>110</code>, <code>310</code>, <code>420</code>-<code>425</code>, <code>430</code>-<code>434</code>, <code>500</code>, <code>510</code>, <code>520</code>,
+<code>1000</code>, <code>1100</code>, <code>2000</code>, <code>2100</code>, <code>3000</code>, <code>3100</code> come from the packaged
+<code>finance_instrument</code> codelist; <code>0</code>, <code>1101</code>, <code>1102</code>, <code>4221</code>, <code>4222</code> do
+not -- OECD's own live List 15 still flags all five <code>tossd="0"</code> (CRS-only)
+as of <code>get_instrument_groups_version()</code>'s fetch date, even though real
+2023-2024 TOSSD submissions carry them, so a codelist refresh alone can
+never add them (see <code>scripts/refresh_codelists.py</code>'s own <code>--check</code>,
+which reports zero drift against the live source). They are mapped
+directly here instead, from each code's official List-15 name and its
+real-data profile, distinguished from the codelist-sourced rows by the
+packaged table's own <code>source</code> column (<code>"codelist"</code>/<code>"observed"</code>) for
+anyone auditing where a mapping came from.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>df</code>
+            </td>
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A <code>get_tossd()</code>-shaped frame carrying <code>finance_instrument_code</code>
+and <code>concessionality_flag</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>df</code> plus <code>instrument_group</code> (<code>category</code>). A blank/<code>NA</code></p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>finance_instrument_code</code> (every pseudo-aggregate row --</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>provider_code == 0</code> -- carries one) resolves to <code>NA</code>, not an error,</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>so a full-frame call including aggregates stays usable. <code>NA</code> rows</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>carry material dollar volume of their own (pseudo-aggregates plus</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>blank-concessionality debt rows, roughly 20% of 2024 disbursements</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>combined) and pandas' own <code>groupby</code> drops <code>NaN</code> keys by default, so</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>totalling by <code>instrument_group</code> needs <code>dropna=False</code> or excluding</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>aggregates first to avoid silently losing that share.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#ValueError">ValueError</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>df</code> is missing <code>finance_instrument_code</code> or
+<code>concessionality_flag</code>, or already carries an <code>instrument_group</code>
+column.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="tossd_reader.exceptions.UnknownCodeError" href="../configuration/#tossd_reader.exceptions.UnknownCodeError">UnknownCodeError</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A non-null <code>finance_instrument_code</code> value is
+absent from the packaged table -- never silently grouped into
+<code>"Other Instruments"</code>. Reserved for a genuinely new or malformed
+code (a typo, or a future vintage's drift): every code observed
+in the six cached 2019-2024 TOSSD vintages is mapped, whether or
+not OECD's own codelist covers it yet.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>import pandas as pd
+from tossd_reader import add_instrument_group
+df = pd.DataFrame({
+...     "finance_instrument_code": [110],
+...     "concessionality_flag": [pd.NA],
+... })
+add_instrument_group(df)["instrument_group"].tolist()
+['Grants']</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+    </div>
+
+</div><!-- prettier-ignore -->
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<a id="tossd_reader.analysis.get_instrument_groups_version"></a>
+    <div class="doc doc-contents first">
+
+        <p>Return the packaged instrument-groups table's version stamp.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The composite stamp recorded in <code>_data/instrument_groups_version.json</code></p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>(its <code>"version"</code> field), e.g.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>"oecd-dac-cl15-2026-09-01/instrument-groups-methodology-v2"</code> --</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>independently naming the OECD DAC CRS++ "List 15: Type of finance"</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>fetch date the packaged <code>finance_instrument</code> codelist (and this</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>table) were checked against, and this project's own group-assignment</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>methodology revision, which moves independently of the OECD list</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>(v2 additionally maps the codes real submissions carry that List 15</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>itself doesn't yet flag <code>tossd</code>-applicable -- see</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>add_instrument_group</code>).</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div><div class="language-python highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">ig</span> <span class="o">=</span> <span class="n">tossd</span><span class="o">.</span><span class="n">add_instrument_group</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">ig</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">"instrument_group"</span><span class="p">,</span> <span class="n">dropna</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    <span class="s2">"usd_disbursement"</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>Concessional Loans           47194.6
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>Direct Provider Spending     49378.8
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>Equity                        2796.1
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>Grants                      200931.0
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>Guarantees                     882.3
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>Hybrid/Mezzanine               467.2
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>Non-concessional Loans       95923.0
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>Other Instruments                8.7
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>NaN                         100094.2
+</code></pre></div>
+<div class="language-python highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">tossd</span><span class="o">.</span><span class="n">get_instrument_groups_version</span><span class="p">()</span>
+</code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>'oecd-dac-cl15-2026-09-01/instrument-groups-methodology-v2'
+</code></pre></div>
+<p>The <code>NaN</code> row (pseudo-aggregates plus blank-concessionality loans) carries roughly 20% of 2024 dollar volume. <code>dropna=False</code> keeps it visible. pandas' default <code>groupby</code> drops <code>NaN</code> keys, which silently loses that share.</p>
+<!-- prettier-ignore -->
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<a id="tossd_reader.analysis.filter_provider_costs"></a>
+    <div class="doc doc-contents first">
+
+        <p>Filter pillar-2 rows to the provider-costs carve-out.</p>
+<p>Sector family 930 ("Domestic expenditures for refugees/asylum seekers")
+records spending inside the provider's own territory by definition.
+Sector family 910 ("Administrative Costs of Donors") is a proxy for
+donor administrative overhead, which predominantly stays in the provider
+country, though some administrative costs are incurred at the recipient
+end. Together the two are the share that the AidWatch, Oxfam, and
+ActionAid critique of TOSSD Pillar II identifies as the domestic-spending
+share of Pillar II.</p>
+<p>On the 2024 vintage the two families cover 27,275 of 155,908 pillar-2
+rows (17.5%), 35.6% of pillar-2 gross disbursements, and 31.0% of
+pillar-2 commitments, consistent with the roughly 30% share that
+critique attributes to these costs. Sector family 720 ("Humanitarian
+Assistance") sits outside the carve-out. Those rows are in-country
+humanitarian aid delivered by agencies such as UNHCR and UNICEF.</p>
+<p>TOSSD's Reporting Instructions describe this category as "expenditures
+in the provider country". Analysts commonly call this spending
+"in-donor" costs. TOSSD does not publish a ready-made carve-out
+matching that label, so this is a heuristic built from sector families
+910 and 930 that approximate it.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>df</code>
+            </td>
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A <code>get_tossd()</code>-shaped frame carrying <code>tossd_pillar</code> and
+<code>sector_code</code> (<code>sector_code</code> is present under
+<code>columns="analysis"</code>/<code>"all"</code>, or any explicit <code>columns=</code> list
+naming it; <code>tossd_pillar</code> is always present in <code>get_tossd()</code>
+output).</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>df</code> filtered to <code>tossd_pillar == 2</code> rows whose <code>sector_code</code> is</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>910</code> ("Administrative Costs of Donors") or <code>930</code> ("Domestic</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>expenditures for refugees/asylum seekers").</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#ValueError">ValueError</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>df</code> is missing <code>tossd_pillar</code> or <code>sector_code</code>.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>import pandas as pd
+from tossd_reader import filter_provider_costs
+df = pd.DataFrame({
+...     "tossd_pillar": [2, 2, 1],
+...     "sector_code": [910, 220, 910],
+... })
+filter_provider_costs(df)["sector_code"].tolist()
+[910]</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+    </div>
+
+</div><!-- prettier-ignore -->
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<a id="tossd_reader.analysis.get_structural_breaks"></a>
+    <div class="doc doc-contents first">
+
+        <p>Return the packaged structural-breaks reference table.</p>
+<p>Documents five verified TOSSD-vintage discontinuities relevant to
+cross-year analysis: sub-pillar tagging's 2022 trace appearance and
+2023 partial rollout, R&amp;D modality (<code>K02</code>)'s 2021 introduction, reporter
+base growth spanning 2019-2024, and the 2026 RDRM methodology change.
+This is reference data for a caller to consult -- it does not validate
+or warn against any particular query.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>years</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a> | <a class="autorefs autorefs-external" title="collections.abc.Iterable" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterable">Iterable</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a>] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A single year, an iterable of years, or <code>None</code> (the
+default) for every row. When given, keeps only the rows whose
+<code>[break_year, end_year]</code> interval intersects at least one
+requested year -- so <code>get_structural_breaks(years=query_years)</code>
+names only the breaks relevant to a <code>get_tossd(years=query_years)</code>
+call.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>A new <code>pandas.DataFrame</code> (a copy of the cached table, so editing it</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>leaves later calls unaffected) with columns <code>dimension</code>,</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>break_year</code>, <code>end_year</code>, <code>description</code>, <code>source</code> -- all 5 rows with</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>years=None</code>, fewer (or none) once <code>years=</code> narrows them. For the</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>four discrete breaks <code>end_year</code> equals <code>break_year</code>; the</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>reporters</code> row's <code>end_year</code> (2024) marks the end of that row's</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>continuous 2019-2024 drift, so every year from <code>break_year</code> through</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>end_year</code> counts as affected.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>from tossd_reader import get_structural_breaks
+breaks = get_structural_breaks(years=2026)
+breaks["dimension"].tolist()
+['methodology']</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+    </div>
+
+</div><div class="language-python highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">tossd_reader</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tossd</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="n">breaks</span> <span class="o">=</span> <span class="n">tossd</span><span class="o">.</span><span class="n">get_structural_breaks</span><span class="p">()</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="nb">print</span><span class="p">(</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    <span class="n">breaks</span><span class="p">[[</span><span class="s2">"dimension"</span><span class="p">,</span> <span class="s2">"break_year"</span><span class="p">,</span> <span class="s2">"end_year"</span><span class="p">,</span> <span class="s2">"description"</span><span class="p">]]</span><span class="o">.</span><span class="n">to_string</span><span class="p">(</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>        <span class="n">index</span><span class="o">=</span><span class="kc">False</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    <span class="p">)</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="p">)</span>
+</code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>  dimension  break_year  end_year                                                                                                                                                         description
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a> sub_pillar        2022      2022                                                                                Sub-pillar tagging (Tossdpillar2 21/22) first appears as trace data: 24 rows in 2022
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a> sub_pillar        2023      2023                                           Sub-pillar coverage ~51% of pillar-2 rows in 2023; ~99% in 2024 -- cross-year sub-pillar analysis is only clean from 2024
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>   modality        2021      2021                                                                                                                             Modality code K02 first appears in 2021
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>  reporters        2019      2024 Reporter base grows from 97 (2019) to 130 (2024) distinct provider codes, counting provider_code != 0; apparent growth in totals partly reflects reporting coverage
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>methodology        2026      2026                                              RDRM (revised debt-relief reporting methodology) takes effect May 2026 -- applies to vintages published from that date
+</code></pre></div>
+<p>The table's fifth column, <code>source</code>, names the verification reference for each discontinuity.</p>
+<p>Pass <code>years=</code> to narrow the table to breaks that intersect a query's own years, so <code>get_structural_breaks(years=query_years)</code> names only what's relevant to a matching <code>get_tossd(years=query_years)</code> call.</p>
+<div class="language-python highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="n">tossd</span><span class="o">.</span><span class="n">get_structural_breaks</span><span class="p">(</span><span class="n">years</span><span class="o">=</span><span class="mi">2021</span><span class="p">)</span>
+</code></pre></div>
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>dimension  break_year  end_year                                                                                                                                                         description                                        source
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a> modality        2021      2021                                                                                                                             Modality code K02 first appears in 2021                      audit of published files
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>reporters        2019      2024 Reporter base grows from 97 (2019) to 130 (2024) distinct provider codes, counting provider_code != 0; apparent growth in totals partly reflects reporting coverage distinct provider_code in the published files
+</code></pre></div>
+<h2 id="next">Next</h2>
+<ul>
+<li><a href="../../how-to/analyse-by-sdg/">Split disbursements across SDG goals</a>. Practical workflow for <code>explode_sdg</code> with weighted sums.</li>
+<li><a href="../../how-to/analyse-by-keyword/">Measure climate and gender finance</a>. Working with the 12 policy marker columns.</li>
+<li><a href="../../how-to/provider-costs/">Measure Pillar II expenditures in the provider country</a>. In-donor cost methodology and sector breakdown.</li>
+<li><a href="../../how-to/join-other-datasets/">Join TOSSD to other country datasets</a>. Joining country data on <code>provider_iso3</code> and <code>recipient_iso3</code>.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":[],"search":"../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"nav":["index.md",{"Get started":[{"Your first analysis":"tutorials/first-analysis.md"},{"A reproducible extract":"tutorials/reproducible-extract.md"}]},{"How-to guides":[{"Look up provider and recipient codes":"how-to/look-up-codes.md"},{"Filter by sector, purpose, channel, or modality":"how-to/filter-by-sector.md"},{"Rank providers by disbursement":"how-to/rank-providers.md"},{"Compare totals across years":"how-to/compare-years.md"},{"Aggregate by recipient country groups":"how-to/aggregate-by-recipient-group.md"},{"Analyse financial instruments and concessionality":"how-to/analyse-instruments-and-debt.md"},{"Split disbursements across SDG goals":"how-to/analyse-by-sdg.md"},{"Measure climate and gender finance":"how-to/analyse-by-keyword.md"},{"Split Pillar II into sub-pillars":"how-to/analyse-by-subpillar.md"},{"Measure Pillar II expenditures in the provider country":"how-to/provider-costs.md"},{"Join TOSSD to other country datasets":"how-to/join-other-datasets.md"},{"Check a figure against published totals":"how-to/reconcile-a-figure.md"},{"Read published columns unchanged":"how-to/read-published-columns.md"},{"Work offline and manage the cache":"how-to/work-offline.md"}]},{"Reference":[{"Query":"reference/query.md"},{"Export":"reference/export.md"},{"Helpers":"reference/helpers.md"},{"Verbs":"reference/verbs.md"},{"Columns, presets, and units":"reference/columns.md"},{"Configuration, warnings, and errors":"reference/configuration.md"}]},{"Understanding the data":[{"Pillars and aggregate rows":"about/pillars-and-aggregates.md"},{"The amount columns":"about/amounts.md"},{"Why TOSSD totals rise":"about/comparability.md"},{"Reproducibility and the cache":"about/reproducibility.md"}]}],"provider":"mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.49251538.min.js"></script>
+      
+    
+  </body>
+</html>
