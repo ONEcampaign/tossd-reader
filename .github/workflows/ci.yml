@@ -93,6 +93,10 @@ jobs:
       - name: Run tests
         run: uv run pytest --cov='src/tossd_reader' --cov-report=xml --cov-report=term
 
+      - name: Run doctests
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        run: uv run pytest --doctest-modules src/tossd_reader --no-cov
+
       - name: Upload coverage
         uses: codecov/codecov-action@v7
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'

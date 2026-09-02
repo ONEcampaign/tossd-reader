@@ -11,6 +11,7 @@ except PackageNotFoundError:
     __version__ = "0.0.0"
 
 if TYPE_CHECKING:
+    from tossd_reader import codes as codes
     from tossd_reader._export import export as export
     from tossd_reader._export import load_export as load_export
     from tossd_reader._export import verify_export as verify_export
@@ -69,6 +70,7 @@ __all__ = [
     "add_recipient_group",
     "cache_info",
     "clear_cache",
+    "codes",
     "compare_years",
     "explode_sdg",
     "export",
@@ -96,7 +98,8 @@ __all__ = [
     "verify_export",
 ]
 
-_LAZY_ATTRS: dict[str, tuple[str, str]] = {
+_LAZY_ATTRS: dict[str, tuple[str, str | None]] = {
+    "codes": ("tossd_reader.codes", None),
     "get_tossd_raw": ("tossd_reader.fetch", "get_tossd_raw"),
     "get_vintages": ("tossd_reader.fetch", "get_vintages"),
     "get_tossd": ("tossd_reader.query", "get_tossd"),
@@ -150,14 +153,17 @@ def __getattr__(name: str) -> object:
     Keeps `import tossd_reader` itself free of network access and of any
     module (`fetch`, `_discovery`, `config`) that could open a socket, since
     none of those are imported until one of their exported names is actually
-    accessed.
+    accessed. A `None` `attr_name` (only `"codes"` today) means the whole
+    submodule is the public name -- `tossd_reader.codes.browse(...)`, not a
+    single flattened function -- so the import itself, not a `getattr` on
+    it, is the resolved value.
     """
     try:
         module_name, attr_name = _LAZY_ATTRS[name]
     except KeyError:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}") from None
-    module = __import__(module_name, fromlist=[attr_name])
-    return getattr(module, attr_name)
+    module = __import__(module_name, fromlist=[attr_name or module_name])
+    return module if attr_name is None else getattr(module, attr_name)
 
 
 def __dir__() -> list[str]:

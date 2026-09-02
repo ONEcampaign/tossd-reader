@@ -126,6 +126,21 @@ def rank_entities(
         ValueError: `df` is missing `{dimension}_code`, `{dimension}_name`,
             or `value`; `value` is not numeric; or (when
             `include_aggregates=False`) `df` has no `is_aggregate` column.
+
+    Example:
+        >>> import pandas as pd
+        >>> from tossd_reader import rank_entities
+        >>> df = pd.DataFrame({
+        ...     "provider_code": [1, 1, 2],
+        ...     "provider_name": ["Austria", "Austria", "France"],
+        ...     "usd_disbursement": [100.0, 50.0, 200.0],
+        ...     "is_aggregate": [False, False, False],
+        ... })
+        >>> result = rank_entities(df)
+        >>> result["provider_name"].tolist()
+        ['France', 'Austria']
+        >>> result["rank"].tolist()
+        [1, 2]
     """
     code_column = f"{dimension}_code"
     name_column = f"{dimension}_name"
@@ -245,6 +260,22 @@ def compare_years(
             is not `"consistent"`/`"all"`; (when `include_aggregates=False`)
             `df` has no `is_aggregate` column; or `cohort="consistent"` and
             no provider pair is present in every year.
+
+    Example:
+        >>> import pandas as pd
+        >>> from tossd_reader import compare_years
+        >>> df = pd.DataFrame({
+        ...     "year": [2019, 2020],
+        ...     "provider_code": [1, 1],
+        ...     "provider_name": ["Austria", "Austria"],
+        ...     "usd_disbursement_deflated": [100.0, 150.0],
+        ...     "is_aggregate": [False, False],
+        ... })
+        >>> result = compare_years(df)
+        >>> result["usd_disbursement_deflated"].tolist()
+        [100.0, 150.0]
+        >>> result["pct_change"].tolist()
+        [nan, 50.0]
     """
     analysis._require_columns(
         df, "year", "provider_code", "provider_name", value, func_name="compare_years"
@@ -366,6 +397,20 @@ def sdg_totals(
             sdg_totals() itself, naming sdg_totals() -- not a delegated
             `explode_sdg` message); or (when `include_aggregates=False`)
             `df` has no `is_aggregate` column.
+
+    Example:
+        >>> import pandas as pd
+        >>> from tossd_reader import sdg_totals
+        >>> df = pd.DataFrame({
+        ...     "sdg_codes_raw": ["1;4", "4"],
+        ...     "usd_disbursement": [100.0, 100.0],
+        ...     "is_aggregate": [False, False],
+        ... })
+        >>> result = sdg_totals(df, level="goal")
+        >>> result["sdg_goal"].tolist()
+        [4, 1]
+        >>> result["usd_disbursement"].tolist()
+        [150.0, 50.0]
     """
     analysis._require_columns(df, value, func_name="sdg_totals")
     _require_numeric_value(df, value, func_name="sdg_totals")
@@ -492,6 +537,20 @@ def keyword_totals(
             `value` is not numeric; a `markers=` name isn't recognised; or
             (when `include_aggregates=False`) `df` has no `is_aggregate`
             column.
+
+    Example:
+        >>> import pandas as pd
+        >>> from tossd_reader import keyword_totals
+        >>> df = pd.DataFrame({
+        ...     "keywords_raw": ["#GENDER", "#GENDER|#MITIGATION", ""],
+        ...     "usd_disbursement": [10.0, 20.0, 5.0],
+        ...     "is_aggregate": [False, False, False],
+        ... })
+        >>> result = keyword_totals(df, markers="gender")
+        >>> result["marker"].tolist()
+        ['gender', 'Combined']
+        >>> result["usd_disbursement"].tolist()
+        [30.0, 30.0]
     """
     _require_keywords_raw(df)
     analysis._require_columns(df, value, func_name="keyword_totals")
@@ -598,6 +657,22 @@ def subpillar_breakdown(
             `tossd_subpillar`, or `value`; `value` is not numeric; or
             (when `include_aggregates=False`) `df` has no `is_aggregate`
             column.
+
+    Example:
+        >>> import pandas as pd
+        >>> from tossd_reader import subpillar_breakdown
+        >>> df = pd.DataFrame({
+        ...     "year": [2024, 2024, 2024],
+        ...     "tossd_pillar": [2, 2, 2],
+        ...     "tossd_subpillar": ["21", "22", pd.NA],
+        ...     "usd_disbursement": [100.0, 50.0, 25.0],
+        ...     "is_aggregate": [False, False, False],
+        ... })
+        >>> result = subpillar_breakdown(df)
+        >>> result["subpillar"].tolist()
+        ['II.A', 'II.B', 'Untagged']
+        >>> result["usd_disbursement"].tolist()
+        [100.0, 50.0, 25.0]
     """
     analysis._require_columns(
         df,
@@ -672,6 +747,14 @@ def get_provenance(df: pd.DataFrame) -> dict[str, object]:
     Raises:
         ValueError: `df.attrs` carries no `"tossd_reader"` key -- naming the three functions
             that set it.
+
+    Example:
+        >>> import pandas as pd
+        >>> from tossd_reader import get_provenance
+        >>> df = pd.DataFrame({"usd_disbursement": [1.0]})
+        >>> df.attrs["tossd_reader"] = {"package_version": "0.1.0"}
+        >>> get_provenance(df)
+        {'package_version': '0.1.0'}
     """
     if _provenance.ATTRS_KEY not in df.attrs:
         raise ValueError(
@@ -762,6 +845,22 @@ def reconcile(df: pd.DataFrame) -> pd.Series:
     Raises:
         ValueError: `df` is missing `unit`, `is_aggregate`, `year`, `tossd_pillar`, or
             `usd_disbursement`; or `usd_disbursement` isn't numeric.
+
+    Example:
+        >>> import pandas as pd
+        >>> from tossd_reader import reconcile
+        >>> df = pd.DataFrame({
+        ...     "unit": ["usd_thousand", "usd_thousand"],
+        ...     "is_aggregate": [True, False],
+        ...     "year": [2024, 2024],
+        ...     "tossd_pillar": [1, 1],
+        ...     "usd_disbursement": [40.0, 60.0],
+        ... })
+        >>> result = reconcile(df)
+        >>> float(result["usd_disbursement_total"])
+        100.0
+        >>> float(result["aggregate_share_pct"])
+        40.0
     """
     analysis._require_columns(df, *_RECONCILE_REQUIRED_COLUMNS, func_name="reconcile")
     _require_numeric_value(df, "usd_disbursement", func_name="reconcile")

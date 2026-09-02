@@ -10,26 +10,28 @@ from tossd_reader import _pillars
 @pytest.mark.parametrize(
     ("token", "expected"),
     [
-        (1, ("1", None)),
-        ("1", ("1", None)),
-        ("I", ("1", None)),
-        ("i", ("1", None)),
-        (2, ("2", None)),
-        ("2", ("2", None)),
-        ("II", ("2", None)),
-        (21, ("2", "21")),
-        ("21", ("2", "21")),
-        ("II.A", ("2", "21")),
-        ("ii.a", ("2", "21")),
-        (22, ("2", "22")),
-        ("22", ("2", "22")),
-        ("II.B", ("2", "22")),
+        (1, (("1",), None)),
+        ("1", (("1",), None)),
+        ("I", (("1",), None)),
+        ("i", (("1",), None)),
+        (2, (("2",), None)),
+        ("2", (("2",), None)),
+        ("II", (("2",), None)),
+        (21, (("2",), "21")),
+        ("21", (("2",), "21")),
+        ("II.A", (("2",), "21")),
+        ("ii.a", (("2",), "21")),
+        (22, (("2",), "22")),
+        ("22", (("2",), "22")),
+        ("II.B", (("2",), "22")),
+        ("standard", (("1", "2"), None)),
+        ("STANDARD", (("1", "2"), None)),
     ],
 )
 def test_every_pillar_token_normalises_correctly(
     token: int | str, expected: tuple
 ) -> None:
-    """Every documented pillar token maps to the right (pillar, subpillar) pair."""
+    """Every documented pillar token maps to the right (pillar_mains, subpillar) pair."""
     assert _pillars.normalise_pillar_token(token) == expected
 
 

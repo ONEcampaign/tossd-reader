@@ -334,6 +334,18 @@ def test_pillar_none_includes_pillar_zero_placeholder_rows(
     assert (df["tossd_pillar"] == 0).any()
 
 
+def test_pillars_standard_matches_pillars_1_and_2_excludes_pillar_zero(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """pillars="standard" keeps pillar 1 and 2 rows together, still excluding pillar-0."""
+    _setup_default_years(monkeypatch, tmp_path, [2022], n_rows=10)
+
+    df = query.get_tossd(years=2022, pillars="standard")
+
+    assert not df.empty
+    assert set(df["tossd_pillar"].unique()) == {1, 2}
+
+
 def test_subpillar_filter_matches_only_that_subpillar(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -502,6 +514,212 @@ def test_get_tossd_raw_still_shows_published_subpillar_sentinels(
     raw = fetch.get_tossd_raw(years=2022)
 
     assert set(raw["Tossdpillar2"]) == {"0", "1", "2", "21"}
+
+
+# --- filters= dict (sector/purpose/channel/modality/finance_instrument/         --
+# --- financing_arrangement/framework_of_collaboration) --------------------------
+
+
+def test_filters_int_coded_dimension_by_code(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """filters={"sector": ...} resolves a digit-string code and filters sector_code (Int16)."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    df = query.get_tossd(years=2019, filters={"sector": "110"}, columns="all")
+
+    assert not df.empty
+    assert (df["sector_code"] == 110).all()
+
+
+def test_filters_int_coded_dimension_by_iterable_of_names_and_codes(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """filters={"finance_instrument": [...]} accepts an iterable mixing a code and a name."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    df = query.get_tossd(
+        years=2019,
+        filters={"finance_instrument": ["110", "Standard loan"]},
+        columns="all",
+    )
+
+    assert not df.empty
+    assert set(df["finance_instrument_code"]) <= {110, 421}
+
+
+def test_filters_channel_and_purpose_are_int32_columns(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """filters={"purpose": ...} and {"channel": ...} both filter their own Int32 code column."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    df = query.get_tossd(years=2019, filters={"purpose": "11240"}, columns="all")
+    assert not df.empty
+    assert (df["purpose_code"] == 11240).all()
+
+
+def test_filters_modality_by_code_and_name_never_packs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """filters={"modality": ...} filters the category<string> modality_code exactly (never packed)."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    df = query.get_tossd(years=2019, filters={"modality": "B02"}, columns="all")
+    assert not df.empty
+    assert set(df["modality_code"]) == {"B02"}
+
+    by_name = query.get_tossd(
+        years=2019,
+        filters={"modality": "Core contributions to multilateral institutions"},
+        columns="all",
+    )
+    assert set(by_name["modality_code"]) == {"B02"}
+
+
+def test_filters_financing_arrangement_token_membership_matches_packed_rows(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A financing_arrangement filter matches a pipe-packed "FA01|FA02" row containing the code.
+
+    The fixture's forced packed row (see tests/factories.py) guarantees at
+    least one "FA01|FA02" value is present for n_rows=40.
+    """
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    df = query.get_tossd(
+        years=2019, filters={"financing_arrangement": "FA02"}, columns="all"
+    )
+
+    assert not df.empty
+    assert (df["financing_arrangement_code"].astype(str).str.contains("FA02")).all()
+    assert "FA01|FA02" in set(df["financing_arrangement_code"].astype(str))
+
+
+def test_filters_framework_of_collaboration_token_membership_matches_packed_rows(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A framework_of_collaboration filter matches a pipe-packed "FC01|FC02" row containing the code."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    df = query.get_tossd(
+        years=2019, filters={"framework_of_collaboration": "FC01"}, columns="all"
+    )
+
+    assert not df.empty
+    assert (
+        df["framework_of_collaboration_code"].astype(str).str.contains("FC01")
+    ).all()
+    assert "FC01|FC02" in set(df["framework_of_collaboration_code"].astype(str))
+
+
+def test_filters_token_membership_does_not_match_an_unpacked_different_code(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A financing_arrangement filter for a code never present excludes every row, packed included."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    with pytest.warns(UserWarning, match="matched no rows"):
+        df = query.get_tossd(
+            years=2019, filters={"financing_arrangement": "FA05"}, columns="all"
+        )
+
+    assert df.empty
+
+
+def test_filters_provider_recipient_pillar_keys_redirect_to_dedicated_kwarg(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """filters={"provider"/"recipient"/"pillar": ...} raises, naming the dedicated kwarg."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=5)
+
+    with pytest.raises(ValueError, match="providers="):
+        query.get_tossd(years=2019, filters={"provider": 1})
+    with pytest.raises(ValueError, match="recipients="):
+        query.get_tossd(years=2019, filters={"recipients": 55})
+    with pytest.raises(ValueError, match="pillars="):
+        query.get_tossd(years=2019, filters={"pillar": 1})
+
+
+def test_filters_unknown_dimension_raises_value_error_with_suggestion(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """An unrecognised filters= dimension raises ValueError, naming the valid ones."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=5)
+
+    with pytest.raises(ValueError, match="Unknown filters= dimension") as excinfo:
+        query.get_tossd(years=2019, filters={"sektor": "110"})
+
+    assert "sector" in str(excinfo.value)
+
+
+def test_filters_unknown_code_raises_unknown_code_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A filters= value that matches no code/name raises UnknownCodeError."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=5)
+
+    with pytest.raises(UnknownCodeError):
+        query.get_tossd(years=2019, filters={"sector": "not-a-real-sector"})
+
+
+def test_filters_empty_dict_is_a_no_op(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """filters={} behaves exactly like filters=None -- no filter applied."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=10)
+
+    unfiltered = query.get_tossd(years=2019)
+    empty_filters = query.get_tossd(years=2019, filters={})
+
+    assert len(unfiltered) == len(empty_filters)
+
+
+def test_filters_combine_with_providers_and_pillars(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """filters= composes with providers=/pillars= -- every condition applies together."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    df = query.get_tossd(
+        years=2019,
+        providers=1,
+        pillars="standard",
+        filters={"modality": "B02"},
+        columns="all",
+    )
+
+    assert not df.empty
+    assert (df["provider_code"] == 1).all()
+    assert set(df["modality_code"]) == {"B02"}
+    assert set(df["tossd_pillar"].unique()) <= {1, 2}
+
+
+def test_filters_with_minimal_columns_still_filters_and_reads_the_code_column(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """filters= narrows rows even when the filtered dimension's own column isn't in the output."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    unfiltered = query.get_tossd(years=2019, columns="minimal")
+    filtered = query.get_tossd(
+        years=2019, filters={"modality": "B02"}, columns="minimal"
+    )
+
+    assert "modality_code" not in filtered.columns
+    assert len(filtered) < len(unfiltered)
+    assert not filtered.empty
+
+
+def test_filters_runs_the_categorical_strip(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A filters= filter alone (no providers=/recipients=/pillars=) triggers the categorical strip."""
+    _setup_default_years(monkeypatch, tmp_path, [2019, 2020], n_rows=40)
+
+    df = query.get_tossd(years=[2019, 2020], filters={"modality": "B02"}, columns="all")
+
+    assert set(df["modality_name"].cat.categories) == set(df["modality_name"].unique())
 
 
 # --- columns / presets ----------------------------------------------------------
@@ -1156,6 +1374,7 @@ def test_get_tossd_attrs_shape_and_json_serializable(
         "providers": None,
         "recipients": None,
         "pillars": None,
+        "filters": {},
         "columns": "minimal",
         "units": "usd_million",
         "include_aggregates": True,
@@ -1184,6 +1403,18 @@ def test_get_tossd_attrs_resolves_providers_and_recipients_to_codes(
     q = df.attrs["tossd_reader"]["query"]
     assert q["providers"] == (1,)
     assert q["recipients"] == (55,)
+
+
+def test_get_tossd_attrs_resolves_filters_to_codes(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`filters=` values land in the provenance `query` dict as resolved codes, not the raw token."""
+    _setup_default_years(monkeypatch, tmp_path, [2019], n_rows=40)
+
+    df = query.get_tossd(years=2019, filters={"modality": "B02"})
+
+    q = df.attrs["tossd_reader"]["query"]
+    assert q["filters"] == {"modality": ("B02",)}
 
 
 def test_get_tossd_attrs_multi_year_covers_every_requested_year(

@@ -170,6 +170,16 @@ def explode_sdg(df: pd.DataFrame, *, value: str | None = None) -> pd.DataFrame:
             `sdg_weight`, and `{value}_weighted` when `value` is given) --
             re-running `explode_sdg` on its own output would otherwise
             silently duplicate them.
+
+    Example:
+        >>> import pandas as pd
+        >>> from tossd_reader import explode_sdg
+        >>> df = pd.DataFrame({"sdg_codes_raw": ["1;4", ""]})
+        >>> result = explode_sdg(df)
+        >>> result["sdg_code"].tolist()
+        ['1', '4']
+        >>> result["sdg_weight"].tolist()
+        [0.5, 0.5]
     """
     _require_columns(df, "sdg_codes_raw", func_name="explode_sdg")
     weighted_column = None
@@ -265,6 +275,13 @@ def add_iso3(df: pd.DataFrame) -> pd.DataFrame:
     Raises:
         ValueError: Neither `provider_code` nor `recipient_code` is present
             in `df`.
+
+    Example:
+        >>> import pandas as pd
+        >>> from tossd_reader import add_iso3
+        >>> df = pd.DataFrame({"recipient_code": [55]})
+        >>> add_iso3(df)["recipient_iso3"].tolist()
+        ['TUR']
     """
     present = [name for name in _ISO3_LINKS if name in df.columns]
     if not present:
@@ -332,6 +349,13 @@ def extract_keywords(df: pd.DataFrame) -> pd.DataFrame:
 
     Raises:
         ValueError: `df` has no `keywords_raw` column.
+
+    Example:
+        >>> import pandas as pd
+        >>> from tossd_reader import extract_keywords
+        >>> df = pd.DataFrame({"keywords_raw": ["#GENDER", "#MITIGATION"]})
+        >>> extract_keywords(df)["kw_gender"].tolist()
+        [True, False]
     """
     _require_columns(df, "keywords_raw", func_name="extract_keywords")
 
@@ -388,6 +412,12 @@ def get_structural_breaks(*, years: int | Iterable[int] | None = None) -> pd.Dat
         `reporters` row's `end_year` (2024) marks the end of that row's
         continuous 2019-2024 drift, so every year from `break_year` through
         `end_year` counts as affected.
+
+    Example:
+        >>> from tossd_reader import get_structural_breaks
+        >>> breaks = get_structural_breaks(years=2026)
+        >>> breaks["dimension"].tolist()
+        ['methodology']
     """
     breaks = _load_structural_breaks().copy()
     if years is None:
@@ -444,6 +474,16 @@ def filter_provider_costs(df: pd.DataFrame) -> pd.DataFrame:
 
     Raises:
         ValueError: `df` is missing `tossd_pillar` or `sector_code`.
+
+    Example:
+        >>> import pandas as pd
+        >>> from tossd_reader import filter_provider_costs
+        >>> df = pd.DataFrame({
+        ...     "tossd_pillar": [2, 2, 1],
+        ...     "sector_code": [910, 220, 910],
+        ... })
+        >>> filter_provider_costs(df)["sector_code"].tolist()
+        [910]
     """
     _require_columns(
         df, "tossd_pillar", "sector_code", func_name="filter_provider_costs"
@@ -570,6 +610,13 @@ def add_recipient_group(
         ValueError: `df` has no `recipient_code` column, `scheme` is not one
             of `"ldc"`/`"income"`/`"region"`, or `df` already carries a
             `recipient_group` column.
+
+    Example:
+        >>> import pandas as pd
+        >>> from tossd_reader import add_recipient_group
+        >>> df = pd.DataFrame({"recipient_code": [269]})  # Senegal
+        >>> add_recipient_group(df)["recipient_group"].tolist()
+        ['Least Developed Countries']
     """
     _require_columns(df, "recipient_code", func_name="add_recipient_group")
     if scheme not in _RECIPIENT_GROUP_SCHEME_COLUMNS:
@@ -715,6 +762,16 @@ def add_instrument_group(df: pd.DataFrame) -> pd.DataFrame:
             code (a typo, or a future vintage's drift): every code observed
             in the six cached 2019-2024 TOSSD vintages is mapped, whether or
             not OECD's own codelist covers it yet.
+
+    Example:
+        >>> import pandas as pd
+        >>> from tossd_reader import add_instrument_group
+        >>> df = pd.DataFrame({
+        ...     "finance_instrument_code": [110],
+        ...     "concessionality_flag": [pd.NA],
+        ... })
+        >>> add_instrument_group(df)["instrument_group"].tolist()
+        ['Grants']
     """
     _require_columns(
         df,

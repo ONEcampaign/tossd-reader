@@ -1,8 +1,8 @@
-"""Resolve `providers=`/`recipients=` tokens to packaged codelist codes.
+"""Resolve `providers=`/`recipients=`/`filters=` tokens to packaged codelist codes.
 
-Private module. Consumed by query.py (and the tests). Fuzzy COLUMN-name
-suggestion (for an unrecognised `columns=` entry) deliberately stays in
-query.py.
+Private module. Consumed by query.py (row filters), codes.py (`lookup`), and
+the tests. Fuzzy COLUMN-name suggestion (for an unrecognised `columns=`
+entry) deliberately stays in query.py.
 
 `_suggest_with_resolvekit` imports `resolvekit` lazily, inside its own
 body -- a package-level import stays banned project-wide, so importing
@@ -13,11 +13,22 @@ from __future__ import annotations
 
 import difflib
 from collections.abc import Iterable
+from typing import cast
 
 from tossd_reader import codelists
 from tossd_reader.exceptions import UnknownCodeError
 
 MAX_SUGGESTIONS = 5
+
+# Dimensions whose packaged codelist `code` column backs a `category<string>`
+# frame column (`modality_code`, `financing_arrangement_code`,
+# `framework_of_collaboration_code`) rather than an `Int16`/`Int32` one.
+# `resolve_one_code` returns the resolved value as `str` for these (e.g.
+# `"B02"`), `int` for every other dimension -- see `_schema.csv`'s
+# `target_dtype` column.
+STR_CODED_DIMENSIONS = frozenset(
+    {"modality", "financing_arrangement", "framework_of_collaboration"}
+)
 
 
 def resolve_dimension_codes(
@@ -25,50 +36,76 @@ def resolve_dimension_codes(
     *,
     dimension: str,
     label: str,
-) -> tuple[int, ...] | None:
-    """Resolve `providers=`/`recipients=` to a tuple of codes, or `None` (no filter)."""
+) -> tuple[int, ...] | tuple[str, ...] | None:
+    """Resolve a `providers=`/`recipients=`/`filters=` value to a tuple of codes, or `None` (no filter)."""
     if values is None:
         return None
     tokens = [values] if isinstance(values, int | str) else list(values)
-    return tuple(
-        _resolve_one_code(token, dimension=dimension, label=label) for token in tokens
+    resolved = tuple(
+        resolve_one_code(token, dimension=dimension, label=label) for token in tokens
     )
+    # Every element comes from the SAME dimension, so it's homogeneously
+    # int or str (per STR_CODED_DIMENSIONS) -- a property `resolve_one_code`
+    # guarantees but a plain comprehension's inferred `tuple[int | str, ...]`
+    # doesn't statically capture.
+    return cast("tuple[int, ...] | tuple[str, ...]", resolved)
 
 
-def _resolve_one_code(token: int | str, *, dimension: str, label: str) -> int:
-    """Resolve one provider/recipient token (code, name, or digit-string) to a code."""
+def resolve_one_code(token: int | str, *, dimension: str, label: str) -> int | str:
+    """Resolve one code/name/digit-string token against `dimension`'s packaged codelist.
+
+    The single-token building block `resolve_dimension_codes` maps over;
+    also consumed directly by `codes.lookup`, so a lookup and a
+    `filters=`/`providers=`/`recipients=` resolution can never disagree
+    about what a token means.
+
+    Returns an `int` for every dimension except `STR_CODED_DIMENSIONS`
+    (`modality`, `financing_arrangement`, `framework_of_collaboration`),
+    which return the packaged codelist's own `str` code (e.g. `"B02"`).
+    """
     if isinstance(token, bool) or not isinstance(token, int | str):
         raise TypeError(
             f"{label} filter values must be int or str, got {token!r} "
             f"({type(token).__name__})."
         )
+    str_coded = dimension in STR_CODED_DIMENSIONS
     if isinstance(token, int):
+        if str_coded:
+            raise TypeError(
+                f"{label} filter values must be str (the packaged codelist's "
+                f"own code, e.g. 'B02') for {dimension!r}, got int {token!r}: "
+                f"{dimension!r} codes aren't numeric."
+            )
         return token
 
     stripped = token.strip()
-    if stripped.isdigit():
+    if str_coded:
         code = _match_code(dimension, stripped)
         if code is not None:
             return code
+    elif stripped.isdigit():
+        code = _match_code(dimension, stripped)
+        if code is not None:
+            return int(code)
     code = _match_name(dimension, stripped)
     if code is not None:
-        return code
+        return code if str_coded else int(code)
     raise _unknown_code_error(token, dimension=dimension, label=label)
 
 
-def _match_code(dimension: str, token: str) -> int | None:
-    """Return `token`'s code if it matches a packaged codelist code exactly."""
+def _match_code(dimension: str, token: str) -> str | None:
+    """Return `token`'s code (as packaged, `str`) if it matches a codelist code exactly."""
     frame = codelists.load_codelist(dimension)
     matches = frame.loc[frame["code"] == token, "code"]
-    return None if matches.empty else int(matches.iloc[0])
+    return None if matches.empty else str(matches.iloc[0])
 
 
-def _match_name(dimension: str, token: str) -> int | None:
-    """Return `token`'s code if it case-foldedly exact-matches a codelist name."""
+def _match_name(dimension: str, token: str) -> str | None:
+    """Return `token`'s code (as packaged, `str`) if it case-foldedly exact-matches a codelist name."""
     frame = codelists.load_codelist(dimension)
     folded = token.casefold()
     matches = frame.loc[frame["name"].str.casefold() == folded, "code"]
-    return None if matches.empty else int(matches.iloc[0])
+    return None if matches.empty else str(matches.iloc[0])
 
 
 def closest_matches_note(suggestions: list[str]) -> str:

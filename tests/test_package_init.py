@@ -8,6 +8,7 @@ import sys
 import pytest
 
 import tossd_reader
+from tossd_reader import codes as codes_module
 from tossd_reader import exceptions, query
 
 
@@ -16,6 +17,7 @@ from tossd_reader import exceptions, query
     [
         ("get_tossd_raw", "tossd_reader.fetch"),
         ("get_vintages", "tossd_reader.fetch"),
+        ("codes", codes_module),
         ("export", "tossd_reader._export"),
         ("verify_export", "tossd_reader._export"),
         ("load_export", "tossd_reader._export"),
@@ -97,6 +99,7 @@ def test_import_opens_no_socket_and_stays_light() -> None:
         "    'tossd_reader._discovery',\n"
         "    'tossd_reader.config',\n"
         "    'tossd_reader.codelists',\n"
+        "    'tossd_reader.codes',\n"
         "    'tossd_reader.query',\n"
         "    'tossd_reader._export',\n"
         "    'tossd_reader.analysis',\n"

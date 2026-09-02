@@ -16,15 +16,16 @@ _PILLAR_2022_TRACE_ROWS = 24
 """2022 carries only 24 `Tossdpillar2='21'` trace rows (out of ~128,900
 pillar-2 rows); the substantive rollout starts in 2023."""
 
-_PILLAR_TOKENS: dict[str, tuple[str, str | None]] = {
-    "1": ("1", None),
-    "i": ("1", None),
-    "2": ("2", None),
-    "ii": ("2", None),
-    "21": ("2", "21"),
-    "ii.a": ("2", "21"),
-    "22": ("2", "22"),
-    "ii.b": ("2", "22"),
+_PILLAR_TOKENS: dict[str, tuple[tuple[str, ...], str | None]] = {
+    "1": (("1",), None),
+    "i": (("1",), None),
+    "2": (("2",), None),
+    "ii": (("2",), None),
+    "21": (("2",), "21"),
+    "ii.a": (("2",), "21"),
+    "22": (("2",), "22"),
+    "ii.b": (("2",), "22"),
+    "standard": (("1", "2"), None),
 }
 
 
@@ -39,8 +40,14 @@ class _PillarsState:
 _state = _PillarsState()
 
 
-def normalise_pillar_token(pillar: int | str) -> tuple[str, str | None]:
-    """Resolve one `pillars=` token to `(tossd_pillar, tossd_subpillar | None)`."""
+def normalise_pillar_token(pillar: int | str) -> tuple[tuple[str, ...], str | None]:
+    """Resolve one `pillars=` token to `(tossd_pillar values, tossd_subpillar | None)`.
+
+    Every token but `"standard"` resolves to a single-element
+    `tossd_pillar` tuple; `"standard"` (pillars 1+2, excluding pillar-0
+    placeholder rows) is the one token that needs a multi-value
+    representation, since it can't be expressed as one `(main, sub)` pair.
+    """
     if isinstance(pillar, bool):
         key = None
     elif isinstance(pillar, int):
@@ -53,7 +60,7 @@ def normalise_pillar_token(pillar: int | str) -> tuple[str, str | None]:
     if resolved is None:
         raise ValueError(
             f"Unknown pillars token {pillar!r}; expected one of 1, 2, 21, 22, "
-            "'I', 'II', 'II.A', 'II.B' (case-insensitive)."
+            "'I', 'II', 'II.A', 'II.B', 'standard' (case-insensitive)."
         )
     return resolved
 

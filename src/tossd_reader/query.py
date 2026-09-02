@@ -21,16 +21,27 @@ year outside the packaged known-years set is honoured or rejected by
 `fetch.resolve_year` itself, the sole place that logic lives.
 
 Pillar/sub-pillar token resolution lives in `_pillars.py`; `providers=`/
-`recipients=` code resolution lives in `_matching.py`.
+`recipients=`/`filters=` code resolution lives in `_matching.py`.
+
+`filters=` is a `get_tossd`-only dict, resolved (once per call, like
+`providers=`/`recipients=`) against seven dimensions: `sector`, `purpose`,
+`channel`, `modality`, `finance_instrument`, `financing_arrangement`,
+`framework_of_collaboration`. Two of those seven -- `financing_arrangement`
+and `framework_of_collaboration` -- carry pipe-packed multi-value strings
+in real data (e.g. `"FA02|FA03"`); a filter for `"FA02"` has to match a
+packed row too, so those two use token-membership matching
+(`_filter_token_membership`) rather than plain `is_in` equality
+(`_filter_dimension_codes`, used by the other five).
 """
 
 from __future__ import annotations
 
 import difflib
+import re
 import warnings
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 
 import pandas as pd
 import pyarrow as pa
@@ -74,6 +85,43 @@ _DECODE_CHANNEL_DIMENSION = "channel"
 _DECODE_CODE_COLUMN = "parent_channel_code"
 _DECODE_NAME_COLUMN = "parent_channel_name"
 
+# `filters=` dimensions -> the frame column each one filters. `providers=`/
+# `recipients=`/`pillars=` each already have a dedicated kwarg, so a
+# filters= key naming one of them is redirected to it rather than accepted
+# as an eighth dimension here.
+_FILTER_DIMENSION_COLUMNS: dict[str, str] = {
+    "sector": "sector_code",
+    "purpose": "purpose_code",
+    "channel": "channel_code",
+    "modality": "modality_code",
+    "finance_instrument": "finance_instrument_code",
+    "financing_arrangement": "financing_arrangement_code",
+    "framework_of_collaboration": "framework_of_collaboration_code",
+}
+
+# financing_arrangement_code and framework_of_collaboration_code carry
+# pipe-packed multi-value strings in real published data (e.g.
+# "FA02|FA03", "FC02|FC03") -- empirically verified across the cached
+# 2019-2024 vintages; sector_code/purpose_code/channel_code/
+# finance_instrument_code are plain Int16/Int32 columns (packing isn't
+# structurally possible), and modality_code never packs in any of those
+# six years. A filter against either of these two dimensions has to match
+# a packed row whose value merely *contains* the requested code as one of
+# its |-separated tokens, not just an exact equal -- see
+# `_filter_token_membership`.
+_TOKEN_MEMBERSHIP_FILTER_DIMENSIONS = frozenset(
+    {"financing_arrangement", "framework_of_collaboration"}
+)
+
+_FILTER_KEY_REDIRECTS: dict[str, str] = {
+    "provider": "providers=",
+    "providers": "providers=",
+    "recipient": "recipients=",
+    "recipients": "recipients=",
+    "pillar": "pillars=",
+    "pillars": "pillars=",
+}
+
 
 _warned_unknown_codes: dict[str, set[str]] = {}
 
@@ -84,6 +132,7 @@ def get_tossd(
     providers: int | str | Iterable[int | str] | None = None,
     recipients: int | str | Iterable[int | str] | None = None,
     pillars: int | str | None = None,
+    filters: dict[str, int | str | Iterable[int | str]] | None = None,
     columns: Literal["all", "minimal", "analysis"] | list[str] = "all",
     units: Literal["usd_thousand", "usd_million", "usd"] = "usd_thousand",
     include_aggregates: bool = True,
@@ -109,19 +158,35 @@ def get_tossd(
         pillars: `1`/`"1"`/`"I"` (case-insensitive) for pillar 1;
             `2`/`"2"`/`"II"` for pillar 2 (both sub-pillars and untagged
             pillar-2 rows); `21`/`"21"`/`"II.A"` or `22`/`"22"`/`"II.B"` for
-            one sub-pillar specifically. `None` (the default) applies no
-            pillar filter — pillar-`0` placeholder rows (a 2020-2023
-            publisher artefact) are then included; every other `pillars=`
-            value excludes them. A sub-pillar filter combined with an
-            *explicit* `years` that includes any year before 2023 raises
-            `InvalidPillarError` (sub-pillar tagging did not exist yet,
-            bar a 24-row 2022 trace); with the default `years=None` it
-            instead silently narrows to years >= 2023, with one warning.
+            one sub-pillar specifically; `"standard"` for pillars 1 and 2
+            together (still excludes pillar-`0` placeholder rows, unlike
+            `None`). `None` (the default) applies no pillar filter —
+            pillar-`0` placeholder rows (a 2020-2023 publisher artefact) are
+            then included; every other `pillars=` value excludes them. A
+            sub-pillar filter combined with an *explicit* `years` that
+            includes any year before 2023 raises `InvalidPillarError`
+            (sub-pillar tagging did not exist yet, bar a 24-row 2022
+            trace); with the default `years=None` it instead silently
+            narrows to years >= 2023, with one warning.
             Independent of this filter, the output `tossd_subpillar` column is `NA`
             unless a row carries a real `"21"`/`"22"` tag -- pillar-1 rows, untagged
             pillar-2 rows, and pillar-0 rows all read `NA`, so `.notna()` identifies
             sub-pillar-tagged rows specifically, a narrower set than pillar-2 rows
             overall.
+        filters: A dict filtering any of seven dimensions: `sector`,
+            `purpose`, `channel`, `modality`, `finance_instrument`,
+            `financing_arrangement`, `framework_of_collaboration`. Each
+            value is a single code/name or an iterable of them, resolved
+            the same way `providers=`/`recipients=` are: an exact code
+            match against the packaged codelist first, then a
+            case-folded name match, else `UnknownCodeError` naming the
+            closest matches. `provider`/`recipient`/`pillar` keys raise,
+            naming the dedicated kwarg to use instead (`providers=`/
+            `recipients=`/`pillars=`) -- this dict is for the seven
+            dimensions with no kwarg of their own. `None` (the default, or
+            an empty dict) applies no such filter. `codes.lookup()`
+            resolves a token through this exact path, so a lookup and a
+            filter built from its result can never disagree.
         columns: `"all"` (default, every packaged column), `"minimal"`,
             `"analysis"` (see `_schema.preset_columns`), or an explicit
             `list[str]` of snake_case column names. `FORCED_COLUMNS`
@@ -158,23 +223,34 @@ def get_tossd(
         ValueError: `units` is not `"usd_thousand"`/`"usd_million"`/`"usd"`;
             `columns` names an unknown column (or an unrecognised preset);
             `years` resolves to an empty set of years; a requested year
-            is not currently published and nothing is cached for it; or
-            `refresh=True` while offline mode is active
+            is not currently published and nothing is cached for it;
+            `filters` names an unrecognised dimension (or one of
+            `provider`/`recipient`/`pillar`, naming the dedicated kwarg
+            instead); or `refresh=True` while offline mode is active
             (`config.get_offline()` is `True`).
-        UnknownCodeError: A `providers`/`recipients` token (name, code, or
-            digit-string) does not match the packaged codelist.
+        UnknownCodeError: A `providers`/`recipients`/`filters` token (name,
+            code, or digit-string) does not match the packaged codelist.
         InvalidPillarError: A sub-pillar filter is requested for an
             explicit year before 2023.
         TossdNetworkError: The publisher is unreachable and nothing usable
             is cached for a requested year.
         SchemaDriftError: A requested year's published file no longer
             matches the packaged schema.
+
+    Example:
+        >>> import tossd_reader
+        >>> df = tossd_reader.get_tossd(  # doctest: +SKIP
+        ...     years=2024, filters={"modality": "B02"}
+        ... )
+        >>> sorted(df["modality_code"].unique())  # doctest: +SKIP
+        ['B02']
     """
     combined, paths = build_table(
         years=years,
         providers=providers,
         recipients=recipients,
         pillars=pillars,
+        filters=filters,
         columns=columns,
         units=units,
         include_aggregates=include_aggregates,
@@ -186,6 +262,7 @@ def get_tossd(
         providers=providers,
         recipients=recipients,
         pillars=pillars,
+        filters=filters,
         columns=columns,
         units=units,
         include_aggregates=include_aggregates,
@@ -200,6 +277,7 @@ def _build_get_tossd_provenance(
     providers: int | str | Iterable[int | str] | None,
     recipients: int | str | Iterable[int | str] | None,
     pillars: int | str | None,
+    filters: dict[str, int | str | Iterable[int | str]] | None,
     columns: Literal["all", "minimal", "analysis"] | list[str],
     units: Literal["usd_thousand", "usd_million", "usd"],
     include_aggregates: bool,
@@ -208,23 +286,25 @@ def _build_get_tossd_provenance(
 ) -> dict[str, object]:
     """Build `get_tossd()`'s `df.attrs["tossd_reader"]` payload.
 
-    `providers`/`recipients` are re-resolved to codes here (already resolved once, inside
-    `build_table`) rather than threaded through its return value: both calls are pure,
+    `providers`/`recipients`/`filters` are re-resolved to codes here (already resolved once,
+    inside `build_table`) rather than threaded through its return value: those calls are pure,
     side-effect-free lookups against the packaged codelists, so recomputing them is cheaper than
     widening `build_table`'s own return contract (also used directly by `export()` and by
     existing tests) just to carry them out.
     """
-    provider_codes = _matching.resolve_dimension_codes(
-        providers, dimension="provider", label="providers"
+    provider_codes = _resolve_provider_or_recipient_codes(
+        providers, dimension="provider"
     )
-    recipient_codes = _matching.resolve_dimension_codes(
-        recipients, dimension="recipient", label="recipients"
+    recipient_codes = _resolve_provider_or_recipient_codes(
+        recipients, dimension="recipient"
     )
+    resolved_filters = _resolve_filters(filters)
     query_dict = {
         "years": tuple(paths),
         "providers": provider_codes,
         "recipients": recipient_codes,
         "pillars": pillars,
+        "filters": resolved_filters,
         "columns": columns,
         "units": units,
         "include_aggregates": include_aggregates,
@@ -239,6 +319,7 @@ def build_table(
     providers: int | str | Iterable[int | str] | None,
     recipients: int | str | Iterable[int | str] | None,
     pillars: int | str | None,
+    filters: dict[str, int | str | Iterable[int | str]] | None = None,
     columns: Literal["all", "minimal", "analysis"] | list[str],
     units: Literal["usd_thousand", "usd_million", "usd"],
     include_aggregates: bool = True,
@@ -251,7 +332,9 @@ def build_table(
     schema, row filters; cross-year concat/unify; derived columns; column
     projection; units conversion) except the final `to_pandas()` call, so
     `export()` can write the arrow table straight to parquet without a
-    pandas round-trip.
+    pandas round-trip. `export()` always passes `filters=None` -- its own
+    contract is an unfiltered normalised snapshot, not a query result (see
+    that module's own docstring).
 
     Args:
         op_name: A cache-surface-qualified key for `effective_refresh`,
@@ -276,7 +359,7 @@ def build_table(
     years_was_none = years is None
     resolved_years = fetch.normalise_years(years)
 
-    pillar_main, pillar_sub = (
+    pillar_mains, pillar_sub = (
         (None, None) if pillars is None else _pillars.normalise_pillar_token(pillars)
     )
     if pillar_sub is not None:
@@ -284,12 +367,13 @@ def build_table(
             resolved_years, years_was_none=years_was_none
         )
 
-    provider_codes = _matching.resolve_dimension_codes(
-        providers, dimension="provider", label="providers"
+    provider_codes = _resolve_provider_or_recipient_codes(
+        providers, dimension="provider"
     )
-    recipient_codes = _matching.resolve_dimension_codes(
-        recipients, dimension="recipient", label="recipients"
+    recipient_codes = _resolve_provider_or_recipient_codes(
+        recipients, dimension="recipient"
     )
+    resolved_filters = _resolve_filters(filters)
     column_names = _resolve_columns(columns)
     decode_parent_channel = _DECODE_NAME_COLUMN in column_names
     read_all = columns == "all"
@@ -297,6 +381,7 @@ def build_table(
         column_names,
         recipient_codes=recipient_codes,
         decode_parent_channel=decode_parent_channel,
+        filter_dimensions=resolved_filters,
     )
 
     # Resolved once for the whole call, not once per requested year: see
@@ -323,8 +408,9 @@ def build_table(
             typed,
             provider_codes=provider_codes,
             recipient_codes=recipient_codes,
-            pillar_main=pillar_main,
+            pillar_mains=pillar_mains,
             pillar_sub=pillar_sub,
+            resolved_filters=resolved_filters,
             include_aggregates=include_aggregates,
         )
         tables.append(filtered)
@@ -333,7 +419,8 @@ def build_table(
     row_filter_ran = (
         provider_codes is not None
         or recipient_codes is not None
-        or pillar_main is not None
+        or pillar_mains is not None
+        or bool(resolved_filters)
         or not include_aggregates
     )
     if row_filter_ran:
@@ -349,7 +436,10 @@ def build_table(
     if combined.num_rows == 0:
         warnings.warn(
             "get_tossd's filters matched no rows; returning an empty (but "
-            "correctly typed) frame.",
+            "correctly typed) frame. A codelist entry can sit at a finer "
+            "granularity than the published data uses (sector sub-codes, for "
+            "example, fold into their top-level group) -- compare against the "
+            "column's own values, e.g. df['sector_code'].unique().",
             stacklevel=3,
         )
 
@@ -359,13 +449,73 @@ def build_table(
 # --- row filters (arrow-level, applied per year before concat) ----------------
 
 
+def _resolve_provider_or_recipient_codes(
+    values: int | str | Iterable[int | str] | None,
+    *,
+    dimension: Literal["provider", "recipient"],
+) -> tuple[int, ...] | None:
+    """`_matching.resolve_dimension_codes`, narrowed to `provider`/`recipient`'s always-int result.
+
+    `_matching.resolve_dimension_codes`'s general return type also covers
+    `filters=`'s `STR_CODED_DIMENSIONS` (`tuple[str, ...]`); `provider` and
+    `recipient` are never in that set, so the result is always
+    `tuple[int, ...] | None` here -- narrowed with a `cast` (not a runtime
+    check) since that's a property of which dimension is passed, which the
+    type checker can't see through a single generically-typed resolver.
+    """
+    codes = _matching.resolve_dimension_codes(
+        values, dimension=dimension, label=f"{dimension}s"
+    )
+    return cast("tuple[int, ...] | None", codes)
+
+
+def _resolve_filters(
+    filters: dict[str, int | str | Iterable[int | str]] | None,
+) -> dict[str, tuple[int, ...] | tuple[str, ...]]:
+    """Validate `filters=`'s keys, then resolve each value to a tuple of codes.
+
+    `filters=None` (or `{}`) resolves to `{}` -- no filter dimension
+    requested, same "no-op" reading `providers=None` gets.
+    """
+    if not filters:
+        return {}
+    for key in filters:
+        if key in _FILTER_KEY_REDIRECTS:
+            raise ValueError(
+                f"filters={{{key!r}: ...}} is not supported; use "
+                f"{_FILTER_KEY_REDIRECTS[key]} directly."
+            )
+        if key not in _FILTER_DIMENSION_COLUMNS:
+            raise ValueError(_unknown_filter_dimension_message(key))
+    resolved = {
+        dimension: _matching.resolve_dimension_codes(
+            value, dimension=dimension, label=dimension
+        )
+        for dimension, value in filters.items()
+    }
+    # A dimension whose value resolves to None (an explicit filters={"x": None}
+    # entry) applies no filter for it, the same "no-op" providers=None gets.
+    return {
+        dimension: codes for dimension, codes in resolved.items() if codes is not None
+    }
+
+
+def _unknown_filter_dimension_message(key: str) -> str:
+    """Build the ValueError message for an unrecognised `filters=` dimension key."""
+    valid = sorted(_FILTER_DIMENSION_COLUMNS)
+    suggestions = difflib.get_close_matches(key, valid, n=_matching.MAX_SUGGESTIONS)
+    suggestion_note = _matching.closest_matches_note(suggestions)
+    return f"Unknown filters= dimension {key!r}; expected one of {', '.join(valid)}.{suggestion_note}"
+
+
 def _apply_row_filters(
     table: pa.Table,
     *,
     provider_codes: tuple[int, ...] | None,
     recipient_codes: tuple[int, ...] | None,
-    pillar_main: str | None,
+    pillar_mains: tuple[str, ...] | None,
     pillar_sub: str | None,
+    resolved_filters: dict[str, tuple[int, ...] | tuple[str, ...]],
     include_aggregates: bool,
 ) -> pa.Table:
     """Apply every requested filter to one year's already-typed table."""
@@ -375,8 +525,21 @@ def _apply_row_filters(
         table = _filter_codes(
             table, "recipient_code", recipient_codes, label="recipients"
         )
-    if pillar_main is not None:
-        table = _filter_pillar(table, pillar_main, pillar_sub)
+    if pillar_mains is not None:
+        table = _filter_pillar(table, pillar_mains, pillar_sub)
+    for dimension, codes in resolved_filters.items():
+        column_name = _FILTER_DIMENSION_COLUMNS[dimension]
+        if dimension in _TOKEN_MEMBERSHIP_FILTER_DIMENSIONS:
+            # _TOKEN_MEMBERSHIP_FILTER_DIMENSIONS is a subset of
+            # _matching.STR_CODED_DIMENSIONS, so `codes` is always str here --
+            # a property of which dimension this iteration is on, not
+            # something the type checker can see through the dict's shared
+            # value type.
+            table = _filter_token_membership(
+                table, column_name, cast("tuple[str, ...]", codes)
+            )
+        else:
+            table = _filter_dimension_codes(table, column_name, codes, label=dimension)
     if not include_aggregates:
         table = _filter_aggregates(table)
     return table
@@ -433,15 +596,87 @@ def _code_overflows(code: int, target_type: pa.DataType) -> bool:
     return False
 
 
-def _filter_pillar(
-    table: pa.Table, pillar_main: str, pillar_sub: str | None
+def _filter_dimension_codes(
+    table: pa.Table,
+    column_name: str,
+    codes: tuple[int, ...] | tuple[str, ...],
+    *,
+    label: str,
 ) -> pa.Table:
-    """Keep only rows matching `pillar_main` (and `pillar_sub`, if given).
+    """Keep only rows whose `column_name` value is one of `codes` (exact `is_in`).
+
+    Generalises `_filter_codes` to also cover `filters=`'s dictionary-encoded
+    (`category<string>`) dimensions -- `modality_code` today, per pin 11 --
+    by casting the value-set to the dictionary's VALUE type rather than the
+    column's own (dictionary) type, and comparing against the decoded
+    values. A plain `Int16`/`Int32` column (`sector_code`, `purpose_code`,
+    `channel_code`, `finance_instrument_code`) goes through the same
+    overflow-safe path `_filter_codes` already uses.
+    """
+    column = table.column(column_name)
+    field_type = table.schema.field(column_name).type
+    if pa.types.is_dictionary(field_type):
+        decoded = pc.cast(column, field_type.value_type)
+        values = pa.array(codes, type=field_type.value_type)
+        mask = pc.is_in(decoded, value_set=values)  # ty: ignore[unresolved-attribute]
+        return table.filter(mask)
+    # Reached only for a non-dictionary column, i.e. one of the four
+    # Int16/Int32 filter dimensions (sector/purpose/channel/
+    # finance_instrument) -- `codes` is always int there, per the same
+    # per-dimension homogeneity `_filter_token_membership`'s call site notes.
+    values = _codes_as_array(cast("tuple[int, ...]", codes), column.type, label=label)
+    return table.filter(pc.is_in(column, value_set=values))  # ty: ignore[unresolved-attribute]
+
+
+def _token_membership_pattern(codes: tuple[str, ...]) -> str:
+    """Build a regex matching any of `codes` as a whole `|`-separated token.
+
+    `(?:^|\\|)(?:CODE1|CODE2|...)(?:$|\\|)` -- each code is anchored to
+    the start/end of the string or a `|` on either side, so `"FA2"` never
+    accidentally matches inside `"FA20"` (not a real collision in the
+    packaged codelist today, both dimensions use fixed 4-character codes,
+    but the anchor makes that a property of the match, not an accident of
+    the current vocabulary).
+    """
+    alternation = "|".join(re.escape(code) for code in codes)
+    return rf"(?:^|\|)(?:{alternation})(?:$|\|)"
+
+
+def _filter_token_membership(
+    table: pa.Table, column_name: str, codes: tuple[str, ...]
+) -> pa.Table:
+    """Keep only rows whose `column_name` value contains any of `codes` as a `|`-delimited token.
+
+    `financing_arrangement_code` and `framework_of_collaboration_code`
+    carry pipe-packed multi-value strings in real data for a small share of
+    rows (e.g. `"FA02|FA03"`); a `codes` value matches a packed row if it
+    appears as one of the pipe-separated tokens, not merely as a substring
+    -- see `_token_membership_pattern`. An unpacked (single-code) value is
+    just a one-element token list, so this also covers the exact-match case
+    correctly. Codes are already validated by `_matching.resolve_dimension_codes`
+    before reaching here, so there's no "unknown code" path to name.
+    """
+    field_type = table.schema.field(column_name).type
+    column = table.column(column_name)
+    decoded = pc.cast(column, field_type.value_type)
+    pattern = _token_membership_pattern(codes)
+    mask = pc.match_substring_regex(decoded, pattern)  # ty: ignore[unresolved-attribute]
+    return table.filter(mask)
+
+
+def _filter_pillar(
+    table: pa.Table, pillar_mains: tuple[str, ...], pillar_sub: str | None
+) -> pa.Table:
+    """Keep only rows matching one of `pillar_mains` (and `pillar_sub`, if given).
 
     Pillar-`0` placeholder rows never match `tossd_pillar in {1, 2}`, so every
-    `pillars=` filter excludes them automatically.
+    `pillars=` filter excludes them automatically. `pillar_sub` is only ever
+    given alongside a single-element `pillar_mains` (a sub-pillar token
+    always resolves to one main pillar) -- `"standard"`, the one
+    multi-element token, never carries a sub-pillar.
     """
-    mask = pc.equal(table.column("tossd_pillar"), int(pillar_main))  # ty: ignore[unresolved-attribute]
+    values = pa.array([int(main) for main in pillar_mains], type=pa.int8())
+    mask = pc.is_in(table.column("tossd_pillar"), value_set=values)  # ty: ignore[unresolved-attribute]
     if pillar_sub is not None:
         subpillar_mask = pc.equal(table.column("tossd_subpillar"), pillar_sub)  # ty: ignore[unresolved-attribute]
         mask = pc.and_(mask, subpillar_mask)  # ty: ignore[unresolved-attribute]
@@ -509,6 +744,7 @@ def _needed_read_columns(
     *,
     recipient_codes: tuple[int, ...] | None,
     decode_parent_channel: bool,
+    filter_dimensions: dict[str, tuple[int, ...] | tuple[str, ...]],
 ) -> list[str]:
     """Snake-case schema columns actually needed from the file for this query.
 
@@ -516,11 +752,13 @@ def _needed_read_columns(
     columns among them), plus purely internal dependencies not necessarily
     in the output: `provider_code` (the forced `is_aggregate` derived column
     always reads it, regardless of any `providers=` filter or column
-    selection), `recipient_code` when a `recipients=` filter is set, and
+    selection), `recipient_code` when a `recipients=` filter is set,
     `parent_channel_code` when the channel-codelist decode join is going to
-    run (i.e. `parent_channel_name` is requested). `year`, `tossd_pillar`,
-    and `tossd_subpillar` need no separate entry here: all three are
-    always-forced output columns (`FORCED_COLUMNS`), already in
+    run (i.e. `parent_channel_name` is requested), and each `filters=`
+    dimension's own code column (mirroring `recipient_code`'s handling)
+    when that dimension's own column isn't already selected. `year`,
+    `tossd_pillar`, and `tossd_subpillar` need no separate entry here: all
+    three are always-forced output columns (`FORCED_COLUMNS`), already in
     `column_names`.
     """
     schema_snake_names = {field.snake_name for field in _schema.load_schema()}
@@ -531,6 +769,10 @@ def _needed_read_columns(
         needed.append("recipient_code")
     if decode_parent_channel and _DECODE_CODE_COLUMN not in needed:
         needed.append(_DECODE_CODE_COLUMN)
+    for dimension in filter_dimensions:
+        column_name = _FILTER_DIMENSION_COLUMNS[dimension]
+        if column_name not in needed:
+            needed.append(column_name)
     return needed
 
 

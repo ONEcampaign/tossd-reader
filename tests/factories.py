@@ -268,6 +268,24 @@ def build_tossd_table(year: int, n_rows: int = 200, seed: int = 0) -> pa.Table:
         columns["sdgcode"][forced_empty_idx] = ""
         columns["keywords"][forced_empty_idx] = ""
 
+    # Guarantee at least one deterministic pipe-packed FinancingArrangement/
+    # FrameworkOfCollaboration row, mirroring the real published files
+    # (verified against the cached 2019-2024 vintages: financing_arrangement_code
+    # and framework_of_collaboration_code both carry pipe-packed multi-value
+    # strings for a small share of rows, e.g. "FA02|FA03") -- otherwise a
+    # small/fixed-seed fixture could go without one entirely, since the
+    # per-row draw above only ever writes a single code or "".
+    forced_packed_idx = min(7, n_rows - 1)
+    if forced_packed_idx not in (forced_multi_idx, forced_empty_idx):
+        columns["FinancingArrangement"][forced_packed_idx] = "FA01|FA02"
+        columns["FinancingArrangementName_e"][forced_packed_idx] = (
+            "STANDARD GRANT|ISLAMIC FINANCE"
+        )
+        columns["FrameworkOfCollaboration"][forced_packed_idx] = "FC01|FC02"
+        columns["FrameworkOfCollaborationName_e"][forced_packed_idx] = (
+            "SOUTH-SOUTH CO-OPERATION|TRIANGULAR CO-OPERATION"
+        )
+
     arrays = []
     for _, field in schema_df.iterrows():
         name = field["published_name"]

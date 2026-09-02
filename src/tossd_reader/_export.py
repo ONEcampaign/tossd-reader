@@ -90,15 +90,23 @@ def export(
             while offline mode is active (`config.get_offline()` is
             `True`).
         TossdNetworkError: Same conditions as `get_tossd`; export applies
-            no provider/recipient/pillar filters, so only the fetch/schema
-            layer's own failure modes apply in practice.
+            no provider/recipient/pillar/`filters=` filters, so only the
+            fetch/schema layer's own failure modes apply in practice.
         SchemaDriftError: Same conditions as `get_tossd`.
+
+    Example:
+        >>> import tossd_reader
+        >>> path = tossd_reader.export(  # doctest: +SKIP
+        ...     "tossd_2024.parquet", years=2024
+        ... )
+        >>> df = tossd_reader.load_export(path)  # doctest: +SKIP
     """
     table, paths = query.build_table(
         years=years,
         providers=None,
         recipients=None,
         pillars=None,
+        filters=None,
         columns="all",
         units="usd_thousand",
         refresh=refresh,
@@ -250,6 +258,10 @@ def load_export(path: str | Path, *, verify: bool = True) -> pd.DataFrame:
             fails `verify_export`'s checks; or, regardless of `verify=`, the
             manifest sidecar is missing or cannot be parsed as a JSON
             object.
+
+    Example:
+        >>> import tossd_reader
+        >>> df = tossd_reader.load_export("tossd_2024.parquet")  # doctest: +SKIP
     """
     payload_path = Path(path)
     if verify:
