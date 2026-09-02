@@ -30,7 +30,12 @@ Initial release. Covers TOSSD activity-level vintages 2019 to 2024.
   provenance attached to `df.attrs["tossd_reader"]`. Both raise the new
   `ExportIntegrityError` on a payload-hash or row-count mismatch.
 - Packaged OECD codelist snapshot with `get_available_filters` and
-  `get_codelists_version`.
+  `get_codelists_version`. Every codelist but `pillar` carries an
+  `in_published_data` bool, whether the code occurs anywhere in the six
+  cached vintages 2019-2024. `sector` also adds a supplemental group
+  heading, code `700` (`VIII. Humanitarian Aid`), that the OECD source
+  codelist omits, and a `source` column (`codelist` or
+  `dac-sector-classification`) marking where each row came from.
 - Weekly codelist drift monitoring against the live endpoint.
 - Five aggregation verbs, `rank_entities`, `compare_years`, `sdg_totals`,
   `keyword_totals`, and `subpillar_breakdown`, each summing a

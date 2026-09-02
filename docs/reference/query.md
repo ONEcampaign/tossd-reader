@@ -400,12 +400,14 @@ print(m.head(4).to_string(index=False))
 ```
 
 ```text
-code                                                                     name  tossd_only
-   A                                                           Budget support        True
- A00                                                           Budget support        True
-   B                       Core contributions and pooled programmes and funds        True
- B01 Core support to NGOs, other private bodies, PPPs and research institutes        True
+code                                                                     name  tossd_only  in_published_data
+   A                                                           Budget support        True              False
+ A00                                                           Budget support        True               True
+   B                       Core contributions and pooled programmes and funds        True              False
+ B01 Core support to NGOs, other private bodies, PPPs and research institutes        True               True
 ```
+
+Every dimension's frame carries `code`, `name`, and `tossd_only`. Every dimension but `pillar` also carries `in_published_data`, marking whether the code occurs in the published data. `provider` and `recipient` add `iso3`, and `sector` adds `source`.
 
 `browse()` covers all 10 packaged dimensions, `pillar` included.
 `lookup()` covers the 9 that resolve to a flat code, every `filters=`

@@ -14,12 +14,14 @@ Browse a packaged codelist or resolve one code or name to its packaged value wit
    ```
 
    ```text
-   code                                                                     name  tossd_only
-      A                                                           Budget support        True
-    A00                                                           Budget support        True
-      B                       Core contributions and pooled programmes and funds        True
-    B01 Core support to NGOs, other private bodies, PPPs and research institutes        True
+   code                                                                     name  tossd_only  in_published_data
+      A                                                           Budget support        True              False
+    A00                                                           Budget support        True               True
+      B                       Core contributions and pooled programmes and funds        True              False
+    B01 Core support to NGOs, other private bodies, PPPs and research institutes        True               True
    ```
+
+   Every codelist above carries an `in_published_data` bool except `pillar`, recording whether the code actually occurs in the published data across the packaged vintages. A codelist can carry entries the published data doesn't use. `modality`'s one-letter group codes, `A` and `B`, read `False` here, while the detail codes actually filed, `A00` and `B01`, read `True`. `sector` runs the other way. Its group code `700` (`VIII. Humanitarian Aid`) occurs in the data, while the sub-codes beneath it, `720`, `730`, and `740`, fold into the group and read `False`. `sector` alone also carries a `source` column, `codelist` for the OECD-fetched rows and `dac-sector-classification` for the one supplemental row.
 
    `get_available_filters()` returns all ten codelists at once, plus a synthetic `years` entry (eleven keys total), when you want everything in one dict instead of one dimension at a time.
 

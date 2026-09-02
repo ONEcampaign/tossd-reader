@@ -41,7 +41,7 @@ where the finer detail actually lives.
 2. **Know the sector vocabulary before you filter on a sub-code.** The
    published data's `sector_code` column holds 25 top-level groups: 110
    Education, 120 Health, 700 Humanitarian Assistance, and so on. The packaged
-   sector codelist carries 49 entries, including sub-sector codes such as 122
+   sector codelist carries 50 entries, including sub-sector codes such as 122
    (`I.2.b. Basic health`) that the publisher folds into their group before
    publishing those files. Filter on one of those sub-codes and `get_tossd`
    returns an empty frame, correctly typed, with a warning:
@@ -110,17 +110,17 @@ where the finer detail actually lives.
    [120]
    ```
 
-4. **Filter humanitarian assistance by code.** Sector 700, Humanitarian
-   Assistance, is a real value in `sector_code`, but the packaged sector
-   codelist has no row for it at all. Codes pass `filters=` without codelist
-   gating, so the code still works.
+4. **Filter humanitarian assistance by its packaged name.** Sector 700 is a
+   DAC group heading the OECD source codelist doesn't carry. The packaged
+   sector codelist adds it as a supplemental entry, `VIII. Humanitarian Aid`,
+   and `filters=` resolves it the same way it resolves any other sector name.
 
    ```python
    hum = tossd.get_tossd(
        years=2024,
        columns="analysis",
        units="usd_million",
-       filters={"sector": 700},
+       filters={"sector": "VIII. Humanitarian Aid"},
    )
    print(len(hum))
    print(round(hum["usd_disbursement"].sum(), 1))
@@ -131,9 +131,12 @@ where the finer detail actually lives.
    47179.8
    ```
 
-   The name doesn't work. `"Humanitarian Assistance"` is the label the
-   publisher writes into the frame's own `sector_name` column. `filters=`
-   matches against the codelist, and 700 has no entry there.
+   The name resolves to code 700 before the filter runs, so
+   `filters={"sector": 700}` is the same filter spelled as a code.
+
+   The plain-English label the publisher writes into the frame's own
+   `sector_name` column, `"Humanitarian Assistance"`, still doesn't resolve.
+   `filters=` matches names against the packaged codelist's own spelling.
 
    ```python
    tossd.get_tossd(years=2024, filters={"sector": "Humanitarian Assistance"})
@@ -142,8 +145,47 @@ where the finer detail actually lives.
    ```text
    UnknownCodeError: 'Humanitarian Assistance' did not match any sector code
    or name in the packaged codelist. Closest matches: VI.3. Other Commodity
-   Assistance.
+   Assistance, VIII. Humanitarian Aid.
    ```
+
+   The suggestion names the packaged entry that resolves.
+
+   700 has sub-codes in the packaged codelist too, the same fold-into-group
+   shape as the health sub-code in step 2. Filtering on one of them, 720
+   (`VIII.1. Emergency Response`), returns nothing.
+
+   ```python
+   tossd.get_tossd(years=2024, filters={"sector": 720})
+   ```
+
+   ```text
+   UserWarning: get_tossd's filters matched no rows; returning an empty (but
+   correctly typed) frame. A codelist entry can sit at a finer granularity
+   than the published data uses (sector sub-codes, for example, fold into
+   their top-level group) -- compare against the column's own values, e.g.
+   df['sector_code'].unique().
+   ```
+
+   `codes.browse("sector")` carries an `in_published_data` column that shows
+   this directly, per code.
+
+   ```python
+   sector = tossd.codes.browse("sector")
+   print(sector[sector["code"].isin(["700", "720", "730", "740"])].to_string(index=False))
+   ```
+
+   ```text
+   code                                      name  tossd_only                    source  in_published_data
+    700                    VIII. Humanitarian Aid       False dac-sector-classification               True
+    720                VIII.1. Emergency Response       False                  codelist              False
+    730 VIII.2. Reconstruction and Rehabilitation       False                  codelist              False
+    740             VIII.3. Disaster Preparedness       False                  codelist              False
+   ```
+
+   700 is the group the publisher uses. 720, 730, and 740 fold into
+   it and never appear in `sector_code` on their own. See
+   [How to look up codes and names](look-up-codes.md) for reading
+   `in_published_data` across the other dimensions.
 
 5. **Rank sectors within a filtered frame.** `df.tossd.rank_entities()` sums,
    ranks, and counts activities per sector in one call, over any
