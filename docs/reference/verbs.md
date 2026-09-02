@@ -15,7 +15,7 @@ published total](../how-to/reconcile-a-figure.md). Both take only `df`,
 no keyword arguments, and both are `df.tossd` methods too, spelled
 `provenance()` and `reconcile()`.
 
-The five aggregation verbs share four conventions.
+The five aggregation verbs share three conventions.
 
 Each drops the `provider_code == 0` pseudo-aggregate rows before
 aggregating, with `include_aggregates=False` as the default.
@@ -26,15 +26,27 @@ in full, and the verb layer sums only real providers' own activity.
 
 `value=` names the amount column each verb sums, `"usd_disbursement"`
 on most verbs and `"usd_disbursement_deflated"` on `compare_years`.
-`top=` keeps the first N rows after ranking.
-
-`share_pct` is a share of the included total, from 0 to 100, unrounded,
-and summing to 100 across whatever rows a call returns. The total is
-taken after `include_aggregates` and any filters already on the frame,
-not the frame's grand total.
 
 `df.attrs` propagates. Every verb copies the input frame's `attrs`
 onto its result.
+
+`top=` and `share_pct` vary by verb:
+
+| verb                  | `top=` | `share_pct` |
+| --------------------- | ------ | ----------- |
+| `rank_entities`       | yes    | yes         |
+| `sdg_totals`          | yes    | yes         |
+| `subpillar_breakdown` | no     | yes         |
+| `compare_years`       | no     | no          |
+| `keyword_totals`      | no     | no          |
+
+Where `share_pct` appears, it's a share of the included total, from 0
+to 100, unrounded, computed over the full grouped result before any
+`top=` truncates the rows. The total is taken after
+`include_aggregates` and any filters already on the frame, not the
+frame's grand total. A call without `top=` returns `share_pct` values
+that sum to 100. A call with `top=` returns a truncated slice of that
+ranking, and the column sums to less than 100.
 
 ## `include_aggregates` in practice
 
@@ -87,16 +99,18 @@ column name before comparing one verb's count against the other's.
 
 ```python
 import tossd_reader as tossd
+from pprint import pprint
 
 df = tossd.get_tossd(years=2024, columns="analysis", units="usd_million")
 
-tossd.get_provenance(df)
+pprint(tossd.get_provenance(df))
 ```
 
 ```text
-{'created_at': '2026-09-02T08:01:04.167632+00:00',
+{'created_at': '2026-09-02T12:19:04.952853+00:00',
  'package_version': '0.1.0',
  'query': {'columns': 'analysis',
+           'filters': {},
            'include_aggregates': True,
            'pillars': None,
            'providers': None,
@@ -105,7 +119,7 @@ tossd.get_provenance(df)
            'units': 'usd_million',
            'years': (2024,)},
  'years': {'2024': {'etag': '"69e6ac8d-5728379"',
-                    'retrieved_at': '2026-08-28T19:32:28.617740+00:00',
+                    'retrieved_at': '2026-09-02T12:10:44.031565+00:00',
                     'url': 'https://tossd.online/tossddata_2024.parquet'}}}
 ```
 
@@ -118,14 +132,14 @@ since an export is an unfiltered snapshot:
 ```python
 loaded = tossd.load_export("exports/tossd_2019.parquet")
 
-tossd.get_provenance(loaded)
+pprint(tossd.get_provenance(loaded))
 ```
 
 ```text
-{'created_at': '2026-09-02T08:01:05.881968+00:00',
+{'created_at': '2026-09-02T12:10:39.819913+00:00',
  'package_version': '0.1.0',
  'years': {'2019': {'etag': '"69e6ac86-347a653"',
-                    'retrieved_at': '2026-08-28T21:14:14.414671+00:00'}}}
+                    'retrieved_at': '2026-09-02T12:10:39.379359+00:00'}}}
 ```
 
 The key survives every verb and accessor call above. Each one copies
@@ -293,8 +307,10 @@ on its own, outside any verb), and `groupby_entity(dimension=)` (a raw
 none of the five verbs cover).
 
 Every method above returns a DataFrame carrying its own `.tossd`, so
-calls chain. `provenance()` and `reconcile()` are the two exceptions.
-Each returns a dict or `pandas.Series`, so a chain stops there.
+calls chain, with four exceptions. `provenance()` returns a `dict`.
+`reconcile()` and `summary()` each return a `pandas.Series`.
+`groupby_entity()` returns a `pandas.api.typing.DataFrameGroupBy`. A
+chain stops at any of the four.
 
 ```python
 df.tossd.exclude_aggregates().tossd.rank_entities(top=5)

@@ -63,7 +63,7 @@ Filter a Pillar II frame to the sector-code carve-out for spending recorded insi
 
 <!-- prettier-ignore -->
 !!! warning "Heads up"
-    `filter_provider_costs` applies a sector-family heuristic. The TOSSD Reporting Instructions issued by the International Forum on TOSSD (IFT) at tossd.online define this category as expenditures in the provider country. Sector families 910 and 930 match that definition, producing this package's 35.6% estimate. Sector 910 acts as a proxy for provider administrative overhead. Most administrative spending remains inside the provider country, while some occurs in recipient countries. Sector 720 ("Humanitarian Assistance") represents field humanitarian aid delivered through agencies like UNHCR and UNICEF, so it falls outside this carve-out.
+    `filter_provider_costs` applies a sector-family heuristic. The TOSSD Reporting Instructions issued by the International Forum on TOSSD (IFT) at tossd.online define this category as expenditures in the provider country, coded via modality `H00`. TOSSD does not publish a sector-based carve-out matching that definition. Sector families 910 and 930 approximate it, producing this package's 35.6% estimate. In the 2024 data, sector-910/930 rows and modality-H00 rows overlap in a single row. Sector 910 acts as a proxy for provider administrative overhead. Most administrative spending remains inside the provider country, while some occurs in recipient countries. Sector 700 ("Humanitarian Assistance") represents field humanitarian aid delivered through agencies like UNHCR and UNICEF, so it falls outside this carve-out.
 
 ## Verify it worked
 

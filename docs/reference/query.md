@@ -318,15 +318,17 @@ copy of that dict.
 
 ```python
 import tossd_reader as tossd
+from pprint import pprint
 
 df = tossd.get_tossd(years=2024, columns="analysis", units="usd_million")
-tossd.get_provenance(df)
+pprint(tossd.get_provenance(df))
 ```
 
 ```text
-{'created_at': '2026-09-02T08:01:04.167632+00:00',
+{'created_at': '2026-09-02T12:23:44.126187+00:00',
  'package_version': '0.1.0',
  'query': {'columns': 'analysis',
+           'filters': {},
            'include_aggregates': True,
            'pillars': None,
            'providers': None,
@@ -335,7 +337,7 @@ tossd.get_provenance(df)
            'units': 'usd_million',
            'years': (2024,)},
  'years': {'2024': {'etag': '"69e6ac8d-5728379"',
-                    'retrieved_at': '2026-08-28T19:32:28.617740+00:00',
+                    'retrieved_at': '2026-09-02T12:21:52.639935+00:00',
                     'url': 'https://tossd.online/tossddata_2024.parquet'}}}
 ```
 

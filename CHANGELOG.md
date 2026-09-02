@@ -98,8 +98,9 @@ Initial release. Covers TOSSD activity-level vintages 2019 to 2024.
   `framework_of_collaboration` match by token membership. A filter for
   `"FA02"` also catches rows tagged `"FA02|FA03"`, matching how the
   publisher packs multiple codes into these two dimensions. A `filters=`
-  key of `provider`, `recipient`, or `pillar`, in any spelling, raises a
-  `ValueError` naming the dedicated kwarg to use instead.
+  key of `provider`, `providers`, `recipient`, `recipients`, `pillar`, or
+  `pillars`, lowercase, raises a `ValueError` naming the dedicated kwarg to
+  use instead.
 - `pillars="standard"`: filters to pillars 1 and 2, excluding pillar-0
   placeholder rows. Existing pillar tokens are unchanged.
 - `tossd_reader.codes`: `browse(dimension)` returns the packaged codelist

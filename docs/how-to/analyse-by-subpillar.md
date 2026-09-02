@@ -21,7 +21,7 @@ Filter to Pillar II.A or II.B with `pillars=`, then split Pillar II by sub-pilla
    True True
    ```
 
-   Querying both sub-pillars for 2024 gives their disbursement split across International Public Goods (II.A) and Global Challenges (II.B).
+   Querying both sub-pillars for 2024 gives their disbursement split between II.A and II.B.
 
    ```python
    b = tossd.get_tossd(years=2024, pillars="II.B", columns="minimal", units="usd_million")

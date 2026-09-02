@@ -63,11 +63,11 @@ With offline mode active, a fetch that has a cached vintage to fall back on serv
 import tossd_reader as tossd
 
 tossd.set_offline(True)
-df = tossd.get_tossd(years=2024)
+df = tossd.get_tossd(years=2024, columns="minimal")
 ```
 
 ```text
-UserWarning: Offline mode is active (tossd_reader.config.set_offline(False), or the TOSSD_READER_OFFLINE env var, would allow network access); serving the cached 2024 vintage retrieved 2026-08-28T19:32:28.617740+00:00 (etag "69e6ac8d-5728379").
+UserWarning: Offline mode is active (tossd_reader.config.set_offline(False), or the TOSSD_READER_OFFLINE env var, would allow network access); serving the cached 2024 vintage retrieved 2026-09-02T12:21:52.639935+00:00 (etag "69e6ac8d-5728379").
 ```
 
 `refresh=True` needs the network by definition, and offline mode exists to rule the network out, so combining the two raises `ValueError` naming the conflict. The same check guards `get_tossd()`, `get_tossd_raw()`, `export()`, and `get_vintages()`, with the same message shape aside from the leading function name:

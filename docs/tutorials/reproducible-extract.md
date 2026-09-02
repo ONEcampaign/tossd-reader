@@ -41,7 +41,7 @@ UserWarning: 1 code(s) across 1 column(s) not in the packaged codelists (vintage
 PosixPath('exports/tossd_2019.parquet')
 ```
 
-The warning means the packaged codelist snapshot hasn't caught up with one `parent_channel_code` value in the published 2019 data. `parent_channel_name` reads `NA` for that single row, and the rest of the export is unaffected.
+The warning means the packaged codelist snapshot hasn't caught up with one `parent_channel_code` value in the published 2019 data. `parent_channel_name` reads `NA` for the 116 rows carrying that code, and the rest of the export is unaffected.
 
 Passing a directory path generates a standard filename (`tossd_2019.parquet`) and creates the target directory when required. The `export()` function preserves all published columns and original publisher units (USD thousand). Custom filtering by recipient, provider, or pillar and unit conversions take place downstream during analysis with `get_tossd()`.
 

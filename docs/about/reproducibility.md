@@ -36,15 +36,17 @@ Every `get_tossd()`, `get_tossd_raw()`, and `load_export()` call stamps `df.attr
 
 ```python
 import tossd_reader as tossd
+from pprint import pprint
 
 df = tossd.get_tossd(years=2024, columns="analysis", units="usd_million")
-tossd.get_provenance(df)
+pprint(tossd.get_provenance(df))
 ```
 
 ```text
-{'created_at': '2026-09-02T08:01:04.167632+00:00',
+{'created_at': '2026-09-02T12:23:44.126187+00:00',
  'package_version': '0.1.0',
  'query': {'columns': 'analysis',
+           'filters': {},
            'include_aggregates': True,
            'pillars': None,
            'providers': None,
@@ -53,7 +55,7 @@ tossd.get_provenance(df)
            'units': 'usd_million',
            'years': (2024,)},
  'years': {'2024': {'etag': '"69e6ac8d-5728379"',
-                    'retrieved_at': '2026-08-28T19:32:28.617740+00:00',
+                    'retrieved_at': '2026-09-02T12:21:52.639935+00:00',
                     'url': 'https://tossd.online/tossddata_2024.parquet'}}}
 ```
 
@@ -62,15 +64,15 @@ tossd.get_provenance(df)
 `get_tossd_raw()` carries the same shape, with a smaller `query` holding only `years` and `refresh`, since it has no filtering or unit options of its own to record. `load_export()` frames carry only `package_version`, `created_at`, and `years`. An export isn't the output of one filtered query, so there's no `query` key to hold:
 
 ```python
-loaded = tossd.load_export(path)
-tossd.get_provenance(loaded)
+loaded = tossd.load_export("exports/tossd_2019.parquet")
+pprint(tossd.get_provenance(loaded))
 ```
 
 ```text
-{'created_at': '2026-09-02T08:01:05.881968+00:00',
+{'created_at': '2026-09-02T12:20:31.461315+00:00',
  'package_version': '0.1.0',
  'years': {'2019': {'etag': '"69e6ac86-347a653"',
-                    'retrieved_at': '2026-08-28T21:14:14.414671+00:00'}}}
+                    'retrieved_at': '2026-09-02T12:20:30.461811+00:00'}}}
 ```
 
 Calling `get_provenance` on a frame that never carried this key raises, naming the three functions that set it:

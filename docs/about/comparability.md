@@ -54,13 +54,13 @@ import tossd_reader as tossd
 tossd.get_structural_breaks()
 ```
 
-| Dimension | Break Year | End Year | Description | Source |
-| :--- | :--- | :--- | :--- | :--- |
-| `sub_pillar` | 2022 | 2022 | Sub-pillar tagging first appears as trace data with 24 rows in 2022 | Audit of published files |
-| `sub_pillar` | 2023 | 2023 | Sub-pillar coverage reaches ~51% in 2023 and ~99% in 2024; cross-year sub-pillar comparisons are clean from 2024 | Audit of published files |
-| `modality` | 2021 | 2021 | Modality code K02 first appears in 2021 | Audit of published files |
-| `reporters` | 2019 | 2024 | Reporter base grows from 97 in 2019 to 130 in 2024 distinct provider codes; apparent growth partly reflects reporting coverage | Distinct provider codes in published files |
-| `methodology` | 2026 | 2026 | Revised Debt Relief Methodology (RDRM) takes effect May 2026 for future vintages | TOSSD Secretariat announcement |
+| Dimension     | Break Year | End Year | Description                                                                                                                                                         | Source                                        |
+| :------------ | :--------- | :------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :-------------------------------------------- |
+| `sub_pillar`  | 2022       | 2022     | Sub-pillar tagging (Tossdpillar2 21/22) first appears as trace data: 24 rows in 2022                                                                                | audit of published files                      |
+| `sub_pillar`  | 2023       | 2023     | Sub-pillar coverage ~51% of pillar-2 rows in 2023; ~99% in 2024 -- cross-year sub-pillar analysis is only clean from 2024                                           | audit of published files                      |
+| `modality`    | 2021       | 2021     | Modality code K02 first appears in 2021                                                                                                                             | audit of published files                      |
+| `reporters`   | 2019       | 2024     | Reporter base grows from 97 (2019) to 130 (2024) distinct provider codes, counting provider_code != 0; apparent growth in totals partly reflects reporting coverage | distinct provider_code in the published files |
+| `methodology` | 2026       | 2026     | RDRM (revised debt-relief reporting methodology) takes effect May 2026 -- applies to vintages published from that date                                              | TOSSD Secretariat announcement                |
 
 ## Comparing TOSSD and Official Development Assistance (ODA)
 

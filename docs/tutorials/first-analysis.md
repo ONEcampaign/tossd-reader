@@ -86,7 +86,7 @@ African Development Bank Group    164.1
 Name: usd_disbursement, dtype: float64
 ```
 
-Two problems sit in that table. `Aggregate` is provider code 0, the publisher's placeholder for confidential flows and multilateral estimates reported with no individual bilateral reporter behind them. The summary above already counted its 77 rows. And `provider_name` alone merges distinct reporting entities that share a family label. The African Development Bank Group covers the African Development Bank (provider code 913) and the African Development Fund (914). 164.1 combines both providers' totals into one row.
+Two problems sit in that table. `Aggregate` is provider code 0. It combines bilateral non-concessional flows and export credits reported without naming an individual bilateral reporter, and TOSSD Secretariat estimates built from OECD DAC reporting for providers such as Germany and the World Bank Group. The summary above already counted its 77 rows. And `provider_name` alone merges distinct reporting entities that share a family label. The African Development Bank Group covers the African Development Bank (provider code 913) and the African Development Fund (914). 164.1 combines both providers' totals into one row.
 
 `rank_entities()` fixes both by default: it drops `is_aggregate` rows before summing, and groups by `(provider_code, provider_name)` so shared-name entities stay apart.
 
@@ -164,7 +164,7 @@ print(deflated.to_string(index=False))
  2024                     2090.1           49         5.7
 ```
 
-In constant prices, the same 49 providers raised disbursements 40.9%. Price inflation accounts for roughly a third of the nominal growth.
+In constant prices, the same 49 providers raised disbursements 40.9%. The deflator, which adjusts for global price inflation and currency movements relative to the 2024 base year, accounts for roughly a third of the nominal growth.
 
 `compare_years()` also attaches `get_structural_breaks()`'s rows for the years covered to `result.attrs["structural_breaks"]`, so a jump in the numbers above can be checked against a documented cause.
 

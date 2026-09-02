@@ -10,10 +10,10 @@ These cross-border flows encompass bilateral development projects, official gran
 
 ## Pillar II global public goods and regional expenditures
 
-Pillar II covers expenditures that generate shared regional or global benefits where financial resources are not transferred to a single recipient country. These activities support sustainable development through two operational sub-pillars recorded in `tossd_subpillar`:
+Pillar II covers expenditures that generate shared regional or global benefits where financial resources are not transferred to a single recipient country. These activities support sustainable development through two operational sub-pillars recorded in `tossd_subpillar`, as the IFT defines them at tossd.online:
 
-- Pillar II.A (coded as `21`) covers regional and global public goods. This includes transnational climate change mitigation, biodiversity conservation, research and development for infectious diseases, pandemic preparedness, and international peacekeeping.
-- Pillar II.B (coded as `22`) covers support to international and multilateral mechanisms, global programmes, and provider-country expenditures that support sustainable development frameworks.
+- Pillar II.A (coded as `21`) covers issues specific to developing countries and/or their populations. This includes research and development for malaria, support to refugees and protected persons, and earmarked contributions to multilateral organisations addressing developing-country-specific issues.
+- Pillar II.B (coded as `22`) covers issues of a global nature. This includes transnational climate change mitigation, biodiversity conservation, research and development for infectious diseases, pandemic preparedness, and international peacekeeping.
 
 `tossd_subpillar` carries exactly those two categories, `"21"` and `"22"`. A row reads `NA` unless it carries one of those tags: every Pillar I row, every Pillar 0 row, and any Pillar II row the reporting provider left untagged. `.notna()` on `tossd_subpillar` means the row carries a sub-pillar tag, and coverage measured that way reflects the real rollout described below. `get_tossd_raw()` returns the published sentinel codes verbatim, including the raw `"1"` and `"2"` values that `get_tossd()` maps to `NA`.
 
@@ -27,9 +27,9 @@ Because sub-pillar tagging was established incrementally, longitudinal analysis 
 
 ## Aggregate provider records and double-counting protection
 
-Published annual datasets combine activity-level project transactions from reporting providers with pre-computed summary rows. These summary records carry `provider_code == 0` and `provider_name == "Aggregate"`.
+Published annual datasets combine activity-level project transactions from reporting providers with pre-computed summary rows. These summary records carry `provider_code == 0`. `provider_name` on those rows reads `Aggregate`, `Bilateral providers`, or `Multilateral providers`.
 
-The TOSSD Secretariat includes aggregate records to summarize high-level institutional totals where providers submitted summary figures. In the 2024 dataset, aggregate records total 5,626 rows and USD 99.4 billion in disbursements, 20.0% of total reported disbursements (USD 497.7 billion).
+The TOSSD Secretariat includes aggregate records for two reasons. Some non-concessional flows are disclosed only partially, for data-sensitivity reasons, and the Secretariat reports them as semi-aggregates worth USD 22 billion in 2024. The Secretariat also estimates resources that providers report to the OECD DAC Creditor Reporting System but not to TOSSD, as with Germany and the World Bank Group, and publishes them as semi-aggregates worth USD 77 billion in 2024. In the 2024 dataset, aggregate records total 5,626 rows and USD 99.4 billion in disbursements, 20.0% of total reported disbursements (USD 497.7 billion).
 
 The boolean `is_aggregate` column is present in every DataFrame returned by `get_tossd()`. The choice to include or exclude aggregate rows depends on the analytical objective. Calculating global headline volumes matching official IFT statistical publications requires retaining aggregate rows to capture all reported funding. Provider-level rankings, recipient analyses, or sector-level aggregations require excluding them instead (`~df["is_aggregate"]`), to prevent double-counting and isolate individual reporting institutions.
 
@@ -51,7 +51,7 @@ df.groupby("provider_name", observed=True)["usd_disbursement"].sum()
 
 ## Bilateral core contributions and multilateral double-counting
 
-Beyond publisher aggregate rows (`is_aggregate`), development finance analysis involves a double-counting risk when combining bilateral and multilateral providers. The provider perspective measures a donor country's total financial effort, which includes bilateral cross-border transfers (Pillar I) plus core unearmarked contributions to multilateral organisations (Pillar II.B, aid modality `B02`). The recipient perspective measures resources received by developing countries, which includes bilateral cross-border transfers from donors plus the multilateral institutions' subsequent cross-border project disbursements (Pillar I).
+Beyond publisher aggregate rows (`is_aggregate`), development finance analysis involves a double-counting risk when combining bilateral and multilateral providers. The provider perspective measures a donor country's total financial effort, which includes bilateral cross-border transfers (Pillar I) plus core unearmarked contributions to multilateral organisations (aid modality `B02`). The recipient perspective measures resources received by developing countries, which includes bilateral cross-border transfers from donors plus the multilateral institutions' subsequent cross-border project disbursements (Pillar I).
 
 Summing all bilateral providers and all multilateral institutions across both pillars counts the same funding twice: first as a bilateral core contribution to a multilateral fund, and second as a multilateral project disbursement in a partner country. When analysing cross-border finance received by partner countries, query Pillar I (`pillars=1`) and exclude core contributions (`modality_code != "B02"`).
 
@@ -59,11 +59,11 @@ Summing all bilateral providers and all multilateral institutions across both pi
 
 Pillar II includes expenditures incurred within provider territories that contribute to global sustainable development frameworks. The helper `filter_provider_costs()` isolates these domestic outlays by selecting Pillar II activities under sector 910 (administrative costs of donors) and sector 930 (domestic expenditures for refugees and asylum seekers in the host country). In the 2024 dataset, domestic provider costs total USD 47.5 billion across 27,275 records, 35.6% of Pillar II gross disbursements.
 
-Sector 720 records cover in-country humanitarian assistance delivered in recipient territories and remain distinct from domestic provider expenditures.
+Sector 700 records, named `Humanitarian Assistance` in the published data, cover in-country humanitarian assistance delivered in recipient territories and remain distinct from domestic provider expenditures.
 
 ## Transitional Pillar 0 classifications
 
-Datasets from 2020 through 2023 contain several hundred transactions recorded with pillar `0`. These records are early submissions from provider entities prior to the uniform adoption of the two-pillar structure. Default queries (`pillars=None`) retain these rows to preserve the exact record count of the published source files. `pillars="standard"` selects pillars 1 and 2 together, excluding these placeholder rows.
+Datasets from 2021 through 2023 contain several hundred transactions recorded with pillar `0`, plus a handful (10 rows) in 2020. These records are early submissions from provider entities prior to the uniform adoption of the two-pillar structure. Default queries (`pillars=None`) retain these rows to preserve the exact record count of the published source files. `pillars="standard"` selects pillars 1 and 2 together, excluding these placeholder rows.
 
 ## Concessionality criteria
 

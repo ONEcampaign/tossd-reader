@@ -12,7 +12,7 @@ Turn a `get_tossd` frame into per-goal or per-target disbursement totals, weight
    df = tossd.get_tossd(years=2024, columns="analysis", units="usd_million")
    ```
 
-2. **Explode the SDG codes for row-level work.** `sdg_codes_raw` packs one or more semicolon-delimited codes per activity, combining goals (`4`) and targets (`4.2`). Under the TOSSD Reporting Instructions, activities report up to 10 SDG focus areas. `explode_sdg` gives each code its own row and assigns an equal weight `sdg_weight` of `1/n` across the `n` reported codes. Pass `value=` to get a precomputed `{value}_weighted` sibling column alongside the untouched original.
+2. **Explode the SDG codes for row-level work.** `sdg_codes_raw` packs one or more semicolon-delimited codes per activity, combining goals (`4`) and targets (`4.2`). The TOSSD Reporting Instructions cap dissemination at the first ten SDG targets or goals reported per activity, so an activity tagged with more than ten still shows only its first ten here. `explode_sdg` gives each code its own row and assigns an equal weight `sdg_weight` of `1/n` across the `n` reported codes. Pass `value=` to get a precomputed `{value}_weighted` sibling column alongside the untouched original.
 
    ```python
    ex = df.tossd.explode_sdg(value="usd_disbursement")

@@ -49,7 +49,7 @@ Tag a `get_tossd` frame with the twelve packaged keyword markers, then total dis
 
 <!-- prettier-ignore -->
 !!! warning "Heads up"
-    The twelve markers are independent booleans without weights or partitioning. Marker totals overlap by design. The vocabulary is a fixed twelve. An absent marker indicates the activity is untagged.
+    The twelve markers are independent booleans without weights or partitioning. Marker totals overlap by design. The vocabulary is a fixed twelve. A row reading False on every `kw_` column carries none of the packaged twelve. 10.9% of 2024 rows (51,436 of 474,026) carry a `keywords_raw` token outside that vocabulary and still read False on every `kw_` column.
 
 ## Verify it worked
 

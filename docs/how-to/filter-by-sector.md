@@ -47,7 +47,7 @@ where the finer detail actually lives.
    returns an empty frame, correctly typed, with a warning:
 
    ```python
-   tossd.get_tossd(
+   sub_health = tossd.get_tossd(
        years=2024,
        columns="analysis",
        units="usd_million",
@@ -80,7 +80,7 @@ where the finer detail actually lives.
 
 3. **Reach sub-sector detail through `purpose` instead.** The granularity a
    sector sub-code promises lives in the `purpose_code` column, which carries
-   305 distinct values in the published data. Filter `purpose` for the finer
+   303 distinct values in the 2024 data. Filter `purpose` for the finer
    question.
 
    ```python
@@ -155,7 +155,7 @@ where the finer detail actually lives.
    (`VIII.1. Emergency Response`), returns nothing.
 
    ```python
-   tossd.get_tossd(years=2024, filters={"sector": 720})
+   sub_emergency = tossd.get_tossd(years=2024, filters={"sector": 720})
    ```
 
    ```text

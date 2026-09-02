@@ -43,7 +43,7 @@ Python 3.12 or newer.
 - Typed DataFrames with snake_case column names, standard numeric types, nullable integer codes, and string categoricals.
 - Provider and recipient filtering by name or official code, with fuzzy suggestions for misspelled names.
 - Double-counting protection through the `is_aggregate` flag to separate activity-level transactions from summary records.
-- Domain helpers for multi-goal SDG weighting, thematic keyword tags for climate and gender, and constant-price deflators.
+- Domain helpers for multi-goal SDG weighting and thematic keyword tags for climate and gender, plus typed constant-price columns ready for year-over-year comparison.
 - Automatic disk caching to accelerate repeat queries.
 
 ## Data size and workflow
