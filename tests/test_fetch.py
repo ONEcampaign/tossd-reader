@@ -18,7 +18,7 @@ from readerkit import FetchContext, refresh_scope
 import tossd_reader
 from tests.factories import write_tossd_fixture
 from tests.fakes import patch_discovery, patch_fetcher_by_url, url_for
-from tossd_reader import _discovery, config, fetch
+from tossd_reader import _discovery, _provenance, config, fetch
 from tossd_reader._discovery import VintageInfo
 from tossd_reader.exceptions import TossdNetworkError, VintageValidationError
 
@@ -406,6 +406,104 @@ def test_provenance_rewritten_after_sidecar_loss_falls_back_to_key_etag(
 
     record = json.loads(path.with_suffix(".provenance.json").read_text())
     assert record["etag"] == etag
+
+
+# --- orphaned provenance sweep --------------------------------------------------
+
+
+def test_payload_path_for_sidecar_reverses_sidecar_path(tmp_path: Path) -> None:
+    """The name-surgery reversal, not `Path.with_suffix` (which mishandles the double suffix)."""
+    payload_path = tmp_path / "abc123.parquet"
+    sidecar_path = _provenance.sidecar_path(payload_path)
+
+    assert sidecar_path.name == "abc123.provenance.json"
+    assert _provenance.payload_path_for_sidecar(sidecar_path) == payload_path
+    # The documented trap: `Path.with_suffix` alone gets this wrong.
+    assert sidecar_path.with_suffix(".parquet") != payload_path
+
+
+def test_orphaned_provenance_sweep_regression_not_resurrected_after_eviction(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The real bug: eviction orphans the sidecar; the sweep must clear it before a re-fetch, so
+    `write_provenance_if_absent`'s no-op-if-present rule can't resurrect the stale record.
+
+    readerkit's own LRU eviction unlinks a payload and its own internal sidecar, but has no idea
+    this package writes `<payload>.provenance.json` beside them. `cache.invalidate(key)` removes
+    exactly that same pair (payload + readerkit's own sidecar) and nothing else, reproducing
+    eviction's footprint without needing to actually starve the cache down to `keep_n`.
+    """
+    year = 2019
+    url = url_for(year)
+    fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=5)
+    etag = '"stable-etag"'
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag=etag)})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), etag)})
+
+    path = fetch.fetch_year(year)
+    provenance_path = path.with_suffix(".provenance.json")
+    original_retrieved_at = json.loads(provenance_path.read_text())["retrieved_at"]
+
+    cache = config.get_cache()
+    assert cache.invalidate(f"tossd_{year}_{etag}")  # simulates eviction's own cleanup
+    assert not path.exists()
+    assert provenance_path.exists(), "orphaned: readerkit doesn't know about it"
+
+    # Same key -> same payload path, forces a re-download.
+    refetched_path = fetch.fetch_year(year)
+
+    assert refetched_path == path
+    fresh_record = json.loads(provenance_path.read_text())
+    assert fresh_record["retrieved_at"] != original_retrieved_at
+    assert fresh_record["etag"] == etag
+
+
+def test_orphaned_provenance_sweep_leaves_non_orphan_sidecars_untouched(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A sidecar whose payload is still present survives every sweep pass, including one
+    triggered by fetching an unrelated year."""
+    years = (2019, 2020)
+    published: dict[int, VintageInfo] = {}
+    sources: dict[str, tuple[bytes, str | None]] = {}
+    for year in years:
+        url = url_for(year)
+        fixture = write_tossd_fixture(
+            tmp_path / f"fixture_{year}.parquet", year, n_rows=3
+        )
+        published[year] = VintageInfo(url=url, etag=f'"e{year}"')
+        sources[url] = (fixture.read_bytes(), f'"e{year}"')
+    patch_discovery(monkeypatch, published)
+    patch_fetcher_by_url(monkeypatch, sources)
+
+    path_2019 = fetch.fetch_year(2019)
+    provenance_2019 = path_2019.with_suffix(".provenance.json")
+    original = provenance_2019.read_text()
+
+    # A second `_download_and_cache` call, its own sweep pass first.
+    fetch.fetch_year(2020)
+
+    assert provenance_2019.exists()
+    assert provenance_2019.read_text() == original
+
+
+def test_orphaned_provenance_sweep_noop_before_anything_is_cached() -> None:
+    """No `artifacts/raw` directory exists yet: the sweep must not raise or create one."""
+    cache = config.get_cache()
+    assert config.cache_namespace_dir() is not None
+    assert not config.cache_namespace_dir().is_dir()
+
+    fetch._sweep_orphaned_provenance(cache)  # must not raise
+
+    assert not config.cache_namespace_dir().is_dir()  # the sweep itself creates nothing
+
+
+def test_orphaned_provenance_sweep_noop_in_bypass_mode() -> None:
+    """Ephemeral bypass mode (`set_cache_dir(None)`) has no namespace dir: a clean no-op."""
+    config.set_cache_dir(None)
+    cache = config.get_cache()
+
+    fetch._sweep_orphaned_provenance(cache)  # must not raise
 
 
 # --- offline fallback rules -----------------------------------------------------

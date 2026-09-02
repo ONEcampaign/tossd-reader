@@ -24,6 +24,15 @@ from tossd_reader import __version__
 ATTRS_KEY: Final = "tossd_reader"
 """The `df.attrs` key `get_tossd()`, `get_tossd_raw()`, and `load_export()` each set."""
 
+SIDECAR_SUFFIX: Final = ".provenance.json"
+"""The sidecar filename's fixed ending. Not underscore-prefixed: fetch.py's orphaned-provenance
+sweep (`fetch._sweep_orphaned_provenance`) globs `*{SIDECAR_SUFFIX}` directly, alongside this
+module's own use in `sidecar_path`/`payload_path_for_sidecar`."""
+
+_PAYLOAD_SUFFIX: Final = ".parquet"
+"""This package's one payload suffix -- every `ArtifactCache.ensure()` call in fetch.py passes
+`suffix=".parquet"`. Kept private: only `payload_path_for_sidecar`, below, needs it."""
+
 
 def sidecar_path(payload_path: Path) -> Path:
     """The `<payload path>.provenance.json` sidecar path for `payload_path`.
@@ -32,7 +41,27 @@ def sidecar_path(payload_path: Path) -> Path:
     entry's sidecar alongside its payload, so cache clearing and provenance writing/reading never
     derive this path two different ways.
     """
-    return payload_path.with_suffix(".provenance.json")
+    return payload_path.with_suffix(SIDECAR_SUFFIX)
+
+
+def payload_path_for_sidecar(sidecar_file: Path) -> Path:
+    """Reverse `sidecar_path`: the payload path named by a `<payload>.provenance.json` file.
+
+    Name surgery, not `Path.with_suffix` -- `with_suffix` only ever replaces a path's *last*
+    suffix component (the text after its final dot), so
+    `Path("x.provenance.json").with_suffix(".parquet")` yields `"x.provenance.parquet"`, not
+    `"x.parquet"`. Not underscore-prefixed: fetch.py's orphaned-provenance sweep reuses this, so
+    the sidecar-name shape is derived in exactly one place, never independently reimplemented.
+
+    Args:
+        sidecar_file: A path whose name ends with `SIDECAR_SUFFIX` -- true for every sidecar this
+            package writes.
+
+    Returns:
+        The payload path `sidecar_file` describes, with this package's one payload suffix.
+    """
+    stem = sidecar_file.name.removesuffix(SIDECAR_SUFFIX)
+    return sidecar_file.with_name(f"{stem}{_PAYLOAD_SUFFIX}")
 
 
 def write_provenance_if_absent(

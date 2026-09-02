@@ -1,17 +1,76 @@
 """Shared pytest fixtures for tossd_reader tests."""
 
+import os
 import socket
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from readerkit import resolve_cache_dir
 
 from tossd_reader import _discovery, _pillars, analysis, config, query
 
 
+def _snapshot_dir(root: Path) -> dict[str, tuple[int, int]]:
+    """`{relative path: (size in bytes, mtime_ns)}` for every file under `root`.
+
+    Empty when `root` is absent. Used only by `_real_cache_dir_guard`, before and after the
+    whole suite, to detect any change to the user's real cache directory without ever writing
+    to it itself. The mtime is part of the snapshot so an overwrite that happens to preserve a
+    file's length still registers as a change.
+    """
+    if not root.is_dir():
+        return {}
+    snapshot: dict[str, tuple[int, int]] = {}
+    for path in root.rglob("*"):
+        if path.is_file():
+            stat = path.stat()
+            snapshot[str(path.relative_to(root))] = (stat.st_size, stat.st_mtime_ns)
+    return snapshot
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _real_cache_dir_guard() -> Iterator[None]:
+    """Session-wide guard: fail loudly if the suite ever touches the user's REAL cache directory.
+
+    Requested as a dependency by ``_session_cache_dir_floor`` below (not just left autouse), so
+    this fixture's setup -- which reads ``TOSSD_READER_CACHE_DIR`` exactly as the environment
+    left it, before the floor fixture's own ``monkeypatch.setenv`` override applies -- runs
+    first. A developer may legitimately point their real cache elsewhere via that env var; this
+    resolves the same directory ``config.get_cache_dir()`` would, and asserts its file set,
+    sizes, and mtimes all survive the whole run unchanged.
+
+    ``ensure_exists=False``: ``resolve_cache_dir`` creates the directory by default, and the
+    guard itself must never create or otherwise mutate the real machine state it's watching.
+    """
+    pre_suite_cache_dir = os.environ.get("TOSSD_READER_CACHE_DIR")
+    real_dir = resolve_cache_dir(
+        app=config._APP_NAME,
+        app_version=config._CACHE_GENERATION,
+        cache_dir=pre_suite_cache_dir,
+        ensure_exists=False,
+    )
+    before = _snapshot_dir(real_dir)
+    yield
+    after = _snapshot_dir(real_dir)
+    if after != before:
+        added = sorted(set(after) - set(before))
+        removed = sorted(set(before) - set(after))
+        changed = sorted(
+            path for path in set(after) & set(before) if after[path] != before[path]
+        )
+        pytest.fail(
+            f"The test suite touched the real tossd_reader cache directory ({real_dir}), "
+            "escaping TOSSD_READER_CACHE_DIR isolation -- a test (or code under test) reached "
+            f"the real cache. Added: {added}. Removed: {removed}. Modified: {changed}. "
+            "A concurrent real tossd_reader process running during this test run can also trip "
+            "this guard."
+        )
+
+
 @pytest.fixture(autouse=True, scope="session")
 def _session_cache_dir_floor(
-    tmp_path_factory: pytest.TempPathFactory,
+    tmp_path_factory: pytest.TempPathFactory, _real_cache_dir_guard: None
 ) -> Iterator[None]:
     """Session-wide floor under the per-test cache-dir override.
 
@@ -23,6 +82,9 @@ def _session_cache_dir_floor(
     fixture's reach — collection finishes before fixtures run — but
     ``test_package_init.py`` separately enforces that importing the package
     touches no cache.
+
+    Depends on ``_real_cache_dir_guard`` (not just co-autouse with it) so that fixture's setup —
+    which must see the pre-suite environment — always runs before this one overrides it.
     """
     with pytest.MonkeyPatch.context() as mp:
         mp.setenv(

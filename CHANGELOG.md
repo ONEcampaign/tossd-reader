@@ -19,6 +19,9 @@ Initial release. Covers TOSSD activity-level vintages 2019 to 2024.
   raises a `TypeError` that names the keyword and points to `get_tossd`.
 - ETag-keyed local caching with provenance sidecars, fetch-time validation of
   new vintages, and offline fallback to cached vintages with a warning.
+  Provenance sidecars orphaned by the cache's own size and count bounds are
+  swept on the next fetch, so re-downloading the same vintage records a
+  fresh retrieval time.
 - `export`: normalised zstd parquet plus a manifest recording package
   version, schema hash, payload hash, row count, and per-year vintage
   provenance.

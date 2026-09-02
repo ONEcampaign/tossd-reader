@@ -18,7 +18,13 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import requests
-from readerkit import ArtifactCorruptError, ArtifactEntry, FetchContext, Fetcher
+from readerkit import (
+    ArtifactCache,
+    ArtifactCorruptError,
+    ArtifactEntry,
+    FetchContext,
+    Fetcher,
+)
 from readerkit.refresh import effective_refresh
 
 from tossd_reader import _discovery, _provenance, config
@@ -320,6 +326,47 @@ class _FetcherNetworkError(TossdNetworkError):
 _MAX_ETAG_ATTEMPTS = 2
 
 
+def _sweep_orphaned_provenance(cache: ArtifactCache) -> None:
+    """Unlink every `.provenance.json` sidecar in the cache's namespace dir whose payload is gone.
+
+    readerkit's own LRU eviction (`config._KEEP_N`/`config._MAX_BYTES`, run inside
+    `ArtifactCache.ensure` after every commit -- see `ArtifactCache._evict`) unlinks a payload and
+    readerkit's own internal sidecar, but has no idea this package writes its own
+    `<payload>.provenance.json` beside them, so eviction orphans it. Left behind,
+    `_provenance.write_provenance_if_absent`'s no-op-if-present rule means a later re-fetch under
+    the same cache key would silently keep the orphan's stale `retrieved_at`/`etag` instead of
+    recording the fresh download. Called once at the top of `_download_and_cache`, before its
+    first `cache.ensure(...)`, so every such sequence is closed -- including eviction that lands
+    mid-loop across a multi-year `get_tossd_raw` call, since each year's own
+    `_download_and_cache` call sweeps again before it downloads.
+
+    Locating the namespace directory: `ArtifactCache` has no public accessor for it. Preferred:
+    read it off `cache.entries()` -- every entry's own `.path.parent` is that directory. Falls
+    back to `config.cache_namespace_dir()` only when `entries()` comes back empty, which is
+    exactly the state eviction can produce (every surviving entry gone, orphans left behind with
+    nothing else to derive the directory from). Bypass mode and a namespace directory that
+    doesn't exist yet both no-op -- there is nothing to sweep either way.
+
+    Args:
+        cache: The already-resolved `config.get_cache()` singleton, threaded in rather than
+            re-resolved, since `_download_and_cache` already holds it.
+
+    Raises:
+        OSError: A filesystem fault unlinking a sidecar propagates as-is, rather than being
+            swallowed -- the same documented stance `config.clear_cache` takes: a silent
+            under-sweep is worse than an abrupt stop.
+    """
+    entries = cache.entries()
+    namespace_dir = entries[0].path.parent if entries else config.cache_namespace_dir()
+    if namespace_dir is None or not namespace_dir.is_dir():
+        return
+    for sidecar_file in namespace_dir.glob(f"*{_provenance.SIDECAR_SUFFIX}"):
+        payload_path = _provenance.payload_path_for_sidecar(sidecar_file)
+        if not payload_path.is_file():
+            # missing_ok: a concurrent sweeper may already have won this file.
+            sidecar_file.unlink(missing_ok=True)
+
+
 def _download_and_cache(
     year: int, info: _discovery.VintageInfo, *, refresh: bool
 ) -> Path:
@@ -336,8 +383,11 @@ def _download_and_cache(
             kept changing across every retry attempt.
         VintageValidationError: The downloaded vintage failed structural
             validation.
+        OSError: `_sweep_orphaned_provenance`'s own filesystem fault, propagated as-is (see its
+            docstring).
     """
     cache = config.get_cache()
+    _sweep_orphaned_provenance(cache)
     session = _discovery.get_session()
     etag = info.etag
     etag_history = [etag]

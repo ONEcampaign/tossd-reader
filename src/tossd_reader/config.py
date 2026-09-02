@@ -171,6 +171,26 @@ def get_cache() -> ArtifactCache:
     return _state.cache
 
 
+def cache_namespace_dir() -> Path | None:
+    """The current cache's own namespace directory: `<cache dir>/artifacts/<namespace>`.
+
+    Mirrors `readerkit.ArtifactCache`'s private layout (`_namespace_dir` in
+    `readerkit/artifacts.py`), which has no public accessor. Not underscore-prefixed:
+    `fetch.py`'s orphaned-provenance sweep (`fetch._sweep_orphaned_provenance`) falls back to
+    this only when `ArtifactCache.entries()` comes back empty -- exactly the case eviction can
+    produce (every surviving entry gone, orphaned sidecars left behind with nothing to derive
+    the directory from).
+
+    Returns:
+        `None` in ephemeral bypass mode (`get_cache_dir()` is `None`). The directory need not
+        exist yet -- this only computes the path.
+    """
+    cache_dir = get_cache_dir()
+    if cache_dir is None:
+        return None
+    return cache_dir / "artifacts" / _NAMESPACE
+
+
 def get_offline() -> bool:
     """Resolve whether tossd_reader is in offline mode right now.
 

@@ -57,6 +57,29 @@ def test_get_cache_is_stable_when_effective_dir_is_unchanged() -> None:
     assert first is second
 
 
+def test_cache_namespace_dir_matches_where_ensure_actually_writes(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """`cache_namespace_dir()` must track wherever `ArtifactCache.ensure()` really writes, so a
+    readerkit layout change fails this test loudly rather than silently breaking
+    `fetch._sweep_orphaned_provenance`'s fallback path."""
+    year = 2019
+    url = url_for(year)
+    fixture = write_tossd_fixture(tmp_path / "fixture.parquet", year, n_rows=3)
+    patch_discovery(monkeypatch, {year: VintageInfo(url=url, etag='"e"')})
+    patch_fetcher_by_url(monkeypatch, {url: (fixture.read_bytes(), '"e"')})
+
+    path = fetch.fetch_year(year)
+
+    assert path.parent == config.cache_namespace_dir()
+
+
+def test_cache_namespace_dir_none_in_bypass_mode() -> None:
+    """Ephemeral bypass mode (`set_cache_dir(None)`) has no namespace directory."""
+    config.set_cache_dir(None)
+    assert config.cache_namespace_dir() is None
+
+
 def test_set_cache_dir_closes_an_already_built_singleton(tmp_path: Path) -> None:
     """Calling `set_cache_dir` after `get_cache()` closes the old singleton, not just drops it."""
     config.get_cache()  # builds and caches the singleton
