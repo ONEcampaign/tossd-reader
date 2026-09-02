@@ -13,6 +13,12 @@ Run under the `codelists` dependency group only:
     uv run --group codelists python scripts/refresh_codelists.py
     uv run --group codelists python scripts/refresh_codelists.py --check <baseline-dir> <candidate-dir>
 
+`--annotate <codelists-dir>` is offline (no `codelists` group, no oda-reader
+call): it scans locally cached TOSSD data vintages via `tossd_reader`'s own
+fetch layer to record which packaged codes actually occur in the published
+data.
+    uv run python scripts/refresh_codelists.py --annotate <codelists-dir>
+
 Licence note: this script, and the packaged snapshot it produces, redistributes
 OECD development-finance codelist data. Redistribution licensing for a public
 release is unresolved and tracked outside this repo; packaging the snapshot
@@ -24,11 +30,15 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import warnings
+from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
 from typing import Final
 
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 _PACKAGED_DIR: Final = (
     Path(__file__).resolve().parent.parent
@@ -63,6 +73,30 @@ _SECTOR_CODE_LENGTH: Final = 3
 """Purpose code (id "10") carries both 3-digit sector-level codes and
 5/7-digit purpose-level codes in one flat list; TOSSD's `sector` dimension has
 no id of its own and is a length-based split of this same codelist."""
+
+_FETCHED_SOURCE: Final = "codelist"
+"""`source` value stamped on every row that came from the live fetch, as
+opposed to one of `_SUPPLEMENTAL_ROWS`'s own `source` values."""
+
+_SUPPLEMENTAL_ROWS: Final[dict[str, tuple[dict[str, object], ...]]] = {
+    _SECTOR_DIMENSION: (
+        {
+            "code": "700",
+            "name": "VIII. Humanitarian Aid",
+            "tossd_only": False,
+            "source": "dac-sector-classification",
+        },
+    ),
+}
+"""Rows the fetched codelist snapshot never carries, packaged anyway because
+the published TOSSD data reports them (sector `700`: the DAC 3-digit sector
+classification's own "VIII. Humanitarian Aid" group heading over the
+packaged `720`/`730`/`740` rows -- verified against the OECD's CRS purpose
+codes documentation, not the fetched codelist, which only lists reportable
+codes). Merged into the fetched frame by `_add_supplemental_rows`, in
+code-sorted position, so a hand edit of the CSV is never needed and a
+refresh never drops it. Only a dimension listed here gains a `source`
+column at all."""
 
 
 def _dedupe_by_code(frame: pd.DataFrame) -> pd.DataFrame:
@@ -134,6 +168,41 @@ def _split_purpose_and_sector(purpose_frame: pd.DataFrame) -> dict[str, pd.DataF
     }
 
 
+def _add_supplemental_rows(dimension: str, frame: pd.DataFrame) -> pd.DataFrame:
+    """Merge `dimension`'s `_SUPPLEMENTAL_ROWS` (if any) into a freshly fetched `frame`.
+
+    A no-op for a dimension with no supplemental rows -- only `sector` gains
+    a `source` column today. Every already-fetched row is tagged
+    `_FETCHED_SOURCE`; each surviving supplemental row carries its own
+    `source` value. A supplemental row whose code `frame` already carries is
+    skipped (with a warning) instead of appended alongside it -- the OECD
+    source now reports that code itself, so the hardcoded row is a live
+    duplicate and should be retired from `_SUPPLEMENTAL_ROWS`. Re-sorts by
+    `code` (the same key `_project_dimension_frame` sorts by) so a surviving
+    supplemental row lands in its code-sorted position rather than trailing
+    the file.
+    """
+    supplemental = _SUPPLEMENTAL_ROWS.get(dimension)
+    if not supplemental:
+        return frame
+    tagged = frame.assign(source=_FETCHED_SOURCE)
+    fetched_codes = set(frame["code"])
+    surviving_rows = []
+    for row in supplemental:
+        if row["code"] in fetched_codes:
+            warnings.warn(
+                f"{dimension} supplemental row {row['code']!r} is now "
+                "present in the fetched codelist itself; retire it from "
+                "_SUPPLEMENTAL_ROWS.",
+                stacklevel=2,
+            )
+            continue
+        surviving_rows.append(row)
+    combined = pd.concat([tagged, pd.DataFrame(surviving_rows)], ignore_index=True)
+    order = sorted(combined.index, key=lambda i: _sort_key(combined.at[i, "code"]))
+    return combined.loc[order].reset_index(drop=True)
+
+
 def build_dimension_frames() -> tuple[dict[str, pd.DataFrame], datetime, str]:
     """Fetch every packaged codelist live and project it to its dimension frame.
 
@@ -174,6 +243,9 @@ def build_dimension_frames() -> tuple[dict[str, pd.DataFrame], datetime, str]:
             frames.update(_split_purpose_and_sector(projected))
         else:
             frames[dimension] = projected
+
+    for dimension, frame in frames.items():
+        frames[dimension] = _add_supplemental_rows(dimension, frame)
 
     fetched_at = max(area_snapshot.fetched_at, category_snapshot.fetched_at)
     return frames, fetched_at, area_snapshot.source_url
@@ -263,9 +335,33 @@ def diff_snapshot_dirs(baseline_dir: Path, candidate_dir: Path) -> list[str]:
     return diffs
 
 
+_ANNOTATION_ONLY_COLUMNS: Final = ("source", "in_published_data")
+"""Columns a live-refreshed candidate never carries but a packaged,
+supplemented and/or annotated baseline may: dropped by `_read_normalised`
+before comparison, alongside any row `_read_normalised` itself has already
+excluded (a supplemental row -- see `_SUPPLEMENTAL_ROWS`), so the drift
+canary never alarms on either."""
+
+
 def _read_normalised(path: Path) -> pd.DataFrame:
-    """Read one packaged CSV, sorted by every column, for order-insensitive comparison."""
+    """Read one packaged CSV, sorted by every column, for order-insensitive comparison.
+
+    Drops whatever `_add_supplemental_rows` and `--annotate` add before
+    comparing: a row whose `source` is present and not `_FETCHED_SOURCE`
+    (a supplemental row, e.g. sector `700`) is dropped first, then the
+    `source`/`in_published_data` columns themselves are dropped wherever
+    present. A freshly refreshed snapshot never carries either; the
+    packaged baseline may carry both -- without this, the weekly drift job
+    would alarm on every run.
+    """
     frame = pd.read_csv(path, dtype=str, keep_default_na=False)
+    if "source" in frame.columns:
+        frame = frame[frame["source"] == _FETCHED_SOURCE]
+    frame = frame.drop(
+        columns=[
+            column for column in _ANNOTATION_ONLY_COLUMNS if column in frame.columns
+        ]
+    )
     columns = list(frame.columns)
     return frame.sort_values(columns).reset_index(drop=True)
 
@@ -297,6 +393,136 @@ def _run_refresh(output_dir: Path) -> None:
         print(f"{dimension}: {len(frame)} rows", file=sys.stderr)
 
 
+_ANNOTATED_DIMENSIONS: Final[tuple[str, ...]] = (
+    "provider",
+    "recipient",
+    "sector",
+    "purpose",
+    "channel",
+    "modality",
+    "finance_instrument",
+    "financing_arrangement",
+    "framework_of_collaboration",
+)
+"""Dimensions `--annotate` checks against the published data. `pillar` is
+deliberately excluded: its rows are structural (`1`/`2`/`21`/`22`/`I`/`II`/
+`II.A`/`II.B` tokens), not a code that maps onto one flat published-data
+column the way every other dimension's does."""
+
+
+def _dimension_to_published_column() -> dict[str, str]:
+    """Map each `_ANNOTATED_DIMENSIONS` entry to its published column name, via `schema.csv`.
+
+    Every annotated dimension's packaged codelist `code` column backs one
+    `schema.csv` row whose `snake_name` is `f"{dimension}_code"` -- e.g.
+    `sector` -> `sector_code` -> published `sector3`.
+    """
+    from tossd_reader._schema import load_schema  # noqa: PLC0415 - only needed here
+
+    by_snake_name = {field.snake_name: field.published_name for field in load_schema()}
+    return {
+        dimension: by_snake_name[f"{dimension}_code"]
+        for dimension in _ANNOTATED_DIMENSIONS
+    }
+
+
+def _normalise_observed_code(token: str) -> str:
+    """Strip a spurious float `".0"` suffix so a numeric raw column's `"700.0"` matches the packaged `"700"`.
+
+    Every packaged codelist `code` column is a plain digit string; this
+    guards the defensive case where a raw published column arrives typed as
+    a number rather than the `string` `arrow_type` `schema.csv` documents.
+    """
+    if token.endswith(".0") and token[:-2].isdigit():
+        return token[:-2]
+    return token
+
+
+def _observed_codes(column: pa.ChunkedArray | pa.Array) -> set[str]:
+    """Return the distinct non-null token codes in one published column, pipe-split.
+
+    Splitting on `"|"` is a no-op for a column that never packs (a single
+    token split on `"|"` is itself), so this applies uniformly to every
+    scanned column rather than special-casing the two observed to pack more
+    than one code (`financing_arrangement`, `framework_of_collaboration`,
+    e.g. `"FA01|FA02"`).
+    """
+    codes: set[str] = set()
+    for value in column.drop_null().unique().to_pylist():
+        for raw_token in str(value).split("|"):
+            token = raw_token.strip()
+            if token:
+                codes.add(_normalise_observed_code(token))
+    return codes
+
+
+def _write_annotated_years(codelists_dir: Path, years: Iterable[int]) -> None:
+    """Merge `annotated_from_years` (sorted) into `codelists_dir`'s existing `_version.json`."""
+    version_path = codelists_dir / "_version.json"
+    payload = json.loads(version_path.read_text())
+    payload["annotated_from_years"] = sorted(years)
+    version_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+
+
+def annotate_dimensions(
+    codelists_dir: Path, *, years: Iterable[int] | None = None
+) -> dict[str, int]:
+    """Annotate every `_ANNOTATED_DIMENSIONS` CSV under `codelists_dir` with `in_published_data`.
+
+    Offline apart from `tossd_reader`'s own fetch layer: never fetches
+    codelists from the network (no `oda_reader` call). For each requested
+    year, reads only the cached vintage's needed columns
+    (`pyarrow.parquet.read_table(path, columns=[...])`) rather than loading
+    every year's full frame at once, to see which codes actually occur in
+    the published data, then writes each dimension's CSV back in place with
+    an `in_published_data` column appended. Records the scanned years,
+    sorted, into `codelists_dir/_version.json`'s `annotated_from_years`.
+
+    Args:
+        codelists_dir: Directory holding the already-packaged dimension CSVs
+            to annotate in place.
+        years: Years to scan. Defaults to
+            `tossd_reader._discovery.known_years()`.
+
+    Returns:
+        `{dimension: distinct codes observed in the scanned years}`, for the
+        CLI's own summary.
+    """
+    from tossd_reader import _discovery, fetch  # noqa: PLC0415 - only needed here
+
+    resolved_years = tuple(years) if years is not None else _discovery.known_years()
+    published_columns = _dimension_to_published_column()
+
+    observed: dict[str, set[str]] = {
+        dimension: set() for dimension in _ANNOTATED_DIMENSIONS
+    }
+    for year in resolved_years:
+        path = fetch.fetch_year(year)
+        table = pq.read_table(path, columns=list(published_columns.values()))
+        for dimension, column_name in published_columns.items():
+            observed[dimension].update(_observed_codes(table.column(column_name)))
+
+    for dimension in _ANNOTATED_DIMENSIONS:
+        csv_path = codelists_dir / f"{dimension}.csv"
+        frame = pd.read_csv(csv_path, dtype=str, keep_default_na=False)
+        frame["in_published_data"] = frame["code"].isin(observed[dimension])
+        frame.to_csv(csv_path, index=False, lineterminator="\n")
+
+    _write_annotated_years(codelists_dir, resolved_years)
+    return {dimension: len(codes) for dimension, codes in observed.items()}
+
+
+def _run_annotate(codelists_dir: Path) -> int:
+    """CLI entry for `--annotate`: annotate `codelists_dir` in place and report counts."""
+    counts = annotate_dimensions(codelists_dir)
+    for dimension, count in sorted(counts.items()):
+        print(
+            f"{dimension}: {count} distinct codes observed in the published data",
+            file=sys.stderr,
+        )
+    return 0
+
+
 def _run_check(baseline_dir: Path, candidate_dir: Path) -> int:
     """Diff two directories and report; returns the process exit code."""
     diffs = diff_snapshot_dirs(baseline_dir, candidate_dir)
@@ -312,11 +538,14 @@ def _run_check(baseline_dir: Path, candidate_dir: Path) -> int:
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point.
 
-    Two modes:
+    Three modes:
     - Default: fetch live and write a snapshot to `--output-dir` (defaults to
       the packaged `src/tossd_reader/_data/codelists`).
     - `--check <baseline-dir> <candidate-dir>`: pure offline diff between two
       already-written snapshot directories; no network, no oda-reader call.
+    - `--annotate <codelists-dir>`: offline apart from `tossd_reader`'s own
+      fetch layer; annotates that directory's CSVs in place with
+      `in_published_data`. No oda-reader call either.
     """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -331,11 +560,24 @@ def main(argv: list[str] | None = None) -> int:
         metavar=("BASELINE_DIR", "CANDIDATE_DIR"),
         help="Pure offline diff between two snapshot directories; exits 1 on drift.",
     )
+    parser.add_argument(
+        "--annotate",
+        type=Path,
+        metavar="CODELISTS_DIR",
+        help=(
+            "Annotate CODELISTS_DIR's dimension CSVs in place with "
+            "in_published_data, scanned from locally cached TOSSD data "
+            "vintages. Never fetches codelists from the network."
+        ),
+    )
     args = parser.parse_args(argv)
 
     if args.check is not None:
         baseline_dir, candidate_dir = (Path(value) for value in args.check)
         return _run_check(baseline_dir, candidate_dir)
+
+    if args.annotate is not None:
+        return _run_annotate(args.annotate)
 
     _run_refresh(args.output_dir)
     return 0

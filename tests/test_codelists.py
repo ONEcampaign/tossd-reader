@@ -66,6 +66,25 @@ def test_provider_and_recipient_carry_iso3() -> None:
     assert "iso3" in codelists.load_codelist("recipient").columns
 
 
+def test_only_sector_carries_a_source_column() -> None:
+    """`source` is packaged for `sector` only, not any other dimension."""
+    assert "source" in codelists.load_codelist("sector").columns
+    assert "source" not in codelists.load_codelist("channel").columns
+    assert "source" not in codelists.load_codelist("provider").columns
+
+
+def test_sector_carries_the_supplemental_700_row() -> None:
+    """Sector `700` -- the DAC "VIII. Humanitarian Aid" group heading -- is packaged with its own `source`."""
+    sector = codelists.load_codelist("sector")
+    row = sector.loc[sector["code"] == "700"]
+
+    assert len(row) == 1
+    assert row["name"].item() == "VIII. Humanitarian Aid"
+    assert bool(row["tossd_only"].item()) is False
+    assert row["source"].item() == "dac-sector-classification"
+    assert (sector.loc[sector["code"] != "700", "source"] == "codelist").all()
+
+
 def test_get_available_filters_covers_every_dimension_plus_years() -> None:
     """`get_available_filters` returns every packaged dimension plus a `years` entry."""
     filters = codelists.get_available_filters()

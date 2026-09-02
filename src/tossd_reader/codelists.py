@@ -43,9 +43,16 @@ def load_codelist(dimension: str) -> pd.DataFrame:
 
     Returns:
         A `pandas.DataFrame` with `code`, `name`, and `tossd_only` columns
-        (plus `iso3` for `provider`/`recipient`), sorted by `code` as
-        packaged. Each call returns a fresh copy, so callers can mutate the
-        result without poisoning later calls.
+        (plus `iso3` for `provider`/`recipient`; `source` for `sector`,
+        `"codelist"` for a row fetched from the OECD codelist or the
+        packaged snapshot's own value for a supplemental row not carried by
+        that codelist, e.g. code `700`; `in_published_data` once the
+        packaged snapshot has been annotated, marking whether the code
+        actually occurs in the published TOSSD data -- pillar excepted, its
+        rows are structural, and the annotation scans flat data columns
+        pillar does not have), sorted by `code` as packaged. Each call
+        returns a fresh copy, so callers can mutate the result without
+        poisoning later calls.
 
     Raises:
         ValueError: `dimension` is not one of the packaged dimensions.
@@ -72,7 +79,10 @@ def get_available_filters() -> dict[str, pd.DataFrame]:
     Covers every packaged codelist dimension (name/code/tossd-only-flag
     frames for provider, recipient, pillar, financing_arrangement,
     framework_of_collaboration, purpose, sector, channel, modality, and
-    finance_instrument) plus `years`, the packaged known-years set.
+    finance_instrument -- `sector` additionally carries a `source` column,
+    and every dimension but `pillar` gains an `in_published_data` column
+    once the packaged snapshot has been annotated) plus `years`, the
+    packaged known-years set.
 
     Returns:
         `{dimension: frame}`, one entry per packaged codelist dimension plus

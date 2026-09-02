@@ -1,472 +1,472 @@
-code,name,tossd_only
-10000,Public Sector Institutions,False
-11000,Provider Government,True
-11001,Central Government,True
-11002,Local Government,True
-11003,Public corporations,True
-11004,Other public entities in provider country,True
-12000,Recipient Government,False
-12001,Central Government (recipient govt.),False
-12002,Local Government (recipient govt.),False
-12003,Public corporations (recipient govt.),False
-12004,Other public entities in recipient country,False
-13000,Third Country Government (Delegated co-operation),False
-20000,Non-Governmental Organisation (NGO) and Civil Society,False
-21000,International NGO,False
-21001,Association of Geoscientists for International Development ,False
-21002,Agency for International Trade Information and Co-operation ,False
-21003,Latin American Council for Social Sciences ,False
-21004,Council for the Development of Economic and Social Research in Africa ,False
-21005,Consumer Unity and Trust Society International ,False
-21006,Development Gateway Foundation ,False
-21007,Environmental Liaison Centre International ,False
-21008,Eurostep ,False
-21009,Forum for Agricultural Research in Africa ,False
-21010,Forum for African Women Educationalists ,False
-21011,Global Campaign for Education ,False
-21013,Health Action International ,False
-21014,Human Rights Information and Documentation Systems ,False
-21015,International Catholic Rural Association ,False
-21016,International Committee of the Red Cross ,False
-21018,International Federation of Red Cross and Red Crescent Societies ,False
-21019,International Federation of Settlements and Neighbourhood Centres ,False
-21020,International HIV/AIDS Alliance ,False
-21021,International Institute for Environment and Development ,False
-21022,International Network for Alternative Financial Institutions ,False
-21023,International Planned Parenthood Federation ,False
-21024,"Inter Press Service, International Association ",False
-21025,International Seismological Centre ,False
-21026,International Service for Human Rights ,False
-21027,ITF Enhancing Human Security,False
-21028,International University Exchange Fund - IUEF Stip. in Africa and Latin America,False
-21029,Doctors Without Borders,False
-21030,Pan African Institute for Development,False
-21031,PANOS Institute ,False
-21032,Population Services International ,False
-21033,Transparency International ,False
-21034,International Union Against Tuberculosis and Lung Disease ,False
-21035,World Organisation Against Torture ,False
-21036,World University Service ,False
-21037,Women's World Banking,False
-21038,International Alert,False
-21039,International Institute for Sustainable Development,False
-21040,International Women's Tribune Centre,False
-21041,Society for International Development,False
-21042,International Peacebuilding Alliance,False
-21043,European Parliamentarians for Africa,False
-21044,International Council for the Control of Iodine Deficiency Disorders,False
-21045,African Medical and Research Foundation ,False
-21046,Agency for Cooperation and Research in Development ,False
-21047,AgriCord,False
-21048,Association of African Universities,False
-21049,European Centre for Development Policy Management ,False
-21050,Geneva Call,False
-21051,Institut Supérieur Panafricaine d’Economie Coopérative,False
-21053,"IPAS-Protecting Women’s Health, Advancing Women’s Reproductive Rights",False
-21054,Life and Peace Institute,False
-21055,Regional AIDS Training Network,False
-21056,Renewable Energy and Energy Efficiency Partnership,False
-21057,International Centre for Transitional Justice,False
-21058,International Crisis Group,False
-21059,Africa Solidarity Fund,False
-21060,Association for the Prevention of Torture,False
-21061,International Rehabilitation Council for Torture Victims,False
-21062,The Nature Conservancy,False
-21063,Conservation International,False
-21064,"Clinton Health Access Initiative, Inc.",False
-21501,OXFAM International,False
-21502,World Vision,False
-21503,Family Health International 360,False
-21504,International Relief and Development,False
-21505,Save the Children,False
-21506,International Rescue Committee,False
-21507,Pact World,False
-21508,Sustainable Energy for All,False
-21509,AmplifyChange,False
-22000,Provider country-based NGO,True
-22501,OXFAM - provider country office,False
-22502,Save the Children - donor country office,False
-23000,Developing country-based NGO,False
-23501,National Red Cross and Red Crescent Societies,False
-30000,Public-Private Partnerships (PPP) and Networks,False
-30001,Global Alliance for Improved Nutrition ,False
-30003,Global e-Schools and Communities Initiative ,False
-30004,Global Water Partnership ,False
-30005,International AIDS Vaccine Initiative ,False
-30006,International Partnership on Microbicides ,False
-30007,Global Alliance for ICT and Development,False
-30008,Cities Alliance,False
-30009,Small Arms Survey,False
-30010,International drug purchase facility,True
-30011,International Union for the Conservation of Nature,False
-30012,Global Climate Partnership Fund,False
-30013,Microfinance Enhancement Facility,False
-30014,"Regional Micro, Small and Medium Enterprise Investment Fund for Sub-Saharan Africa",False
-30015,Global Energy Efficiency and Renewable Energy Fund,False
-30016,European Fund for Southeast Europe,False
-30017,"SANAD Fund for Micro, Small and Medium Enterprises",False
-30018,Africa Finance Corporation,False
-30019,Currency Exchange Fund N.V.,False
-30020,Global Energy Efficiency and Renewable Energy Fund II,False
-31000,Public-Private Partnerships (PPP),False
-31001,Global Development Network,False
-31002,Global Knowledge Partnership,False
-31003,International Land Coalition,False
-31004,Extractive Industries Transparency Initiative International Secretariat,False
-31005,Parliamentary Network on the World Bank,False
-31006,Coalition for Epidemic Preparedness Innovations,False
-31007,Drugs for Neglected Diseases initative,False
-31008,Foundation for Innovative New Diagnostics,False
-32000,Networks,False
-40000,Multilateral Organisations,False
-41000,"United Nations (UN) agency, fund or commission",False
-41100,UN entities (core contributions reportable in full),False
-41101,Convention to Combat Desertification ,True
-41102,Desert Locust Control Organisation for Eastern Africa ,True
-41103,Economic Commission for Africa ,True
-41104,Economic Commission for Latin America and the Caribbean,True
-41105,Economic and Social Commission for Western Asia,True
-41106,Economic and Social Commission for Asia and the Pacific ,True
-41107,International Atomic Energy Agency (Contributions to Technical Cooperation Fund Only),True
-41108,International Fund for Agricultural Development ,True
-41109,International Research and Training Institute for the Advancement of Women ,False
-41110,Joint United Nations Programme on HIV/AIDS ,True
-41111,United Nations Capital Development Fund ,True
-41112,United Nations Conference on Trade and Development ,True
-41114,United Nations Development Programme ,True
-41116,United Nations Environment Programme ,True
-41119,United Nations Population Fund ,True
-41120,United Nations Human Settlement Programme ,True
-41121,United Nations Office of the High Commissioner for Refugees,True
-41122,United Nations Children’s Fund ,True
-41123,United Nations Industrial Development Organisation ,True
-41124,United Nations Development Fund for Women ,False
-41125,United Nations Institute for Training and Research ,True
-41126,United Nations Mine Action Service ,True
-41127,United Nations Office of Co-ordination of Humanitarian Affairs ,True
-41128,United Nations Office on Drugs and Crime ,True
-41129,United Nations Research Institute for Social Development ,True
-41130,United Nations Relief and Works Agency for Palestine Refugees in the Near East,True
-41131,United Nations System Staff College ,True
-41132,United Nations System Standing Committee on Nutrition ,False
-41133,United Nations Special Initiative on Africa ,True
-41134,United Nations University (including Endowment Fund) ,True
-41135,United Nations Volunteers ,True
-41136,United Nations Voluntary Fund on Disability ,True
-41137,United Nations Voluntary Fund for Technical Co-operation in the Field of Human Rights,True
-41138,United Nations Voluntary Fund for Victims of Torture ,True
-41140,World Food Programme ,True
-41141,United Nations Peacebuilding Fund,True
-41142,United Nations Democracy Fund,True
-41143,World Health Organisation - core voluntary contributions account,True
-41144,International Labour Organisation - Regular Budget Supplementary Account,True
-41145,International Maritime Organization - Technical Co-operation Fund,True
-41146,United Nations Entity for Gender Equality and the Empowerment of Women,True
-41147,Central Emergency Response Fund,True
-41148,"United Nations Department of Political and Peacebuilding Affairs, Trust Fund in Support of Political Affairs",True
-41149,United Nations Development Coordination Office,True
-41150,United Nations Institute for Disarmament Research,True
-41151,International Agency for Research on Cancer,True
-41200,UN entities (core contributions reportable in TOSSD only),True
-41201,Comprehensive Nuclear Test Ban Treaty Organization,True
-41202,International Civil Aviation Organization,True
-41203,International Criminal Court,True
-41204,International Residual Mechanism for Criminal Tribunals,True
-41205,International Seabed Authority,True
-41206,International Tribunal for the Law of the Sea,True
-41207,Organization for the Prohibition of Chemical Weapons,True
-41208,Department of Economic and Social Affairs,True
-41209,Department of General Assembly and Conference Management,True
-41210,Department of Global Communications,True
-41211,"Department of Management Strategy, Policy and Compliance, including UNOG, UNOV and UNON",True
-41212,Department of Operational Support,True
-41213,Department of Safety and Security,True
-41214,Office of Counter-Terrorism,True
-41215,United Nations Interregional Crime and Justice Research Institute,True
-41216,International Maritime Organization,True
-41217,World Trade Organisation,True
-41300,Other UN (Core Contributions Reportable in Part),False
-41301,Food and Agricultural Organisation,True
-41302,International Labour Organisation - Assessed Contributions,True
-41303,International Telecommunications Union,True
-41304,"United Nations Educational, Scientific and Cultural Organisation",True
-41305,United Nations,True
-41306,Universal Postal Union ,True
-41307,World Health Organisation - assessed contributions,True
-41308,World Intellectual Property Organisation ,True
-41309,World Meteorological Organisation ,True
-41310,United Nations Department of Peace Operations - UN peacekeeping operations,True
-41311,United Nations Peacebuilding Fund (Window One:  Flexible Contributions Only),False
-41312,International Atomic Energy Agency - assessed contributions,True
-41313,United Nations High Commissioner for Human Rights (extrabudgetary contributions only),True
-41314,United Nations Economic Commission for Europe (extrabudgetary contributions only),True
-41315,United Nations Office for Disaster Risk Reduction,True
-41316,United Nations Framework Convention on Climate Change ,True
-41317,Green Climate Fund,True
-41318,Global Mechanism,True
-41319,World Tourism Organization,True
-41320,Technology Bank for Least Developed Countries,True
-41321,World Health Organisation - Strategic Preparedness and Response Plan,True
-41400,UN inter-agency pooled funds,False
-41401,UN-Multi Partner Trust Fund Office,True
-41402,Joint Sustainable Development Goals Fund,True
-41403,COVID-19 Response and Recovery Multi-Partner Trust Fund,True
-41500,UN single-agency thematic funds,False
-41501,United Nations Reducing Emissions from Deforestation and Forest Degradation,True
-41502,United Nations Office for Project Services,False
-41503,UN-led Country-based Pooled Funds,True
-41600,Existing UN channels not included in Standard I - UN entity- of the UN Data Cube reporting framework,False
-41601,United Nations Office for Disarmament Affairs,True
-41700,"UN entities, non-core contributions",True
-41701,International Labour Organisation - non-core,True
-41702,World Health Organisation - non-core,True
-42000,European Union Institutions,False
-42001,European Commission - Development Share of Budget,True
-42003,European Commission - European Development Fund,True
-42004,European Investment Bank ,True
-42005,Facility for Euro-Mediterranean Investment and Partnership Trust Fund,False
-43000,International Monetary Fund (IMF),False
-43001,International Monetary Fund - Poverty Reduction and Growth Trust ,True
-43002,"International Monetary Fund - Poverty Reduction and Growth - Heavily Indebted Poor Countries Debt Relief Initiative Trust Fund [includes HIPC, Extended Credit Facility (ECF), and ECF-HIPC sub-accounts] ",True
-43003,International Monetary Fund - Subsidization of Emergency Post Conflict Assistance/Emergency Assistance for Natural Disasters for PRGT-eligible members,True
-43004,International Monetary Fund - Poverty Reduction and Growth - Multilateral Debt Relief Initiative Trust,False
-43005,International Monetary Fund - Post-Catastrophe Debt Relief Trust,True
-43006,Catastrophe Containment and Relief Trust,True
-43007,IMF’s Resilience and Sustainability Trust,True
-44000,World Bank Group (WB),False
-44001,International Bank for Reconstruction and Development ,True
-44002,International Development Association ,True
-44003,International Development Association - Heavily Indebted Poor Countries Debt Initiative Trust Fund ,True
-44004,International Finance Corporation ,True
-44005,Multilateral Investment Guarantee Agency ,True
-44006,Advance Market Commitments,True
-44007,International Development Association - Multilateral Debt Relief Initiative,True
-44008,Partnership for Market Implementation,True
-45001,World Trade Organisation - International Trade Centre ,True
-45002,World Trade Organisation - Advisory Centre on WTO Law,True
-45003,World Trade Organisation Global Trust Fund ,True
-46000,Regional Development Banks,False
-46002,African Development Bank,True
-46003,African Development Fund ,True
-46004,Asian Development Bank,True
-46005,Asian Development Fund ,True
-46006,Black Sea Trade and Development Bank,True
-46007,Central American Bank for Economic Integration ,True
-46008,Development Bank of Latin America,True
-46009,Caribbean Development Bank ,True
-46012,"Inter-American Development Bank, Inter-American Investment Corporation and Multilateral Investment Fund ",True
-46013,"Inter-American Development Bank, Fund for Special Operations ",True
-46015,European Bank for Reconstruction and Development,True
-46016,European Bank for Reconstruction and Development - technical co-operation and special funds (ODA-eligible countries only),True
-46017,European Bank for Reconstruction and Development - technical co-operation and special funds (all EBRD countries of operations),True
-46018,European Bank for Reconstruction and Development - Early Transition Countries Fund,True
-46019,European Bank for Reconstruction and Development - Western Balkans Joint Trust Fund,True
-46020,Central African States Development Bank,True
-46021,West African Development Bank,True
-46022,African Export Import Bank,True
-46023,Eastern and Southern African Trade and Development Bank,True
-46024,Council of Europe Development Bank,True
-46025,Islamic Development Bank,True
-46026,Asian Infrastructure Investment Bank,True
-46027,Financial Fund for the Development of the River Plate Basin,True
-46028,New Development Bank,True
-47000,Other multilateral institutions,False
-47001,African Capacity Building Foundation ,True
-47002,Asian Productivity Organisation ,True
-47003,Association of South East Asian Nations: Economic Co-operation ,True
-47004,ASEAN Cultural Fund,False
-47005,African Union,True
-47008,World Vegetable Centre,False
-47009,African and Malagasy Council for Higher Education ,True
-47010,Commonwealth Agency for Public Administration and Management ,False
-47011,Caribbean Community Secretariat ,True
-47012,Caribbean Epidemiology Centre ,False
-47013,Commonwealth Foundation ,True
-47014,Commonwealth Fund for Technical Co-operation ,False
-47015,CGIAR Fund,True
-47016,Commonwealth Institute,False
-47017,International Centre for Tropical Agriculture ,False
-47018,Centre for International Forestry Research ,False
-47019,International Centre for Advanced Mediterranean Agronomic Studies ,True
-47020,International Maize and Wheat Improvement Centre ,False
-47021,International Potato Centre ,False
-47022,Convention on International Trade in Endangered Species of Wild Flora and Fauna,True
-47023,Commonwealth Legal Advisory Service ,False
-47024,Commonwealth Media Development Fund ,False
-47025,Commonwealth of Learning ,True
-47026,Community of Portuguese Speaking Countries ,True
-47027,Colombo Plan,True
-47028,Commonwealth Partnership for Technical Management ,False
-47029,Sahel and West Africa Club ,True
-47030,Commonwealth Scientific Council,False
-47031,Commonwealth Small States Office ,False
-47032,Commonwealth Trade and Investment Access Facility,False
-47033,Commonwealth Youth Programme ,False
-47034,Economic Community of West African States ,True
-47035,Environmental Development Action in the Third World ,False
-47036,European and Mediterranean Plant Protection Organisation ,True
-47037,Eastern-Regional Organisation of Public Administration ,True
-47038,INTERPOL Fund for Aid and Technical Assistance to Developing Countries ,False
-47040,Forum Fisheries Agency ,True
-47041,Food and Fertilizer Technology Centre ,False
-47042,Foundation for International Training ,False
-47043,Global Crop Diversity Trust ,False
-47044,Global Environment Facility Trust Fund,True
-47045,"Global Fund to Fight AIDS, Tuberculosis and Malaria ",True
-47046,International Organisation of the Francophonie,True
-47047,International African Institute ,False
-47048,Inter-American Indian Institute ,False
-47049,International Bureau of Education - International Educational Reporting System (IERS),False
-47050,International Cotton Advisory Committee ,True
-47051,International Centre for Agricultural Research in Dry Areas ,False
-47053,"International Centre for Diarrhoeal Disease Research, Bangladesh",False
-47054,International Centre of Insect Physiology and Ecology ,False
-47055,International Centre for Development Oriented Research in Agriculture ,False
-47056,World AgroForestry Centre,False
-47057,International Crop Research for Semi-Arid Tropics ,False
-47058,International Institute for Democracy and Electoral Assistance ,True
-47059,International Development Law Organisation ,True
-47060,International Institute for Cotton ,False
-47061,Inter-American Institute for Co-operation on Agriculture ,True
-47062,International Institute of Tropical Agriculture ,False
-47063,International Livestock Research Institute ,False
-47064,International Network for Bamboo and Rattan ,True
-47065,Intergovernmental Oceanographic Commission ,True
-47066,International Organisation for Migration ,True
-47067,Intergovernmental Panel on Climate Change ,True
-47068,Asia-Pacific Fishery Commission,True
-47069,Bioversity International,False
-47070,International Rice Research Institute ,False
-47071,International Seed Testing Association ,False
-47073,International Tropical Timber Organisation ,True
-47074,International Vaccine Institute ,True
-47075,International Water Management Institute ,False
-47076,Justice Studies Centre of the Americas ,True
-47077,Mekong River Commission ,True
-47078,Multilateral Fund for the Implementation of the Montreal Protocol ,True
-47079,Organisation of American States ,True
-47080,Organisation for Economic Co-operation and Development,True
-47081,OECD Development Centre ,True
-47082,Organisation of Eastern Caribbean States ,True
-47083,Pan-American Health Organisation ,True
-47084,Pan-American Institute of Geography and History ,True
-47085,Pan-American Railway Congress Association ,False
-47086,Private Infrastructure Development Group ,True
-47087,Pacific Islands Forum Secretariat ,True
-47088,Relief Net ,False
-47089,Southern African Development Community ,True
-47090,Southern African Transport and Communications Commission,False
-47091,(Colombo Plan) Special Commonwealth African Assistance Programme ,False
-47092,South East Asian Fisheries Development Centre ,True
-47093,South East Asian Ministers of Education ,True
-47094,South Pacific Applied Geoscience Commission ,False
-47095,Educational Quality and Assessment Programme,True
-47096,Secretariat of the Pacific Community ,True
-47097,Pacific Regional Environment Programme ,True
-47098,Unrepresented Nations and Peoples’ Organisation ,True
-47099,University of the South Pacific ,False
-47100,West African Monetary Union ,True
-47101,Africa Rice Centre,False
-47102,World Customs Organisation Fellowship Programme ,False
-47103,World Maritime University ,False
-47104,WorldFish Centre,False
-47105,Common Fund for Commodities ,True
-47106,Geneva Centre for the Democratic Control of Armed Forces,True
-47107,International Finance Facility for Immunisation,True
-47108,Multi-Country Demobilisation and Reintegration Program,False
-47109,Asia-Pacific Economic Cooperation Support Fund,True
-47110,Organisation of the Black Sea Economic Cooperation,True
-47111,Adaptation Fund,True
-47112,Central European Initiative - Special Fund for Climate and Environmental Protection,True
-47113,Economic and Monetary Community of Central Africa ,True
-47114,Asian Forest Cooperation Organisation,True
-47116,Enhanced Integrated Framework for Trade-Related Technical Assistance to Least Developed Countries,True
-47117,New Partnership for Africa's Development,True
-47118,Regional Organisation for the Strengthening of Supreme Audit Institutions of Francophone Sub-Saharan Countries,True
-47119,Sahara and Sahel Observatory,True
-47120,South Asian Association for Regional Cooperation ,True
-47121,United Cities and Local Governments of Africa,True
-47122,Global Alliance for Vaccines and Immunization ,True
-47123,Geneva International Centre for Humanitarian Demining ,True
-47124,International Anti-Corruption Academy,True
-47125,International Centre for Genetic Engineering and Biotechnology,True
-47127,Latin-American Energy Organisation,True
-47128,Nordic Development Fund,True
-47129,Global Environment Facility - Least Developed Countries Fund,True
-47130,Global Environment Facility - Special Climate Change Fund,True
-47131,Organization for Security and Co-operation in Europe,True
-47132,Commonwealth Secretariat,True
-47134,Clean Technology Fund,True
-47135,Strategic Climate Fund,True
-47136,Global Green Growth Institute,True
-47137,African Risk Capacity Group,True
-47138,Council of Europe,True
-47139,World Customs Organization Customs Co-operation Fund,True
-47140,"Organisation of Ibero-American States for Education, Science and Culture",True
-47141,African Tax Administration Forum,True
-47142,OPEC Fund for International Development,True
-47143,Global Community Engagement and Resilience Fund,True
-47144,International Renewable Energy Agency,True
-47145,Center of Excellence in Finance,True
-47146,International Investment Bank,True
-47147,International Finance Facility for Education,True
-47148,World Organisation for Animal Health,True
-47149,International Commission on Missing Persons,True
-47150,Secretaría General Iberoamericana,True
-47151,Arab Bank for Economic Development in Africa,True
-47152,Arab Fund for Economic and Social Development,True
-47153,IFAD Core additional climate contributions,True
-47400,European Space Agency (ESA) programme 'Space in support of International Development Aid',True
-47501,Global Partnership for Education,True
-47502,Global Fund for Disaster Risk Reduction,True
-47503,Global Agriculture and Food Security Program,True
-47504,Forest Carbon Partnership Facility ,True
-47701,Global Environment Facility - Global biodiversity framework fund,True
-47702,Cali Fund For the Fair and Equitable Sharing of Benefits from the use of Digital Sequence Information on Genetic Resources (DSI),True
-47703,Kunming Biodiversity Fund,True
-47704,SESRIC,True
-47705,Interpol,True
-47706,Eurasian Fund for Stabilization and Development,True
-47707,Arab Monetary Fund,True
-47708,Andean Community,True
-47709,Community of Latin American and Caribbean States,True
-47710,Pacific Alliance,True
-47711,Southern Common Market,True
-47712,Antarctic Treaty Secretariat,True
-51000,"University, college or other teaching institution, research institute or think-tank",False
-51001,International Food Policy Research Institute,False
-60000,Private Sector Institutions,False
-61000,Private sector in provider country,False
-61001,Banks (in provider country) (deposit taking corporations),False
-61002,Private exporter in provider country,False
-61003,Investment funds and other collective investment institutions (in provider country),False
-61004,"Holding companies, trusts and Special Purpose Vehicles (in provider country)",False
-61005,Insurance Corporations (in provider country),False
-61006,Pension Funds (in provider country),False
-61007,Other financial corporations (in provider country),False
-61008,Exporters (in provider country),False
-61009,Other non-financial corporations (in provider country),False
-61010,Retail investors (in provider country),False
-62000,Private sector in recipient country,False
-62001,Banks (in recipient country) (deposit taking corporations except Micro Finance Institutions),False
-62002,Micro Finance Institutions (in recipient country) (deposit and non-deposit),False
-62003,Investment funds and other collective investment institutions (in recipient country),False
-62004,"Holding companies, trusts and Special Purpose Vehicles (in recipient country)",False
-62005,Insurance Corporations (in recipient country),False
-62006,Pension Funds (in recipient country),False
-62007,Other financial corporations (in recipient country),False
-62008,Importers/Exporters,False
-62009,Other non-financial corporations (in recipient country),False
-62010,Retail investors (in recipient country),False
-63000,Private sector in third country,False
-63001,Banks (in third country) (deposit taking corporations except Micro Finance Institutions),False
-63002,Micro Finance Institutions (in third country) (deposit and non-deposit),False
-63003,Investment funds and other collective investment institutions (in third country),False
-63004,"Holding companies, trusts and Special Purpose Vehicles (in third country)",False
-63005,Insurance Corporations (in third country),False
-63006,Pension Funds (in third country),False
-63007,Other financial corporations (in third country),False
-63008,Exporters (in third country),False
-63009,Other non-financial corporations (in third country),False
-63010,Retail investors (in third country),False
-90000,Other,False
+code,name,tossd_only,in_published_data
+10000,Public Sector Institutions,False,True
+11000,Provider Government,True,True
+11001,Central Government,True,True
+11002,Local Government,True,True
+11003,Public corporations,True,True
+11004,Other public entities in provider country,True,True
+12000,Recipient Government,False,True
+12001,Central Government (recipient govt.),False,True
+12002,Local Government (recipient govt.),False,True
+12003,Public corporations (recipient govt.),False,True
+12004,Other public entities in recipient country,False,True
+13000,Third Country Government (Delegated co-operation),False,True
+20000,Non-Governmental Organisation (NGO) and Civil Society,False,True
+21000,International NGO,False,True
+21001,Association of Geoscientists for International Development ,False,True
+21002,Agency for International Trade Information and Co-operation ,False,True
+21003,Latin American Council for Social Sciences ,False,True
+21004,Council for the Development of Economic and Social Research in Africa ,False,True
+21005,Consumer Unity and Trust Society International ,False,True
+21006,Development Gateway Foundation ,False,True
+21007,Environmental Liaison Centre International ,False,False
+21008,Eurostep ,False,False
+21009,Forum for Agricultural Research in Africa ,False,True
+21010,Forum for African Women Educationalists ,False,True
+21011,Global Campaign for Education ,False,True
+21013,Health Action International ,False,True
+21014,Human Rights Information and Documentation Systems ,False,True
+21015,International Catholic Rural Association ,False,True
+21016,International Committee of the Red Cross ,False,True
+21018,International Federation of Red Cross and Red Crescent Societies ,False,True
+21019,International Federation of Settlements and Neighbourhood Centres ,False,False
+21020,International HIV/AIDS Alliance ,False,True
+21021,International Institute for Environment and Development ,False,True
+21022,International Network for Alternative Financial Institutions ,False,True
+21023,International Planned Parenthood Federation ,False,True
+21024,"Inter Press Service, International Association ",False,False
+21025,International Seismological Centre ,False,True
+21026,International Service for Human Rights ,False,True
+21027,ITF Enhancing Human Security,False,True
+21028,International University Exchange Fund - IUEF Stip. in Africa and Latin America,False,False
+21029,Doctors Without Borders,False,True
+21030,Pan African Institute for Development,False,False
+21031,PANOS Institute ,False,True
+21032,Population Services International ,False,True
+21033,Transparency International ,False,True
+21034,International Union Against Tuberculosis and Lung Disease ,False,True
+21035,World Organisation Against Torture ,False,True
+21036,World University Service ,False,True
+21037,Women's World Banking,False,True
+21038,International Alert,False,True
+21039,International Institute for Sustainable Development,False,True
+21040,International Women's Tribune Centre,False,False
+21041,Society for International Development,False,True
+21042,International Peacebuilding Alliance,False,True
+21043,European Parliamentarians for Africa,False,True
+21044,International Council for the Control of Iodine Deficiency Disorders,False,False
+21045,African Medical and Research Foundation ,False,True
+21046,Agency for Cooperation and Research in Development ,False,True
+21047,AgriCord,False,True
+21048,Association of African Universities,False,True
+21049,European Centre for Development Policy Management ,False,True
+21050,Geneva Call,False,True
+21051,Institut Supérieur Panafricaine d’Economie Coopérative,False,False
+21053,"IPAS-Protecting Women’s Health, Advancing Women’s Reproductive Rights",False,True
+21054,Life and Peace Institute,False,True
+21055,Regional AIDS Training Network,False,False
+21056,Renewable Energy and Energy Efficiency Partnership,False,True
+21057,International Centre for Transitional Justice,False,True
+21058,International Crisis Group,False,True
+21059,Africa Solidarity Fund,False,False
+21060,Association for the Prevention of Torture,False,True
+21061,International Rehabilitation Council for Torture Victims,False,True
+21062,The Nature Conservancy,False,True
+21063,Conservation International,False,True
+21064,"Clinton Health Access Initiative, Inc.",False,True
+21501,OXFAM International,False,True
+21502,World Vision,False,True
+21503,Family Health International 360,False,True
+21504,International Relief and Development,False,True
+21505,Save the Children,False,True
+21506,International Rescue Committee,False,True
+21507,Pact World,False,True
+21508,Sustainable Energy for All,False,True
+21509,AmplifyChange,False,True
+22000,Provider country-based NGO,True,True
+22501,OXFAM - provider country office,False,True
+22502,Save the Children - donor country office,False,True
+23000,Developing country-based NGO,False,True
+23501,National Red Cross and Red Crescent Societies,False,True
+30000,Public-Private Partnerships (PPP) and Networks,False,True
+30001,Global Alliance for Improved Nutrition ,False,True
+30003,Global e-Schools and Communities Initiative ,False,False
+30004,Global Water Partnership ,False,True
+30005,International AIDS Vaccine Initiative ,False,True
+30006,International Partnership on Microbicides ,False,True
+30007,Global Alliance for ICT and Development,False,False
+30008,Cities Alliance,False,True
+30009,Small Arms Survey,False,True
+30010,International drug purchase facility,True,True
+30011,International Union for the Conservation of Nature,False,True
+30012,Global Climate Partnership Fund,False,True
+30013,Microfinance Enhancement Facility,False,True
+30014,"Regional Micro, Small and Medium Enterprise Investment Fund for Sub-Saharan Africa",False,True
+30015,Global Energy Efficiency and Renewable Energy Fund,False,False
+30016,European Fund for Southeast Europe,False,True
+30017,"SANAD Fund for Micro, Small and Medium Enterprises",False,True
+30018,Africa Finance Corporation,False,True
+30019,Currency Exchange Fund N.V.,False,True
+30020,Global Energy Efficiency and Renewable Energy Fund II,False,False
+31000,Public-Private Partnerships (PPP),False,True
+31001,Global Development Network,False,True
+31002,Global Knowledge Partnership,False,True
+31003,International Land Coalition,False,True
+31004,Extractive Industries Transparency Initiative International Secretariat,False,True
+31005,Parliamentary Network on the World Bank,False,False
+31006,Coalition for Epidemic Preparedness Innovations,False,True
+31007,Drugs for Neglected Diseases initative,False,True
+31008,Foundation for Innovative New Diagnostics,False,True
+32000,Networks,False,True
+40000,Multilateral Organisations,False,True
+41000,"United Nations (UN) agency, fund or commission",False,True
+41100,UN entities (core contributions reportable in full),False,True
+41101,Convention to Combat Desertification ,True,True
+41102,Desert Locust Control Organisation for Eastern Africa ,True,True
+41103,Economic Commission for Africa ,True,True
+41104,Economic Commission for Latin America and the Caribbean,True,True
+41105,Economic and Social Commission for Western Asia,True,True
+41106,Economic and Social Commission for Asia and the Pacific ,True,True
+41107,International Atomic Energy Agency (Contributions to Technical Cooperation Fund Only),True,True
+41108,International Fund for Agricultural Development ,True,False
+41109,International Research and Training Institute for the Advancement of Women ,False,False
+41110,Joint United Nations Programme on HIV/AIDS ,True,True
+41111,United Nations Capital Development Fund ,True,True
+41112,United Nations Conference on Trade and Development ,True,True
+41114,United Nations Development Programme ,True,True
+41116,United Nations Environment Programme ,True,True
+41119,United Nations Population Fund ,True,True
+41120,United Nations Human Settlement Programme ,True,True
+41121,United Nations Office of the High Commissioner for Refugees,True,True
+41122,United Nations Children’s Fund ,True,True
+41123,United Nations Industrial Development Organisation ,True,True
+41124,United Nations Development Fund for Women ,False,False
+41125,United Nations Institute for Training and Research ,True,True
+41126,United Nations Mine Action Service ,True,True
+41127,United Nations Office of Co-ordination of Humanitarian Affairs ,True,True
+41128,United Nations Office on Drugs and Crime ,True,True
+41129,United Nations Research Institute for Social Development ,True,True
+41130,United Nations Relief and Works Agency for Palestine Refugees in the Near East,True,True
+41131,United Nations System Staff College ,True,True
+41132,United Nations System Standing Committee on Nutrition ,False,False
+41133,United Nations Special Initiative on Africa ,True,False
+41134,United Nations University (including Endowment Fund) ,True,True
+41135,United Nations Volunteers ,True,True
+41136,United Nations Voluntary Fund on Disability ,True,True
+41137,United Nations Voluntary Fund for Technical Co-operation in the Field of Human Rights,True,True
+41138,United Nations Voluntary Fund for Victims of Torture ,True,True
+41140,World Food Programme ,True,True
+41141,United Nations Peacebuilding Fund,True,True
+41142,United Nations Democracy Fund,True,True
+41143,World Health Organisation - core voluntary contributions account,True,True
+41144,International Labour Organisation - Regular Budget Supplementary Account,True,True
+41145,International Maritime Organization - Technical Co-operation Fund,True,True
+41146,United Nations Entity for Gender Equality and the Empowerment of Women,True,True
+41147,Central Emergency Response Fund,True,True
+41148,"United Nations Department of Political and Peacebuilding Affairs, Trust Fund in Support of Political Affairs",True,True
+41149,United Nations Development Coordination Office,True,True
+41150,United Nations Institute for Disarmament Research,True,True
+41151,International Agency for Research on Cancer,True,True
+41200,UN entities (core contributions reportable in TOSSD only),True,True
+41201,Comprehensive Nuclear Test Ban Treaty Organization,True,True
+41202,International Civil Aviation Organization,True,True
+41203,International Criminal Court,True,True
+41204,International Residual Mechanism for Criminal Tribunals,True,True
+41205,International Seabed Authority,True,True
+41206,International Tribunal for the Law of the Sea,True,True
+41207,Organization for the Prohibition of Chemical Weapons,True,True
+41208,Department of Economic and Social Affairs,True,True
+41209,Department of General Assembly and Conference Management,True,False
+41210,Department of Global Communications,True,True
+41211,"Department of Management Strategy, Policy and Compliance, including UNOG, UNOV and UNON",True,False
+41212,Department of Operational Support,True,False
+41213,Department of Safety and Security,True,True
+41214,Office of Counter-Terrorism,True,True
+41215,United Nations Interregional Crime and Justice Research Institute,True,True
+41216,International Maritime Organization,True,True
+41217,World Trade Organisation,True,True
+41300,Other UN (Core Contributions Reportable in Part),False,True
+41301,Food and Agricultural Organisation,True,True
+41302,International Labour Organisation - Assessed Contributions,True,True
+41303,International Telecommunications Union,True,True
+41304,"United Nations Educational, Scientific and Cultural Organisation",True,True
+41305,United Nations,True,True
+41306,Universal Postal Union ,True,True
+41307,World Health Organisation - assessed contributions,True,True
+41308,World Intellectual Property Organisation ,True,True
+41309,World Meteorological Organisation ,True,True
+41310,United Nations Department of Peace Operations - UN peacekeeping operations,True,True
+41311,United Nations Peacebuilding Fund (Window One:  Flexible Contributions Only),False,True
+41312,International Atomic Energy Agency - assessed contributions,True,True
+41313,United Nations High Commissioner for Human Rights (extrabudgetary contributions only),True,True
+41314,United Nations Economic Commission for Europe (extrabudgetary contributions only),True,True
+41315,United Nations Office for Disaster Risk Reduction,True,True
+41316,United Nations Framework Convention on Climate Change ,True,True
+41317,Green Climate Fund,True,True
+41318,Global Mechanism,True,True
+41319,World Tourism Organization,True,True
+41320,Technology Bank for Least Developed Countries,True,True
+41321,World Health Organisation - Strategic Preparedness and Response Plan,True,True
+41400,UN inter-agency pooled funds,False,True
+41401,UN-Multi Partner Trust Fund Office,True,False
+41402,Joint Sustainable Development Goals Fund,True,True
+41403,COVID-19 Response and Recovery Multi-Partner Trust Fund,True,False
+41500,UN single-agency thematic funds,False,True
+41501,United Nations Reducing Emissions from Deforestation and Forest Degradation,True,True
+41502,United Nations Office for Project Services,False,True
+41503,UN-led Country-based Pooled Funds,True,True
+41600,Existing UN channels not included in Standard I - UN entity- of the UN Data Cube reporting framework,False,True
+41601,United Nations Office for Disarmament Affairs,True,True
+41700,"UN entities, non-core contributions",True,True
+41701,International Labour Organisation - non-core,True,True
+41702,World Health Organisation - non-core,True,True
+42000,European Union Institutions,False,True
+42001,European Commission - Development Share of Budget,True,True
+42003,European Commission - European Development Fund,True,False
+42004,European Investment Bank ,True,True
+42005,Facility for Euro-Mediterranean Investment and Partnership Trust Fund,False,False
+43000,International Monetary Fund (IMF),False,True
+43001,International Monetary Fund - Poverty Reduction and Growth Trust ,True,True
+43002,"International Monetary Fund - Poverty Reduction and Growth - Heavily Indebted Poor Countries Debt Relief Initiative Trust Fund [includes HIPC, Extended Credit Facility (ECF), and ECF-HIPC sub-accounts] ",True,True
+43003,International Monetary Fund - Subsidization of Emergency Post Conflict Assistance/Emergency Assistance for Natural Disasters for PRGT-eligible members,True,True
+43004,International Monetary Fund - Poverty Reduction and Growth - Multilateral Debt Relief Initiative Trust,False,True
+43005,International Monetary Fund - Post-Catastrophe Debt Relief Trust,True,False
+43006,Catastrophe Containment and Relief Trust,True,True
+43007,IMF’s Resilience and Sustainability Trust,True,True
+44000,World Bank Group (WB),False,True
+44001,International Bank for Reconstruction and Development ,True,True
+44002,International Development Association ,True,True
+44003,International Development Association - Heavily Indebted Poor Countries Debt Initiative Trust Fund ,True,False
+44004,International Finance Corporation ,True,True
+44005,Multilateral Investment Guarantee Agency ,True,True
+44006,Advance Market Commitments,True,True
+44007,International Development Association - Multilateral Debt Relief Initiative,True,True
+44008,Partnership for Market Implementation,True,True
+45001,World Trade Organisation - International Trade Centre ,True,True
+45002,World Trade Organisation - Advisory Centre on WTO Law,True,True
+45003,World Trade Organisation Global Trust Fund ,True,True
+46000,Regional Development Banks,False,True
+46002,African Development Bank,True,True
+46003,African Development Fund ,True,False
+46004,Asian Development Bank,True,True
+46005,Asian Development Fund ,True,False
+46006,Black Sea Trade and Development Bank,True,True
+46007,Central American Bank for Economic Integration ,True,True
+46008,Development Bank of Latin America,True,True
+46009,Caribbean Development Bank ,True,True
+46012,"Inter-American Development Bank, Inter-American Investment Corporation and Multilateral Investment Fund ",True,True
+46013,"Inter-American Development Bank, Fund for Special Operations ",True,True
+46015,European Bank for Reconstruction and Development,True,True
+46016,European Bank for Reconstruction and Development - technical co-operation and special funds (ODA-eligible countries only),True,True
+46017,European Bank for Reconstruction and Development - technical co-operation and special funds (all EBRD countries of operations),True,True
+46018,European Bank for Reconstruction and Development - Early Transition Countries Fund,True,True
+46019,European Bank for Reconstruction and Development - Western Balkans Joint Trust Fund,True,True
+46020,Central African States Development Bank,True,True
+46021,West African Development Bank,True,True
+46022,African Export Import Bank,True,True
+46023,Eastern and Southern African Trade and Development Bank,True,True
+46024,Council of Europe Development Bank,True,True
+46025,Islamic Development Bank,True,True
+46026,Asian Infrastructure Investment Bank,True,True
+46027,Financial Fund for the Development of the River Plate Basin,True,True
+46028,New Development Bank,True,False
+47000,Other multilateral institutions,False,True
+47001,African Capacity Building Foundation ,True,True
+47002,Asian Productivity Organisation ,True,True
+47003,Association of South East Asian Nations: Economic Co-operation ,True,True
+47004,ASEAN Cultural Fund,False,False
+47005,African Union,True,True
+47008,World Vegetable Centre,False,True
+47009,African and Malagasy Council for Higher Education ,True,False
+47010,Commonwealth Agency for Public Administration and Management ,False,False
+47011,Caribbean Community Secretariat ,True,True
+47012,Caribbean Epidemiology Centre ,False,True
+47013,Commonwealth Foundation ,True,True
+47014,Commonwealth Fund for Technical Co-operation ,False,False
+47015,CGIAR Fund,True,True
+47016,Commonwealth Institute,False,False
+47017,International Centre for Tropical Agriculture ,False,True
+47018,Centre for International Forestry Research ,False,True
+47019,International Centre for Advanced Mediterranean Agronomic Studies ,True,True
+47020,International Maize and Wheat Improvement Centre ,False,True
+47021,International Potato Centre ,False,True
+47022,Convention on International Trade in Endangered Species of Wild Flora and Fauna,True,True
+47023,Commonwealth Legal Advisory Service ,False,False
+47024,Commonwealth Media Development Fund ,False,False
+47025,Commonwealth of Learning ,True,True
+47026,Community of Portuguese Speaking Countries ,True,True
+47027,Colombo Plan,True,True
+47028,Commonwealth Partnership for Technical Management ,False,True
+47029,Sahel and West Africa Club ,True,True
+47030,Commonwealth Scientific Council,False,False
+47031,Commonwealth Small States Office ,False,False
+47032,Commonwealth Trade and Investment Access Facility,False,False
+47033,Commonwealth Youth Programme ,False,False
+47034,Economic Community of West African States ,True,True
+47035,Environmental Development Action in the Third World ,False,True
+47036,European and Mediterranean Plant Protection Organisation ,True,True
+47037,Eastern-Regional Organisation of Public Administration ,True,False
+47038,INTERPOL Fund for Aid and Technical Assistance to Developing Countries ,False,False
+47040,Forum Fisheries Agency ,True,True
+47041,Food and Fertilizer Technology Centre ,False,True
+47042,Foundation for International Training ,False,False
+47043,Global Crop Diversity Trust ,False,True
+47044,Global Environment Facility Trust Fund,True,True
+47045,"Global Fund to Fight AIDS, Tuberculosis and Malaria ",True,True
+47046,International Organisation of the Francophonie,True,True
+47047,International African Institute ,False,True
+47048,Inter-American Indian Institute ,False,False
+47049,International Bureau of Education - International Educational Reporting System (IERS),False,False
+47050,International Cotton Advisory Committee ,True,True
+47051,International Centre for Agricultural Research in Dry Areas ,False,True
+47053,"International Centre for Diarrhoeal Disease Research, Bangladesh",False,True
+47054,International Centre of Insect Physiology and Ecology ,False,True
+47055,International Centre for Development Oriented Research in Agriculture ,False,True
+47056,World AgroForestry Centre,False,True
+47057,International Crop Research for Semi-Arid Tropics ,False,True
+47058,International Institute for Democracy and Electoral Assistance ,True,True
+47059,International Development Law Organisation ,True,True
+47060,International Institute for Cotton ,False,False
+47061,Inter-American Institute for Co-operation on Agriculture ,True,True
+47062,International Institute of Tropical Agriculture ,False,True
+47063,International Livestock Research Institute ,False,True
+47064,International Network for Bamboo and Rattan ,True,True
+47065,Intergovernmental Oceanographic Commission ,True,True
+47066,International Organisation for Migration ,True,True
+47067,Intergovernmental Panel on Climate Change ,True,True
+47068,Asia-Pacific Fishery Commission,True,False
+47069,Bioversity International,False,True
+47070,International Rice Research Institute ,False,True
+47071,International Seed Testing Association ,False,True
+47073,International Tropical Timber Organisation ,True,True
+47074,International Vaccine Institute ,True,True
+47075,International Water Management Institute ,False,True
+47076,Justice Studies Centre of the Americas ,True,True
+47077,Mekong River Commission ,True,True
+47078,Multilateral Fund for the Implementation of the Montreal Protocol ,True,True
+47079,Organisation of American States ,True,True
+47080,Organisation for Economic Co-operation and Development,True,True
+47081,OECD Development Centre ,True,True
+47082,Organisation of Eastern Caribbean States ,True,True
+47083,Pan-American Health Organisation ,True,True
+47084,Pan-American Institute of Geography and History ,True,True
+47085,Pan-American Railway Congress Association ,False,False
+47086,Private Infrastructure Development Group ,True,True
+47087,Pacific Islands Forum Secretariat ,True,True
+47088,Relief Net ,False,False
+47089,Southern African Development Community ,True,True
+47090,Southern African Transport and Communications Commission,False,False
+47091,(Colombo Plan) Special Commonwealth African Assistance Programme ,False,False
+47092,South East Asian Fisheries Development Centre ,True,True
+47093,South East Asian Ministers of Education ,True,True
+47094,South Pacific Applied Geoscience Commission ,False,False
+47095,Educational Quality and Assessment Programme,True,False
+47096,Secretariat of the Pacific Community ,True,True
+47097,Pacific Regional Environment Programme ,True,True
+47098,Unrepresented Nations and Peoples’ Organisation ,True,False
+47099,University of the South Pacific ,False,True
+47100,West African Monetary Union ,True,True
+47101,Africa Rice Centre,False,True
+47102,World Customs Organisation Fellowship Programme ,False,False
+47103,World Maritime University ,False,True
+47104,WorldFish Centre,False,True
+47105,Common Fund for Commodities ,True,True
+47106,Geneva Centre for the Democratic Control of Armed Forces,True,True
+47107,International Finance Facility for Immunisation,True,True
+47108,Multi-Country Demobilisation and Reintegration Program,False,False
+47109,Asia-Pacific Economic Cooperation Support Fund,True,True
+47110,Organisation of the Black Sea Economic Cooperation,True,True
+47111,Adaptation Fund,True,True
+47112,Central European Initiative - Special Fund for Climate and Environmental Protection,True,True
+47113,Economic and Monetary Community of Central Africa ,True,True
+47114,Asian Forest Cooperation Organisation,True,True
+47116,Enhanced Integrated Framework for Trade-Related Technical Assistance to Least Developed Countries,True,True
+47117,New Partnership for Africa's Development,True,True
+47118,Regional Organisation for the Strengthening of Supreme Audit Institutions of Francophone Sub-Saharan Countries,True,False
+47119,Sahara and Sahel Observatory,True,True
+47120,South Asian Association for Regional Cooperation ,True,False
+47121,United Cities and Local Governments of Africa,True,True
+47122,Global Alliance for Vaccines and Immunization ,True,True
+47123,Geneva International Centre for Humanitarian Demining ,True,True
+47124,International Anti-Corruption Academy,True,True
+47125,International Centre for Genetic Engineering and Biotechnology,True,True
+47127,Latin-American Energy Organisation,True,True
+47128,Nordic Development Fund,True,True
+47129,Global Environment Facility - Least Developed Countries Fund,True,True
+47130,Global Environment Facility - Special Climate Change Fund,True,True
+47131,Organization for Security and Co-operation in Europe,True,True
+47132,Commonwealth Secretariat,True,True
+47134,Clean Technology Fund,True,True
+47135,Strategic Climate Fund,True,True
+47136,Global Green Growth Institute,True,True
+47137,African Risk Capacity Group,True,True
+47138,Council of Europe,True,True
+47139,World Customs Organization Customs Co-operation Fund,True,True
+47140,"Organisation of Ibero-American States for Education, Science and Culture",True,True
+47141,African Tax Administration Forum,True,True
+47142,OPEC Fund for International Development,True,False
+47143,Global Community Engagement and Resilience Fund,True,True
+47144,International Renewable Energy Agency,True,True
+47145,Center of Excellence in Finance,True,True
+47146,International Investment Bank,True,False
+47147,International Finance Facility for Education,True,True
+47148,World Organisation for Animal Health,True,True
+47149,International Commission on Missing Persons,True,True
+47150,Secretaría General Iberoamericana,True,True
+47151,Arab Bank for Economic Development in Africa,True,False
+47152,Arab Fund for Economic and Social Development,True,False
+47153,IFAD Core additional climate contributions,True,False
+47400,European Space Agency (ESA) programme 'Space in support of International Development Aid',True,True
+47501,Global Partnership for Education,True,True
+47502,Global Fund for Disaster Risk Reduction,True,True
+47503,Global Agriculture and Food Security Program,True,True
+47504,Forest Carbon Partnership Facility ,True,True
+47701,Global Environment Facility - Global biodiversity framework fund,True,False
+47702,Cali Fund For the Fair and Equitable Sharing of Benefits from the use of Digital Sequence Information on Genetic Resources (DSI),True,False
+47703,Kunming Biodiversity Fund,True,False
+47704,SESRIC,True,True
+47705,Interpol,True,True
+47706,Eurasian Fund for Stabilization and Development,True,False
+47707,Arab Monetary Fund,True,False
+47708,Andean Community,True,False
+47709,Community of Latin American and Caribbean States,True,False
+47710,Pacific Alliance,True,False
+47711,Southern Common Market,True,False
+47712,Antarctic Treaty Secretariat,True,False
+51000,"University, college or other teaching institution, research institute or think-tank",False,True
+51001,International Food Policy Research Institute,False,True
+60000,Private Sector Institutions,False,True
+61000,Private sector in provider country,False,True
+61001,Banks (in provider country) (deposit taking corporations),False,True
+61002,Private exporter in provider country,False,False
+61003,Investment funds and other collective investment institutions (in provider country),False,True
+61004,"Holding companies, trusts and Special Purpose Vehicles (in provider country)",False,True
+61005,Insurance Corporations (in provider country),False,True
+61006,Pension Funds (in provider country),False,True
+61007,Other financial corporations (in provider country),False,True
+61008,Exporters (in provider country),False,True
+61009,Other non-financial corporations (in provider country),False,True
+61010,Retail investors (in provider country),False,True
+62000,Private sector in recipient country,False,True
+62001,Banks (in recipient country) (deposit taking corporations except Micro Finance Institutions),False,True
+62002,Micro Finance Institutions (in recipient country) (deposit and non-deposit),False,True
+62003,Investment funds and other collective investment institutions (in recipient country),False,True
+62004,"Holding companies, trusts and Special Purpose Vehicles (in recipient country)",False,True
+62005,Insurance Corporations (in recipient country),False,True
+62006,Pension Funds (in recipient country),False,True
+62007,Other financial corporations (in recipient country),False,True
+62008,Importers/Exporters,False,True
+62009,Other non-financial corporations (in recipient country),False,True
+62010,Retail investors (in recipient country),False,True
+63000,Private sector in third country,False,True
+63001,Banks (in third country) (deposit taking corporations except Micro Finance Institutions),False,True
+63002,Micro Finance Institutions (in third country) (deposit and non-deposit),False,True
+63003,Investment funds and other collective investment institutions (in third country),False,True
+63004,"Holding companies, trusts and Special Purpose Vehicles (in third country)",False,True
+63005,Insurance Corporations (in third country),False,True
+63006,Pension Funds (in third country),False,False
+63007,Other financial corporations (in third country),False,True
+63008,Exporters (in third country),False,False
+63009,Other non-financial corporations (in third country),False,True
+63010,Retail investors (in third country),False,False
+90000,Other,False,True

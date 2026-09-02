@@ -1,160 +1,160 @@
-code,name,tossd_only,iso3
-1,Austria,False,AUT
-2,Belgium,False,BEL
-3,Denmark,False,DNK
-4,France,False,FRA
-5,Germany,False,DEU
-6,Italy,False,ITA
-7,Netherlands,False,NLD
-8,Norway,False,NOR
-9,Portugal,False,PRT
-10,Sweden,False,SWE
-11,Switzerland,False,CHE
-12,United Kingdom,False,GBR
-18,Finland,False,FIN
-20,Iceland,False,ISL
-21,Ireland,False,IRL
-22,Luxembourg,False,LUX
-26,Monaco,False,MCO
-30,Cyprus,False,CYP
-40,Greece,False,GRC
-45,Malta,False,MLT
-50,Spain,False,ESP
-55,Türkiye,False,TUR
-61,Slovenia,False,SVN
-62,Croatia,False,HRV
-68,Czechia,False,CZE
-69,Slovak Republic,False,SVK
-70,Liechtenstein,False,LIE
-72,Bulgaria,False,BGR
-75,Hungary,False,HUN
-76,Poland,False,POL
-77,Romania,False,ROU
-82,Estonia,False,EST
-83,Latvia,False,LVA
-84,Lithuania,False,LTU
-87,Russia,False,RUS
-104,Nordic Development Fund,False,
-130,Algeria,False,DZA
-133,Libya,False,LBY
-139,Tunisia,True,TUN
-261,Nigeria,True,NGA
-301,Canada,False,CAN
-302,United States,False,USA
-336,Costa Rica,True,CRI
-340,Dominican Republic,True,DOM
-347,Guatemala,True,GTM
-358,Mexico,False,MEX
-425,Argentina,True,ARG
-431,Brazil,True,BRA
-434,Chile,True,CHL
-437,Colombia,True,COL
-440,Ecuador,True,ECU
-454,Peru,True,PER
-460,Uruguay,True,URY
-543,Iraq,False,IRQ
-546,Israel,False,ISR
-551,Palestinian Authority,True,
-552,Kuwait,False,KWT
-561,Qatar,False,QAT
-566,Saudi Arabia,False,SAU
-576,United Arab Emirates,False,ARE
-611,Azerbaijan,False,AZE
-613,Kazakhstan,False,KAZ
-701,Japan,False,JPN
-732,Chinese Taipei,False,TWN
-738,Indonesia,True,IDN
-742,Korea,False,KOR
-764,Thailand,False,THA
-765,Timor-Leste,False,TLS
-801,Australia,False,AUS
-807,UNEP,False,
-811,Global Environment Facility,False,
-812,Montreal Protocol,False,
-820,New Zealand,False,NZL
-906,Caribbean Development Bank,False,
-907,International Monetary Fund,False,
-909,Inter-American Development Bank,False,
-910,Central American Bank for Economic Integration,False,
-913,African Development Bank,False,
-914,African Development Fund,False,
-915,Asian Development Bank,False,
-918,EU Institutions,False,
-921,Arab Fund (AFESD),False,
-923,UN Peacebuilding Fund,False,
-926,Council of Europe,False,
-928,World Health Organisation,False,
-932,Food and Agriculture Organisation,False,
-940,International Labour Organisation,False,
-948,UNECE,False,
-951,OPEC Fund for International Development,False,
-952,OAPEC,False,
-953,Arab Bank for Economic Development in Africa,False,
-954,Special Arab Aid Fund for Africa,False,
-956,IMF Trust Fund,False,
-958,IMF (Concessional Trust Funds),False,
-959,UNDP,False,
-960,UNTA,False,
-962,United Nations Conference on Trade and Development,False,
-963,UNICEF,False,
-964,UNRWA,False,
-966,WFP,False,
-967,UNHCR,False,
-971,UNAIDS,False,
-974,UNFPA,False,
-976,Islamic Development Bank,False,
-978,OSCE,False,
-979,Islamic Monetary Fund,False,
-980,Arab Fund for Technical Assistance to African and Arab Countries,False,
-981,Black Sea Trade & Development Bank,False,
-982,GODE,False,
-983,Other Arab Agencies,False,
-988,IFAD,False,
-992,UN AGENCIES,False,
-997,Global Partnership for Education,False,
-1011,Climate Investment Funds,False,
-1012,Adaptation Fund,False,
-1013,Council of Europe Development Bank,False,
-1014,Private Infrastructure Development Group,False,
-1015,Development Bank of Latin America,False,
-1016,Green Climate Fund,False,
-1017,Credit Guarantee and Investment Facility,False,
-1018,Global Energy Efficiency and Renewable Energy Fund,False,
-1019,IDB Invest,False,
-1020,Central Emergency Response Fund,False,
-1022,UN inter-agency pooled funds,True,
-1023,World Tourism Organisation,False,
-1024,Asian Infrastructure Investment Bank,False,
-1025,Center of Excellence in Finance,False,
-1026,SESRIC,True,
-1036,UN Secretariat,True,
-1037,International Investment Bank,False,
-1038,UN Institute for Disarmament Research,False,
-1039,UN Capital Development Fund,False,
-1040,UN Office on Drugs and Crime,False,
-1041,Eurasian Fund for Stabilization and Development,True,
-1042,UN Office of Counter-Terrorism,True,
-1043,Interpol,True,
-1044,New Development Bank,False,
-1045,North American Development Bank,False,
-1046,UN Women,False,
-1047,COVID-19 Response and Recovery Multi-Partner Trust Fund,False,
-1048,Joint Sustainable Development Goals Fund,False,
-1049,International Commission on Missing Persons,False,
-1050,WHO-Strategic Preparedness and Response Plan,False,
-1051,United Nations Office for Disarmament Affairs,True,
-1052,International Centre for Genetic Engineering and Biotechnology,False,
-1053,Asian Forest Cooperation Organisation,False,
-1054,World Organisation for Animal Health,False,
-1055,CGIAR,False,
-1056,Organisation of American States,True,
-1057,UN Development Coordination Office,False,
-1058,IMF Resilience and Sustainability Trust,False,
-1059,Arab Monetary Fund,True,
-1311,Global Alliance for Vaccines and Immunization,False,
-1312,Global Fund,False,
-1313,Global Green Growth Institute,False,
-1401,WTO - International Trade Centre,False,
-1403,UN Economic and Social Commission for Western Asia,False,
-1404,World Trade Organisation,False,
-1406,United Nations Industrial Development Organization,False,
+code,name,tossd_only,iso3,in_published_data
+1,Austria,False,AUT,True
+2,Belgium,False,BEL,True
+3,Denmark,False,DNK,True
+4,France,False,FRA,True
+5,Germany,False,DEU,True
+6,Italy,False,ITA,True
+7,Netherlands,False,NLD,True
+8,Norway,False,NOR,True
+9,Portugal,False,PRT,True
+10,Sweden,False,SWE,True
+11,Switzerland,False,CHE,True
+12,United Kingdom,False,GBR,True
+18,Finland,False,FIN,True
+20,Iceland,False,ISL,True
+21,Ireland,False,IRL,True
+22,Luxembourg,False,LUX,True
+26,Monaco,False,MCO,True
+30,Cyprus,False,CYP,True
+40,Greece,False,GRC,True
+45,Malta,False,MLT,True
+50,Spain,False,ESP,True
+55,Türkiye,False,TUR,True
+61,Slovenia,False,SVN,True
+62,Croatia,False,HRV,True
+68,Czechia,False,CZE,True
+69,Slovak Republic,False,SVK,True
+70,Liechtenstein,False,LIE,True
+72,Bulgaria,False,BGR,True
+75,Hungary,False,HUN,True
+76,Poland,False,POL,True
+77,Romania,False,ROU,True
+82,Estonia,False,EST,True
+83,Latvia,False,LVA,True
+84,Lithuania,False,LTU,True
+87,Russia,False,RUS,False
+104,Nordic Development Fund,False,,True
+130,Algeria,False,DZA,False
+133,Libya,False,LBY,False
+139,Tunisia,True,TUN,True
+261,Nigeria,True,NGA,True
+301,Canada,False,CAN,True
+302,United States,False,USA,True
+336,Costa Rica,True,CRI,True
+340,Dominican Republic,True,DOM,True
+347,Guatemala,True,GTM,True
+358,Mexico,False,MEX,True
+425,Argentina,True,ARG,True
+431,Brazil,True,BRA,True
+434,Chile,True,CHL,True
+437,Colombia,True,COL,False
+440,Ecuador,True,ECU,True
+454,Peru,True,PER,True
+460,Uruguay,True,URY,True
+543,Iraq,False,IRQ,False
+546,Israel,False,ISR,True
+551,Palestinian Authority,True,,True
+552,Kuwait,False,KWT,True
+561,Qatar,False,QAT,True
+566,Saudi Arabia,False,SAU,True
+576,United Arab Emirates,False,ARE,True
+611,Azerbaijan,False,AZE,True
+613,Kazakhstan,False,KAZ,True
+701,Japan,False,JPN,True
+732,Chinese Taipei,False,TWN,True
+738,Indonesia,True,IDN,True
+742,Korea,False,KOR,True
+764,Thailand,False,THA,True
+765,Timor-Leste,False,TLS,False
+801,Australia,False,AUS,True
+807,UNEP,False,,True
+811,Global Environment Facility,False,,True
+812,Montreal Protocol,False,,False
+820,New Zealand,False,NZL,True
+906,Caribbean Development Bank,False,,True
+907,International Monetary Fund,False,,False
+909,Inter-American Development Bank,False,,True
+910,Central American Bank for Economic Integration,False,,True
+913,African Development Bank,False,,True
+914,African Development Fund,False,,True
+915,Asian Development Bank,False,,True
+918,EU Institutions,False,,True
+921,Arab Fund (AFESD),False,,True
+923,UN Peacebuilding Fund,False,,True
+926,Council of Europe,False,,False
+928,World Health Organisation,False,,True
+932,Food and Agriculture Organisation,False,,True
+940,International Labour Organisation,False,,True
+948,UNECE,False,,True
+951,OPEC Fund for International Development,False,,True
+952,OAPEC,False,,False
+953,Arab Bank for Economic Development in Africa,False,,True
+954,Special Arab Aid Fund for Africa,False,,False
+956,IMF Trust Fund,False,,False
+958,IMF (Concessional Trust Funds),False,,True
+959,UNDP,False,,True
+960,UNTA,False,,False
+962,United Nations Conference on Trade and Development,False,,True
+963,UNICEF,False,,True
+964,UNRWA,False,,True
+966,WFP,False,,True
+967,UNHCR,False,,True
+971,UNAIDS,False,,True
+974,UNFPA,False,,True
+976,Islamic Development Bank,False,,True
+978,OSCE,False,,True
+979,Islamic Monetary Fund,False,,False
+980,Arab Fund for Technical Assistance to African and Arab Countries,False,,False
+981,Black Sea Trade & Development Bank,False,,True
+982,GODE,False,,False
+983,Other Arab Agencies,False,,False
+988,IFAD,False,,True
+992,UN AGENCIES,False,,False
+997,Global Partnership for Education,False,,True
+1011,Climate Investment Funds,False,,True
+1012,Adaptation Fund,False,,True
+1013,Council of Europe Development Bank,False,,True
+1014,Private Infrastructure Development Group,False,,True
+1015,Development Bank of Latin America,False,,True
+1016,Green Climate Fund,False,,True
+1017,Credit Guarantee and Investment Facility,False,,False
+1018,Global Energy Efficiency and Renewable Energy Fund,False,,False
+1019,IDB Invest,False,,True
+1020,Central Emergency Response Fund,False,,True
+1022,UN inter-agency pooled funds,True,,True
+1023,World Tourism Organisation,False,,True
+1024,Asian Infrastructure Investment Bank,False,,True
+1025,Center of Excellence in Finance,False,,True
+1026,SESRIC,True,,True
+1036,UN Secretariat,True,,True
+1037,International Investment Bank,False,,True
+1038,UN Institute for Disarmament Research,False,,True
+1039,UN Capital Development Fund,False,,True
+1040,UN Office on Drugs and Crime,False,,True
+1041,Eurasian Fund for Stabilization and Development,True,,True
+1042,UN Office of Counter-Terrorism,True,,True
+1043,Interpol,True,,True
+1044,New Development Bank,False,,True
+1045,North American Development Bank,False,,True
+1046,UN Women,False,,True
+1047,COVID-19 Response and Recovery Multi-Partner Trust Fund,False,,True
+1048,Joint Sustainable Development Goals Fund,False,,True
+1049,International Commission on Missing Persons,False,,True
+1050,WHO-Strategic Preparedness and Response Plan,False,,True
+1051,United Nations Office for Disarmament Affairs,True,,True
+1052,International Centre for Genetic Engineering and Biotechnology,False,,True
+1053,Asian Forest Cooperation Organisation,False,,True
+1054,World Organisation for Animal Health,False,,True
+1055,CGIAR,False,,True
+1056,Organisation of American States,True,,True
+1057,UN Development Coordination Office,False,,True
+1058,IMF Resilience and Sustainability Trust,False,,True
+1059,Arab Monetary Fund,True,,True
+1311,Global Alliance for Vaccines and Immunization,False,,True
+1312,Global Fund,False,,True
+1313,Global Green Growth Institute,False,,True
+1401,WTO - International Trade Centre,False,,True
+1403,UN Economic and Social Commission for Western Asia,False,,True
+1404,World Trade Organisation,False,,True
+1406,United Nations Industrial Development Organization,False,,True

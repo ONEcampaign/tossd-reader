@@ -1,44 +1,44 @@
-code,name,tossd_only
-A,Budget support,True
-A00,Budget support,True
-B,Core contributions and pooled programmes and funds,True
-B01,"Core support to NGOs, other private bodies, PPPs and research institutes",True
-B02,Core contributions to multilateral institutions,True
-B02a,Assessed contributions to multilateral institutions,True
-B02b,Voluntary core contributions to multilateral institutions,True
-B03,Contributions to specific purpose programmes and funds managed by implementing partners (excluding self-benefit),True
-C,Projects,True
-C01,Projects,True
-D,Technical co-operation,True
-D01,In-kind technical co-operation experts,True
-D011,(for SSC providers only) In-kind technical cooperation. Experts costs,True
-D012,(for SSC providers only) In-kind technical cooperation experts. Travel related costs,True
-D013,"(for SSC providers only) In-kind technical cooperation. Services, materials, equipment and supplies.",True
-D02,Other technical co-operation,True
-D021,(for SSC providers only) Training,True
-E,Scholarships and imputed student costs,True
-E01,Scholarships/training in provider country,True
-E02,Imputed student costs,True
-F,Debt relief,True
-F01,Debt relief - principal (original loan previously recorded in TOSSD),True
-F02,Debt relief - principal (original loan not recorded in TOSSD),True
-F03,Debt relief - interest,True
-G,Administrative costs not included elsewhere,False
-G01,Administrative costs not included elsewhere,True
-H,Expenditures in the provider country,True
-H00,Expenditures in the provider country,True
-I,Support to refugees / protected persons,True
-I01,Support to refugees/protected persons in the provider country (up to 12 months of their stay) ,True
-I02,Support to refugees/protected persons in the provider country (beyond the 12-month period),True
-I03,Support to refugees/protected persons - in other countries of asylum,True
-I04,Support to refugees/protected persons - voluntary returns,True
-I05,Support to refugees/protected persons/migrants for their integration in the economy of provider countries,True
-J,In-kind donations,True
-J01,(for SSC providers only) In-kind donations,True
-K,Research and development,True
-K01,(for SSC providers only) Research and development,True
-K011,(for SSC providers only) Scientific-related infrastructure,True
-K012,(for SSC providers only) Research personnel ,True
-K02,RESEARCH AND DEVELOPMENT (R&D),True
-L,Direct cash transfers to developing countries,True
-L01,(for SSC providers only) Direct cash transfers under social development public programmes in partner countries,True
+code,name,tossd_only,in_published_data
+A,Budget support,True,False
+A00,Budget support,True,True
+B,Core contributions and pooled programmes and funds,True,False
+B01,"Core support to NGOs, other private bodies, PPPs and research institutes",True,True
+B02,Core contributions to multilateral institutions,True,True
+B02a,Assessed contributions to multilateral institutions,True,True
+B02b,Voluntary core contributions to multilateral institutions,True,True
+B03,Contributions to specific purpose programmes and funds managed by implementing partners (excluding self-benefit),True,True
+C,Projects,True,False
+C01,Projects,True,True
+D,Technical co-operation,True,True
+D01,In-kind technical co-operation experts,True,True
+D011,(for SSC providers only) In-kind technical cooperation. Experts costs,True,True
+D012,(for SSC providers only) In-kind technical cooperation experts. Travel related costs,True,True
+D013,"(for SSC providers only) In-kind technical cooperation. Services, materials, equipment and supplies.",True,True
+D02,Other technical co-operation,True,True
+D021,(for SSC providers only) Training,True,True
+E,Scholarships and imputed student costs,True,False
+E01,Scholarships/training in provider country,True,True
+E02,Imputed student costs,True,True
+F,Debt relief,True,False
+F01,Debt relief - principal (original loan previously recorded in TOSSD),True,True
+F02,Debt relief - principal (original loan not recorded in TOSSD),True,True
+F03,Debt relief - interest,True,True
+G,Administrative costs not included elsewhere,False,False
+G01,Administrative costs not included elsewhere,True,True
+H,Expenditures in the provider country,True,False
+H00,Expenditures in the provider country,True,True
+I,Support to refugees / protected persons,True,True
+I01,Support to refugees/protected persons in the provider country (up to 12 months of their stay) ,True,True
+I02,Support to refugees/protected persons in the provider country (beyond the 12-month period),True,True
+I03,Support to refugees/protected persons - in other countries of asylum,True,True
+I04,Support to refugees/protected persons - voluntary returns,True,True
+I05,Support to refugees/protected persons/migrants for their integration in the economy of provider countries,True,True
+J,In-kind donations,True,False
+J01,(for SSC providers only) In-kind donations,True,True
+K,Research and development,True,False
+K01,(for SSC providers only) Research and development,True,True
+K011,(for SSC providers only) Scientific-related infrastructure,True,False
+K012,(for SSC providers only) Research personnel ,True,True
+K02,RESEARCH AND DEVELOPMENT (R&D),True,True
+L,Direct cash transfers to developing countries,True,False
+L01,(for SSC providers only) Direct cash transfers under social development public programmes in partner countries,True,True

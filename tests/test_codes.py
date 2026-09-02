@@ -47,6 +47,16 @@ def test_browse_unknown_dimension_raises_value_error() -> None:
         codes.browse("not_a_real_dimension")
 
 
+def test_browse_sector_contains_the_700_supplemental_row() -> None:
+    """`browse("sector")` surfaces the packaged `700` row and its `source`."""
+    sector = codes.browse("sector")
+    row = sector.loc[sector["code"] == "700"]
+
+    assert len(row) == 1
+    assert row["name"].item() == "VIII. Humanitarian Aid"
+    assert row["source"].item() == "dac-sector-classification"
+
+
 # --- lookup: int-coded dimensions -------------------------------------------------
 
 
@@ -68,6 +78,16 @@ def test_lookup_int_coded_dimension_by_name() -> None:
 def test_lookup_int_coded_dimension_accepts_int_token() -> None:
     """A plain int token is trusted directly, same as providers=/recipients=."""
     assert codes.lookup("recipient", 55) == 55
+
+
+def test_lookup_sector_resolves_the_supplemental_700_row_by_name() -> None:
+    """The packaged `700` supplemental row resolves by name, same as any fetched sector row."""
+    assert codes.lookup("sector", "VIII. Humanitarian Aid") == 700
+
+
+def test_lookup_sector_accepts_int_700_token() -> None:
+    """A plain int `700` token is trusted directly, same as any other sector code."""
+    assert codes.lookup("sector", 700) == 700
 
 
 # --- lookup: str-coded dimensions -------------------------------------------------

@@ -1,178 +1,178 @@
-code,name,tossd_only,iso3
-55,Türkiye,False,TUR
-57,Kosovo,False,XKX
-63,Serbia,False,SRB
-64,Bosnia and Herzegovina,False,BIH
-65,Montenegro,False,MNE
-66,North Macedonia,False,MKD
-71,Albania,False,ALB
-85,Ukraine,False,UKR
-86,Belarus,False,BLR
-88,States Ex-Yugoslavia unspecified,False,
-89,"Europe, regional",False,
-93,Moldova,False,MDA
-130,Algeria,False,DZA
-133,Libya,False,LBY
-136,Morocco,False,MAR
-139,Tunisia,False,TUN
-142,Egypt,False,EGY
-189,"North of Sahara, regional",False,
-218,South Africa,False,ZAF
-225,Angola,False,AGO
-227,Botswana,False,BWA
-228,Burundi,False,BDI
-229,Cameroon,False,CMR
-230,Cabo Verde,False,CPV
-231,Central African Republic,False,CAF
-232,Chad,False,TCD
-233,Comoros,False,COM
-234,Congo,False,COG
-235,Democratic Republic of the Congo,False,COD
-236,Benin,False,BEN
-238,Ethiopia,False,ETH
-239,Gabon,False,GAB
-240,Gambia,False,GMB
-241,Ghana,False,GHA
-243,Guinea,False,GIN
-244,Guinea-Bissau,False,GNB
-245,Equatorial Guinea,False,GNQ
-247,Côte d'Ivoire,False,CIV
-248,Kenya,False,KEN
-249,Lesotho,False,LSO
-251,Liberia,False,LBR
-252,Madagascar,False,MDG
-253,Malawi,False,MWI
-255,Mali,False,MLI
-256,Mauritania,False,MRT
-257,Mauritius,False,MUS
-259,Mozambique,False,MOZ
-260,Niger,False,NER
-261,Nigeria,False,NGA
-265,Zimbabwe,False,ZWE
-266,Rwanda,False,RWA
-268,Sao Tome and Principe,False,STP
-269,Senegal,False,SEN
-270,Seychelles,True,SYC
-271,Eritrea,False,ERI
-272,Sierra Leone,False,SLE
-273,Somalia,False,SOM
-274,Djibouti,False,DJI
-275,Namibia,False,NAM
-276,Saint Helena,False,SHN
-278,Sudan,False,SDN
-279,South Sudan,False,SSD
-280,Eswatini,False,SWZ
-282,Tanzania,False,TZA
-283,Togo,False,TGO
-285,Uganda,False,UGA
-287,Burkina Faso,False,BFA
-288,Zambia,False,ZMB
-289,"South of Sahara, regional",False,
-298,"Africa, regional",False,
-328,Bahamas,True,BHS
-329,Barbados,True,BRB
-336,Costa Rica,False,CRI
-338,Cuba,False,CUB
-340,Dominican Republic,False,DOM
-342,El Salvador,False,SLV
-347,Guatemala,False,GTM
-349,Haiti,False,HTI
-351,Honduras,False,HND
-352,Belize,False,BLZ
-354,Jamaica,False,JAM
-358,Mexico,False,MEX
-364,Nicaragua,False,NIC
-366,Panama,False,PAN
-375,Trinidad and Tobago,True,TTO
-377,Antigua and Barbuda,True,ATG
-378,Dominica,False,DMA
-381,Grenada,False,GRD
-382,Saint Kitts and Nevis,True,KNA
-383,Saint Lucia,False,LCA
-384,Saint Vincent and the Grenadines,False,VCT
-385,Montserrat,False,MSR
-389,"Caribbean & Central America, regional",False,
-425,Argentina,False,ARG
-428,Bolivia,False,BOL
-431,Brazil,False,BRA
-434,Chile,True,CHL
-437,Colombia,False,COL
-440,Ecuador,False,ECU
-446,Guyana,False,GUY
-451,Paraguay,False,PRY
-454,Peru,False,PER
-457,Suriname,False,SUR
-460,Uruguay,True,URY
-463,Venezuela,False,VEN
-489,"South America, regional",False,
-498,"America, regional",False,
-540,Iran,False,IRN
-543,Iraq,False,IRQ
-549,Jordan,False,JOR
-550,West Bank and Gaza Strip,False,PSE
-555,Lebanon,False,LBN
-573,Syrian Arab Republic,False,SYR
-580,Yemen,False,YEM
-589,"Middle East, regional",False,
-610,Armenia,False,ARM
-611,Azerbaijan,False,AZE
-612,Georgia,False,GEO
-613,Kazakhstan,False,KAZ
-614,Kyrgyzstan,False,KGZ
-615,Tajikistan,False,TJK
-616,Turkmenistan,False,TKM
-617,Uzbekistan,False,UZB
-619,"Central Asia, regional",False,
-625,Afghanistan,False,AFG
-630,Bhutan,False,BTN
-635,Myanmar,False,MMR
-640,Sri Lanka,False,LKA
-645,India,False,IND
-655,Maldives,False,MDV
-660,Nepal,False,NPL
-665,Pakistan,False,PAK
-666,Bangladesh,False,BGD
-679,"South Asia, regional",False,
-689,"South & Central Asia, regional",False,
-725,Brunei Darussalam,True,BRN
-728,Cambodia,False,KHM
-730,China (People's Republic of),False,CHN
-738,Indonesia,False,IDN
-740,Democratic People's Republic of Korea,False,PRK
-745,Lao People's Democratic Republic,False,LAO
-751,Malaysia,False,MYS
-753,Mongolia,False,MNG
-755,Philippines,False,PHL
-764,Thailand,False,THA
-765,Timor-Leste,False,TLS
-769,Viet Nam,False,VNM
-789,"Far East Asia, regional",False,
-798,"Asia, regional",False,
-831,Cook Islands,True,COK
-832,Fiji,False,FJI
-836,Kiribati,False,KIR
-845,Nauru,False,NRU
-854,Vanuatu,False,VUT
-856,Niue,False,NIU
-859,Marshall Islands,False,MHL
-860,Micronesia,False,FSM
-861,Palau,False,PLW
-862,Papua New Guinea,False,PNG
-866,Solomon Islands,False,SLB
-868,Tokelau,False,TKL
-870,Tonga,False,TON
-872,Tuvalu,False,TUV
-876,Wallis and Futuna,False,WLF
-880,Samoa,False,WSM
-889,"Oceania, regional",False,
-998,"Developing countries, unspecified",False,
-999,Global,True,
-1027,"Eastern Africa, regional",False,
-1028,"Middle Africa, regional",False,
-1029,"Southern Africa, regional",False,
-1030,"Western Africa, regional",False,
-1031,"Caribbean, regional",False,
-1032,"Central America, regional",False,
-1033,"Melanesia, regional",False,
-1034,"Micronesia, regional",False,
-1035,"Polynesia, regional",False,
+code,name,tossd_only,iso3,in_published_data
+55,Türkiye,False,TUR,True
+57,Kosovo,False,XKX,True
+63,Serbia,False,SRB,True
+64,Bosnia and Herzegovina,False,BIH,True
+65,Montenegro,False,MNE,True
+66,North Macedonia,False,MKD,True
+71,Albania,False,ALB,True
+85,Ukraine,False,UKR,True
+86,Belarus,False,BLR,True
+88,States Ex-Yugoslavia unspecified,False,,True
+89,"Europe, regional",False,,True
+93,Moldova,False,MDA,True
+130,Algeria,False,DZA,True
+133,Libya,False,LBY,True
+136,Morocco,False,MAR,True
+139,Tunisia,False,TUN,True
+142,Egypt,False,EGY,True
+189,"North of Sahara, regional",False,,True
+218,South Africa,False,ZAF,True
+225,Angola,False,AGO,True
+227,Botswana,False,BWA,True
+228,Burundi,False,BDI,True
+229,Cameroon,False,CMR,True
+230,Cabo Verde,False,CPV,True
+231,Central African Republic,False,CAF,True
+232,Chad,False,TCD,True
+233,Comoros,False,COM,True
+234,Congo,False,COG,True
+235,Democratic Republic of the Congo,False,COD,True
+236,Benin,False,BEN,True
+238,Ethiopia,False,ETH,True
+239,Gabon,False,GAB,True
+240,Gambia,False,GMB,True
+241,Ghana,False,GHA,True
+243,Guinea,False,GIN,True
+244,Guinea-Bissau,False,GNB,True
+245,Equatorial Guinea,False,GNQ,True
+247,Côte d'Ivoire,False,CIV,True
+248,Kenya,False,KEN,True
+249,Lesotho,False,LSO,True
+251,Liberia,False,LBR,True
+252,Madagascar,False,MDG,True
+253,Malawi,False,MWI,True
+255,Mali,False,MLI,True
+256,Mauritania,False,MRT,True
+257,Mauritius,False,MUS,True
+259,Mozambique,False,MOZ,True
+260,Niger,False,NER,True
+261,Nigeria,False,NGA,True
+265,Zimbabwe,False,ZWE,True
+266,Rwanda,False,RWA,True
+268,Sao Tome and Principe,False,STP,True
+269,Senegal,False,SEN,True
+270,Seychelles,True,SYC,True
+271,Eritrea,False,ERI,True
+272,Sierra Leone,False,SLE,True
+273,Somalia,False,SOM,True
+274,Djibouti,False,DJI,True
+275,Namibia,False,NAM,True
+276,Saint Helena,False,SHN,True
+278,Sudan,False,SDN,True
+279,South Sudan,False,SSD,True
+280,Eswatini,False,SWZ,True
+282,Tanzania,False,TZA,True
+283,Togo,False,TGO,True
+285,Uganda,False,UGA,True
+287,Burkina Faso,False,BFA,True
+288,Zambia,False,ZMB,True
+289,"South of Sahara, regional",False,,True
+298,"Africa, regional",False,,True
+328,Bahamas,True,BHS,True
+329,Barbados,True,BRB,True
+336,Costa Rica,False,CRI,True
+338,Cuba,False,CUB,True
+340,Dominican Republic,False,DOM,True
+342,El Salvador,False,SLV,True
+347,Guatemala,False,GTM,True
+349,Haiti,False,HTI,True
+351,Honduras,False,HND,True
+352,Belize,False,BLZ,True
+354,Jamaica,False,JAM,True
+358,Mexico,False,MEX,True
+364,Nicaragua,False,NIC,True
+366,Panama,False,PAN,True
+375,Trinidad and Tobago,True,TTO,True
+377,Antigua and Barbuda,True,ATG,True
+378,Dominica,False,DMA,True
+381,Grenada,False,GRD,True
+382,Saint Kitts and Nevis,True,KNA,True
+383,Saint Lucia,False,LCA,True
+384,Saint Vincent and the Grenadines,False,VCT,True
+385,Montserrat,False,MSR,True
+389,"Caribbean & Central America, regional",False,,True
+425,Argentina,False,ARG,True
+428,Bolivia,False,BOL,True
+431,Brazil,False,BRA,True
+434,Chile,True,CHL,True
+437,Colombia,False,COL,True
+440,Ecuador,False,ECU,True
+446,Guyana,False,GUY,True
+451,Paraguay,False,PRY,True
+454,Peru,False,PER,True
+457,Suriname,False,SUR,True
+460,Uruguay,True,URY,True
+463,Venezuela,False,VEN,True
+489,"South America, regional",False,,True
+498,"America, regional",False,,True
+540,Iran,False,IRN,True
+543,Iraq,False,IRQ,True
+549,Jordan,False,JOR,True
+550,West Bank and Gaza Strip,False,PSE,True
+555,Lebanon,False,LBN,True
+573,Syrian Arab Republic,False,SYR,True
+580,Yemen,False,YEM,True
+589,"Middle East, regional",False,,True
+610,Armenia,False,ARM,True
+611,Azerbaijan,False,AZE,True
+612,Georgia,False,GEO,True
+613,Kazakhstan,False,KAZ,True
+614,Kyrgyzstan,False,KGZ,True
+615,Tajikistan,False,TJK,True
+616,Turkmenistan,False,TKM,True
+617,Uzbekistan,False,UZB,True
+619,"Central Asia, regional",False,,True
+625,Afghanistan,False,AFG,True
+630,Bhutan,False,BTN,True
+635,Myanmar,False,MMR,True
+640,Sri Lanka,False,LKA,True
+645,India,False,IND,True
+655,Maldives,False,MDV,True
+660,Nepal,False,NPL,True
+665,Pakistan,False,PAK,True
+666,Bangladesh,False,BGD,True
+679,"South Asia, regional",False,,True
+689,"South & Central Asia, regional",False,,True
+725,Brunei Darussalam,True,BRN,True
+728,Cambodia,False,KHM,True
+730,China (People's Republic of),False,CHN,True
+738,Indonesia,False,IDN,True
+740,Democratic People's Republic of Korea,False,PRK,True
+745,Lao People's Democratic Republic,False,LAO,True
+751,Malaysia,False,MYS,True
+753,Mongolia,False,MNG,True
+755,Philippines,False,PHL,True
+764,Thailand,False,THA,True
+765,Timor-Leste,False,TLS,True
+769,Viet Nam,False,VNM,True
+789,"Far East Asia, regional",False,,True
+798,"Asia, regional",False,,True
+831,Cook Islands,True,COK,True
+832,Fiji,False,FJI,True
+836,Kiribati,False,KIR,True
+845,Nauru,False,NRU,True
+854,Vanuatu,False,VUT,True
+856,Niue,False,NIU,True
+859,Marshall Islands,False,MHL,True
+860,Micronesia,False,FSM,True
+861,Palau,False,PLW,True
+862,Papua New Guinea,False,PNG,True
+866,Solomon Islands,False,SLB,True
+868,Tokelau,False,TKL,True
+870,Tonga,False,TON,True
+872,Tuvalu,False,TUV,True
+876,Wallis and Futuna,False,WLF,True
+880,Samoa,False,WSM,True
+889,"Oceania, regional",False,,True
+998,"Developing countries, unspecified",False,,True
+999,Global,True,,True
+1027,"Eastern Africa, regional",False,,True
+1028,"Middle Africa, regional",False,,True
+1029,"Southern Africa, regional",False,,True
+1030,"Western Africa, regional",False,,True
+1031,"Caribbean, regional",False,,True
+1032,"Central America, regional",False,,True
+1033,"Melanesia, regional",False,,True
+1034,"Micronesia, regional",False,,True
+1035,"Polynesia, regional",False,,True

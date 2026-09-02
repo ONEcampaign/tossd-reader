@@ -49,7 +49,11 @@ def browse(dimension: str) -> pd.DataFrame:
 
     Returns:
         `codelists.load_codelist(dimension)`'s frame: `code`, `name`, and
-        `tossd_only` columns (plus `iso3` for `provider`/`recipient`).
+        `tossd_only` columns (plus `iso3` for `provider`/`recipient`;
+        `source` for `sector`; `in_published_data` once the packaged
+        snapshot has been annotated -- pillar excepted, its rows are
+        structural, and the annotation scans flat data columns pillar does
+        not have).
 
     Raises:
         ValueError: `dimension` is not one of the packaged dimensions.
