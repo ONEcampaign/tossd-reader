@@ -5,9 +5,6 @@ site_url = "https://onecampaign.github.io/tossd-reader/"
 repo_url = "https://github.com/ONEcampaign/tossd-reader"
 extra_css = ["stylesheets/extra.css"]
 
-[project.extra.version]
-provider = "mike"
-
 nav = [
   "index.md",
   { "Get started" = [
@@ -45,6 +42,12 @@ nav = [
     { "Reproducibility and the cache" = "about/reproducibility.md" },
   ] },
 ]
+
+[project.extra.dfo]
+path = "tools/tossd-reader"
+
+[project.extra.version]
+provider = "mike"
 
 [project.markdown_extensions]
 admonition = {}
