@@ -45,6 +45,11 @@ nav = [
 
 [project.extra.dfo]
 path = "tools/tossd-reader"
+# Fully resolved, version-pinned base of the published documentation. A consumer joins
+# directory-form paths onto it. Do not change this to the repository root to match
+# site_url above: mike serves versioned docs under a /latest/ segment that site_url
+# does not carry, so the bare root 404s on any reference page.
+docs_url = "https://onecampaign.github.io/tossd-reader/latest/"
 
 [project.extra.version]
 provider = "mike"
