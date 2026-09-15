@@ -1413,7 +1413,7 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "pandas", specifier = ">=2.2" },
-    { name = "pyarrow", specifier = ">=19" },
+    { name = "pyarrow", specifier = ">=24" },
     { name = "readerkit", specifier = ">=0.1.0,<0.2" },
     { name = "resolvekit", specifier = ">=0.1.12,<0.2" },
 ]

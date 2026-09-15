@@ -147,3 +147,82 @@ def test_large_string_empty_values_become_null() -> None:
     result = _schema.apply_schema(with_large_string)
 
     assert result.column("provider_agency_name").null_count > 0
+
+
+# --- chunked, non-zero-offset-sliced input (apache/arrow#49410) --------------
+
+
+def _distinct_string_values(field: _schema.SchemaField, n_rows: int) -> list[str]:
+    """Per-row values for `field`, distinct wherever its `target_dtype` allows.
+
+    Row `i % 23 == 0` is forced to `""` (hits `_empty_string_to_null`). For
+    `modality_code` -- the one column in `_schema._CODE_CASE_FIXES` -- row
+    `i % 17 == 0` is instead forced to the lowercase `"c01"` variant (hits
+    `_apply_code_case_fix`). Every other row gets a value distinct from every
+    other row of the same column, except `Int8` targets, which are wrapped to
+    the full Int8 range (`-128` to `127`) and so repeat every 256 rows.
+    """
+    values: list[str] = []
+    for i in range(n_rows):
+        if i % 23 == 0:
+            values.append("")
+        elif field.snake_name == "modality_code" and i % 17 == 0:
+            values.append("c01")
+        elif field.target_dtype == "Int8":
+            values.append(str(i % 256 - 128))
+        else:
+            values.append(str(i))
+    return values
+
+
+def _build_chunked_and_combined_tables(
+    n_rows: int = 1000,
+) -> tuple[pa.Table, pa.Table]:
+    """A table whose string columns are 3-chunk, non-zero-offset-sliced `ChunkedArray`s,
+    and an equivalent single-chunk table built from the same per-column source arrays.
+
+    Each string column's chunks are `source.slice(0, 400)`, `source.slice(400, 350)`,
+    `source.slice(750, 250)` of one 1000-row source array. That is the shape pyarrow's
+    own default ~131,072-row scan-batch chunking produces on read regardless of a
+    file's row-group count (the published 2024 file has one row group but reads
+    back as 4 chunks), and it is exactly the shape `pc.if_else` corrupts on pyarrow
+    < 24 (apache/arrow#49410) when run against a scalar branch and a sliced
+    `BaseBinary` array whose first chunk starts at a nonzero offset.
+    """
+    slice_bounds = [(0, 400), (400, 350), (750, 250)]
+    assert sum(length for _, length in slice_bounds) == n_rows
+
+    chunked_columns: dict[str, pa.ChunkedArray] = {}
+    combined_columns: dict[str, pa.Array] = {}
+    for field in _schema.load_schema():
+        if field.arrow_type == "string":
+            source = pa.array(_distinct_string_values(field, n_rows), type=pa.string())
+        else:
+            source = pa.array([float(i) for i in range(n_rows)], type=pa.float64())
+        chunks = [source.slice(start, length) for start, length in slice_bounds]
+        chunked_columns[field.published_name] = pa.chunked_array(chunks)
+        combined_columns[field.published_name] = source
+
+    return pa.table(chunked_columns), pa.table(combined_columns)
+
+
+def test_apply_schema_chunked_sliced_string_columns_match_combined() -> None:
+    """A chunked, non-zero-offset-sliced source produces the same result as a combined one.
+
+    Regression for apache/arrow#49410 (fixed in pyarrow 24.0.0): `pc.if_else` with a
+    scalar branch and a sliced `BaseBinary` array copies offsets without rebasing
+    them, corrupting `_empty_string_to_null`'s and `_apply_code_case_fix`'s output on
+    affected pyarrow versions. `pyproject.toml`'s `pyarrow>=24` floor closes it; this
+    test pins the regression so a future floor-lowering fails loudly rather than
+    silently corrupting string columns again.
+    """
+    chunked_table, combined_table = _build_chunked_and_combined_tables()
+    modality_column = chunked_table.column("modality")
+    assert modality_column.num_chunks == 3
+    assert modality_column.chunk(1).offset != 0
+    assert modality_column.chunk(2).offset != 0
+
+    result = _schema.apply_schema(chunked_table)
+    result.validate(full=True)
+
+    assert result.equals(_schema.apply_schema(combined_table))
