@@ -516,6 +516,33 @@ def test_get_tossd_raw_still_shows_published_subpillar_sentinels(
     assert set(raw["Tossdpillar2"]) == {"0", "1", "2", "21"}
 
 
+def test_mask_subpillar_sentinels_chunked_sliced_input_matches_combined() -> None:
+    """A chunked, non-zero-offset-sliced `tossd_subpillar` column masks the same as a combined one.
+
+    `_mask_subpillar_sentinels` casts the dictionary-encoded column to its plain
+    string value type before `pc.if_else` runs, and that cast re-bases offsets, so
+    a chunked/sliced dictionary input never reaches `pc.if_else` in the shape
+    apache/arrow#49410 corrupts. `_schema.apply_schema`'s own direct string-column
+    calls are the ones that reach it, covered by
+    `test_schema.test_apply_schema_chunked_sliced_string_columns_match_combined`.
+    This test only pins that chunked/sliced input is otherwise handled correctly.
+    """
+    values = ["1", "2", "21", "22", "0"] * 40  # 200 rows
+    source = pa.array(values, type=pa.string()).dictionary_encode()
+    chunks = [source.slice(0, 80), source.slice(80, 70), source.slice(150, 50)]
+    chunked_column = pa.chunked_array(chunks)
+    assert chunked_column.num_chunks == 3
+    assert chunked_column.chunk(1).offset != 0
+
+    chunked_table = pa.table({"tossd_subpillar": chunked_column})
+    combined_table = chunked_table.combine_chunks()
+
+    result = query._mask_subpillar_sentinels(chunked_table)
+    result.validate(full=True)
+
+    assert result.equals(query._mask_subpillar_sentinels(combined_table))
+
+
 # --- filters= dict (sector/purpose/channel/modality/finance_instrument/         --
 # --- financing_arrangement/framework_of_collaboration) --------------------------
 

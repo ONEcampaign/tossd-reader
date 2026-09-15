@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- The minimum supported `pyarrow` is now 24 (from 19). Earlier versions carry
+  a `pc.if_else` bug (apache/arrow#49410) that corrupts string columns in the
+  query pipeline shared by `get_tossd` and `export` when pyarrow's own
+  default scan-batch chunking splits a read into a multi-chunk,
+  non-zero-offset column.
+
 ## 0.1.0 (2026-09-02)
 
 Initial release. Covers TOSSD activity-level vintages 2019 to 2024.
