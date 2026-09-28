@@ -1,3 +1,6 @@
+---
+description: Filter TOSSD activities by sector name or code, match the published sector vocabulary, and reach sub-sector detail through purpose codes.
+---
 # How to filter by sector
 
 Filter activity records to a specific sector by passing a name or code to `get_tossd(filters={"sector": ...})`. The published data's sector vocabulary operates at a higher level of aggregation than the packaged sector codelist, with sub-sector codes folded into top-level groups. This guide covers group-level filtering, vocabulary matching, and accessing sub-sector detail through purpose codes.

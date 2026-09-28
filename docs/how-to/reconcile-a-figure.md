@@ -1,3 +1,6 @@
+---
+description: Use reconcile() to check TOSSD figures against the tossd.online portal or a spreadsheet, then investigate any mismatch.
+---
 # How to check a figure against the published total
 
 Reconcile a computed figure against the International Forum on TOSSD (IFT) data portal at [tossd.online](https://tossd.online) or an external spreadsheet. Run the same query you used to compute the figure, call `df.tossd.reconcile()` on the result, and read its entries against the figure you're checking. When one entry doesn't explain a mismatch, the checks below dig into that line.

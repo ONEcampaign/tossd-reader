@@ -1,3 +1,6 @@
+---
+description: What the eight TOSSD amount columns measure, from commitments and disbursements to constant prices, net flows, and mobilised private finance.
+---
 # About the amount columns
 
 Published TOSSD datasets record financial transactions across eight numeric amount fields, expressed in thousands of US dollars. The `minimal` column preset includes all eight fields. The `units=` argument on `get_tossd()` accepts `"usd_thousand"` (the default matching the published scale), `"usd_million"`, or `"usd"` for plain US dollars. The `unit` metadata column accompanies every DataFrame to record which scale is active.

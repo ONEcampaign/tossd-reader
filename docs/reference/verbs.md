@@ -1,3 +1,6 @@
+---
+description: Reference for the five aggregation verbs, get_provenance, reconcile, and the df.tossd accessor that exposes them as DataFrame methods.
+---
 # Verbs
 
 `tossd_reader.verbs` aggregates a `get_tossd()`-shaped frame along one dimension (`rank_entities`, `compare_years`, `sdg_totals`, `keyword_totals`, and `subpillar_breakdown`). Each takes a DataFrame as its first argument, keyword-only arguments after that, and returns a new DataFrame, leaving the input frame untouched. Every one of the five is also a `df.tossd` accessor method. See [The `df.tossd` accessor](#the-dftossd-accessor) below.

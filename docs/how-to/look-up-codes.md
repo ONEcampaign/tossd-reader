@@ -1,3 +1,6 @@
+---
+description: Browse the packaged codelists and resolve a provider, recipient, or other code or name to a value that get_tossd accepts.
+---
 # How to look up codes and names
 
 Browse a packaged codelist or resolve one code or name to its packaged value with `tossd_reader.codes`, then pass the result straight to `get_tossd`.

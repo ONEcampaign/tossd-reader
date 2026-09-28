@@ -1,3 +1,6 @@
+---
+description: Export annual TOSSD data to Parquet, inspect its provenance manifest, verify the data vintage, and reload the extract for analysis.
+---
 # Build an extract someone else can reproduce
 
 This tutorial exports an annual TOSSD dataset to Apache Parquet format, inspects the companion JSON export manifest, and verifies dataset vintages across repeated runs.

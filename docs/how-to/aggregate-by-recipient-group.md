@@ -1,3 +1,6 @@
+---
+description: Sum TOSSD disbursements by least developed country status, World Bank income group, or UN region, with regional and multi-country flows kept separate.
+---
 # How to aggregate disbursements by recipient country groups
 
 Group recipient countries into standard classifications (Least Developed Countries, World Bank income tiers, or UN regions) with `df.tossd.add_recipient_group(scheme=...)`. The method reads from a packaged, versioned table and retains regional and multi-country flows in an explicit category.

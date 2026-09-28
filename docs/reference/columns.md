@@ -1,3 +1,6 @@
+---
+description: The 55 columns tossd-reader returns, what each column preset includes, their memory footprint, the amount units, and the columns always present.
+---
 # Columns, presets, and units
 
 The `tossd-reader` package processes 53 columns from each official TOSSD activity-level file, standardised into snake_case names and typed according to `schema.csv`. The `columns` parameter of `get_tossd` accepts a preset name (`"minimal"`, `"analysis"`, or `"all"`) or a list of specific snake_case column names. Five columns always appear in query results regardless of selection, exposed as the `FORCED_COLUMNS` tuple (`year`, `tossd_pillar`, `tossd_subpillar`, `is_aggregate`, and `unit`). The `is_aggregate` flag (`provider_code == 0`) and `unit` indicator are derived columns added by the package, bringing the `"all"` preset to 55 total columns.

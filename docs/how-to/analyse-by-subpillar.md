@@ -1,3 +1,6 @@
+---
+description: Filter to Pillar II.A or II.B, break Pillar II down by sub-pillar and year, and check sub-pillar coverage before comparing years.
+---
 # How to split Pillar II into its sub-pillars
 
 Filter to Pillar II.A or II.B with `pillars=`, then split Pillar II by sub-pillar and year with `df.tossd.subpillar_breakdown()`. Review sub-pillar coverage when comparing years, distinguishing between row-share and value-share metrics.

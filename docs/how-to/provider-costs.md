@@ -1,3 +1,6 @@
+---
+description: Isolate Pillar II spending recorded inside the provider country and calculate its share of total Pillar II disbursements.
+---
 # How to measure Pillar II expenditures in the provider country
 
 Filter a Pillar II frame to the sector-code carve-out for spending recorded inside the provider country, then calculate its share of total Pillar II disbursements.

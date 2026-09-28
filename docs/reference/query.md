@@ -1,3 +1,6 @@
+---
+description: Reference for get_tossd and the other query functions, with examples of filtering by provider, pillar, and dimension, converting units, and reading provenance.
+---
 # Query
 
 TOSSD activity-level data, tracked by the International Forum on TOSSD (IFT), measures development finance across Pillar I (cross-border flows) and Pillar II (global public goods). The query module loads, filters, and types these records into pandas DataFrames.

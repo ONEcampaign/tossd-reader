@@ -1,3 +1,6 @@
+---
+description: Reference for setting the cache directory and offline mode, inspecting and clearing the cache, and the warnings and errors the package raises.
+---
 # Configuration, warnings, and errors
 
 The package exposes two independent settings. Cache location (`set_cache_dir`/`get_cache_dir`, with `TOSSD_READER_CACHE_DIR` as the environment override) controls where downloaded vintages live. Offline mode (`set_offline`/`get_offline`, with `TOSSD_READER_OFFLINE` as its own environment override) controls whether a query is allowed to touch the network at all. `cache_info()` and `clear_cache()` inspect and prune what's actually on disk.

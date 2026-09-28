@@ -1,3 +1,6 @@
+---
+description: Find the nine offline analysis helpers and their requirements for annotating, expanding, filtering, or classifying get_tossd() data.
+---
 # Helpers
 
 The `tossd_reader.analysis` module provides analytical helper functions for working with `get_tossd()` outputs. Six functions accept a `pandas.DataFrame` and return a new DataFrame, leaving the input data unchanged. Three take no DataFrame: `get_structural_breaks` (call it with an optional `years=` to narrow the packaged structural-break reference table to the years a query touches, or with no arguments for all five rows), `get_recipient_groups_version`, and `get_instrument_groups_version` (each returns the version stamp of a packaged classification table). All nine functions operate entirely offline without network access.

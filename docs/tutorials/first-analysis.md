@@ -1,3 +1,6 @@
+---
+description: Rank Senegal's TOSSD providers for 2024 and build a 2019 to 2024 constant-price disbursement trend for a consistent provider cohort.
+---
 # Build a six-year Senegal disbursement trend
 
 Tracking development finance flows to a partner country requires isolating real financial trends from price changes and reporting shifts. This tutorial evaluates six years of Total Official Support for Sustainable Development (TOSSD) data for Senegal, ranks bilateral and multilateral providers, and calculates real resource growth in constant prices.

@@ -1,3 +1,6 @@
+---
+description: Use the twelve packaged keyword markers to examine climate and gender finance, with a combined total that counts each row once across selected markers.
+---
 # How to measure climate and gender finance with keyword markers
 
 Tag a `get_tossd` frame with the twelve packaged keyword markers, then calculate disbursements per marker or combine multiple markers without double-counting activities tagged under several categories.

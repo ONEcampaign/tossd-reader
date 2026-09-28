@@ -1,3 +1,6 @@
+---
+description: Why TOSSD files change in place, and how the cache, provenance records, export manifests, and offline mode let you reproduce a result.
+---
 # About reproducibility and the cache
 
 TOSSD datasets are published annually by the International Forum on TOSSD at fixed endpoints on [tossd.online](https://tossd.online). Because the Secretariat republishes datasets in place to incorporate retroactive corrections, provider revisions, and late submissions, analytical reproducibility requires tracking specific data vintages.

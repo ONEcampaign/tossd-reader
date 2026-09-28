@@ -1,3 +1,6 @@
+---
+description: Rank official providers by total TOSSD disbursement with rank_entities, which leaves out aggregate summary rows by default.
+---
 # How to rank providers by disbursement
 
 Rank official providers by total disbursement with `df.tossd.rank_entities()`, which excludes aggregate summary rows by default so the ranking reflects individual reporting institutions.
