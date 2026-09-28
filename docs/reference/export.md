@@ -1,3 +1,6 @@
+---
+description: Export full TOSSD records to compressed Parquet, then check filenames, manifest fields, integrity checks, and memory requirements.
+---
 # Export
 
 `export` casts and types TOSSD activity records, then writes the result to a compressed parquet file with an export manifest. Exports retain all columns (`columns="all"`) and original units (`units="usd_thousand"` in USD thousands).

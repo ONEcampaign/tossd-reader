@@ -1,3 +1,6 @@
+---
+description: How TOSSD splits finance into Pillar I and Pillar II, and when to exclude aggregate provider rows to avoid double-counting.
+---
 # About pillars and aggregate rows
 
 Total Official Support for Sustainable Development (TOSSD) is an international statistical framework established by the International Forum on TOSSD (IFT) to track all officially supported financial resources for the Sustainable Development Goals (SDGs). The framework structures development finance into two distinct pillars based on delivery mechanisms and beneficiary scope, with Pillar I spanning cross-border flows to developing countries and Pillar II covering regional and global expenditures addressing international public goods.

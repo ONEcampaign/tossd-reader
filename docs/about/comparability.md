@@ -1,3 +1,6 @@
+---
+description: Why TOSSD totals grew from 2019 to 2024, through more reporting providers, inflation, and classification changes, and how TOSSD differs from ODA.
+---
 # Why TOSSD totals rise
 
 Aggregate growth in TOSSD data from 2019 through 2024 stems from three primary drivers, comprising expansion of the reporting provider base, price inflation and currency movements, and progressive statistical classifications. Understanding each driver ensures accurate interpretation of multi-year development finance trends.

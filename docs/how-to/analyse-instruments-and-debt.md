@@ -1,3 +1,6 @@
+---
+description: Split TOSSD flows into grants, concessional loans, non-concessional loans, and equity, and calculate net transfers after debt repayments.
+---
 # How to analyse financial instruments and concessionality
 
 Evaluate debt vulnerabilities and financing terms by disaggregating flows across instrument categories (grants, concessional loans, non-concessional loans, and equity) and calculating net resource transfers after debt repayments.

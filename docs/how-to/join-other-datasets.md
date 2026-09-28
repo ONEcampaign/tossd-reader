@@ -1,3 +1,6 @@
+---
+description: Add ISO3 codes to TOSSD provider and recipient columns and join the data to World Bank, IMF, or in-house country datasets.
+---
 # How to join TOSSD to other country datasets
 
 Add ISO3 country codes to a `get_tossd` frame, then join it to World Bank, IMF, or in-house country data keyed on ISO3.

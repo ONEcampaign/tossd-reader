@@ -1,3 +1,6 @@
+---
+description: Compare TOSSD disbursements across years in constant prices with a fixed provider cohort, and see which structural breaks fall in the window.
+---
 # How to compare TOSSD totals across years
 
 Compare multi-year TOSSD disbursements in constant prices with `df.tossd.compare_years()`, which holds the provider cohort constant across years by default and reports structural breaks intersecting the analysis window.

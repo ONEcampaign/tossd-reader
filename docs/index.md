@@ -1,3 +1,6 @@
+---
+description: What tossd-reader does, how to install it, and where to start when loading TOSSD activity-level data into pandas.
+---
 # tossd-reader
 
 Total Official Support for Sustainable Development (TOSSD) is an international standard tracked by the International Forum on TOSSD at [tossd.online](https://tossd.online). It measures cross-border development finance under Pillar I and expenditures for global public goods under Pillar II. The published dataset covers six years (2019 to 2024) across 2.4 million activity-level records.

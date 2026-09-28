@@ -1,3 +1,6 @@
+---
+description: Calculate disbursements by SDG goal or target, weighting activities across their reported tags so totals preserve each activity's full value.
+---
 # How to split disbursements across SDG goals
 
 Calculate per-goal or per-target disbursement totals from a `get_tossd` frame, weighted so activities tagged with multiple SDG codes count fractionally across each goal.

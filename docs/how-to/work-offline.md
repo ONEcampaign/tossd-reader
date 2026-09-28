@@ -1,3 +1,6 @@
+---
+description: Prime the local cache while connected, switch tossd-reader to offline mode, and inspect which data vintages sit on disk.
+---
 # How to work offline and manage the cache
 
 Prime the local cache while connected, then switch `tossd-reader` into offline mode so `get_tossd` and `get_vintages` serve from disk without requiring network access.

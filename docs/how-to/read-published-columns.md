@@ -1,3 +1,6 @@
+---
+description: Load a year's TOSSD data with get_tossd_raw() and inspect the publisher's original column names, data types, and order.
+---
 # How to read the published columns unchanged
 
 Call `get_tossd_raw` to get a year of TOSSD data with the publisher's original column names, dtypes, and ordering across every row.
