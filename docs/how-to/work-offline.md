@@ -46,7 +46,7 @@ df = tossd.get_tossd(years=2024)
 UserWarning: Offline mode is active (tossd_reader.config.set_offline(False), or the TOSSD_READER_OFFLINE env var, would allow network access); serving the cached 2024 vintage retrieved 2026-08-28T19:32:28.617740+00:00 (etag "69e6ac8d-5728379").
 ```
 
-Requesting an unprimed year raises `TossdNetworkError`.
+Requesting an unprimed year raises `TossdNetworkError`. The message names the resolved cache directory, shown below as `<your cache directory>`.
 
 ```python
 tossd.get_tossd(years=2010)
@@ -56,7 +56,7 @@ tossd.get_tossd(years=2010)
 TossdNetworkError: Cannot fetch 2010: offline mode is active (tossd_reader.config.set_offline(False), or the TOSSD_READER_OFFLINE env var, would allow network access), and no cached vintage for 2010 exists in <your cache directory>.
 ```
 
-The full error message names the resolved cache directory. See [Cache location and bounds](../reference/configuration.md#cache-location-and-bounds) for default platform paths.
+See [Cache location and bounds](../reference/configuration.md#cache-location-and-bounds) for default platform paths.
 
 ## Refresh behaviour in offline mode
 
@@ -107,8 +107,8 @@ tossd.get_vintages()
 ```
 
 <!-- prettier-ignore -->
-!!! warning "Comparing ETag values between cache and server"
-    The publisher's host serves different ETag formats for identical payloads across requests. Compare 2019 above (`"347a653-64fec0e08ffa0"`) against the same year in `cache_info()` (`"69e6ac86-347a653"`). Avoid direct equality checks between the two. A revised file receives a new ETag, but a mismatch between `get_vintages()` and `cache_info()` indicates a need to re-verify rather than confirming new data.
+!!! warning
+    The publisher's host serves different ETag formats for identical payloads across requests. Compare 2019 above (`"347a653-64fec0e08ffa0"`) against the same year in `cache_info()` (`"69e6ac86-347a653"`). Avoid direct equality checks between the two. A revised file receives a new ETag, but a mismatch between `get_vintages()` and `cache_info()` indicates a need to re-verify.
 
 In offline mode or when the publisher is unreachable, `get_vintages()` falls back to listing locally cached vintages.
 
@@ -162,11 +162,11 @@ tossd.clear_cache(years=2019)
 tossd.clear_cache(before="2026-01-01")
 ```
 
-`years=` accepts a single year or an iterable of years. `before=` accepts a `date`, a `datetime`, or an ISO 8601 string, treating naive timestamps without timezone information as UTC. Both arguments default to `keep_latest=True`; set `keep_latest=False` to remove the latest matching vintage as well.
+`years=` accepts a single year or an iterable of years. `before=` accepts a `date`, a `datetime`, or an ISO 8601 string, treating naive timestamps without timezone information as UTC. `keep_latest` defaults to `True` in every call. Set `keep_latest=False` to remove the latest matching vintage as well.
 
 ## Verify it worked
 
-Confirm that every primed year exists in the cache.
+Confirm that every primed year exists in the cache. If you ran `clear_cache(keep_latest=False)` above, prime the years again first.
 
 ```python
 sorted(tossd.cache_info()["year"])

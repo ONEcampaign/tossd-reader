@@ -16,7 +16,7 @@ Evaluate debt vulnerabilities and financing terms by disaggregating flows across
     ig = df.tossd.add_instrument_group()
     ```
 
-    The debt-instrument code family (`420`-`425`) splits into `"Concessional Loans"` and `"Non-concessional Loans"` by `concessionality_flag`: `1` indicates concessional terms and `0` indicates non-concessional terms. All other categories (`"Grants"`, `"Equity"`, `"Guarantees"`, `"Hybrid/Mezzanine"`, `"Direct Provider Spending"`, and `"Other Instruments"`) are mapped directly from `finance_instrument_code`.
+    The debt-instrument code family (`420`-`425`, `4221`, and `4222`) splits into `"Concessional Loans"` and `"Non-concessional Loans"` by `concessionality_flag`: `1` indicates concessional terms and `0` indicates non-concessional terms. All other categories (`"Grants"`, `"Equity"`, `"Guarantees"`, `"Hybrid/Mezzanine"`, `"Direct Provider Spending"`, `"Subsidies"`, and `"Other Instruments"`) are mapped directly from `finance_instrument_code`.
 
 2. **Aggregate disbursements by instrument group.** Retain unclassified rows by specifying `dropna=False`.
 
@@ -97,10 +97,10 @@ Evaluate debt vulnerabilities and financing terms by disaggregating flows across
                          NaN             714.6       535.7             178.9                 0.3
     ```
 
-    Published records include small reflow entries against grants (USD 2.0 billion of USD 116.3 billion in 2024, or under 2%). Verify grant net disbursements directly rather than assuming gross and net figures are identical.
+    Published records include small reflow entries against grants (USD 2.0 billion of USD 116.3 billion in 2024, or under 2%). Verify grant net disbursements directly, since reflows make gross and net figures differ.
 
     <!-- prettier-ignore -->
-    !!! warning "Distinguishing mobilised private capital from official disbursements"
+    !!! warning
         Keep `usd_amount_mobilised` separate from `usd_disbursement`. The `usd_amount_mobilised` column measures private commercial capital mobilised through official interventions such as guarantees and syndicated loans, whereas `usd_disbursement` captures direct official fiscal transfers.
 
 5. **Verify the classification vintage before publishing figures.**

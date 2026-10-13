@@ -28,7 +28,7 @@ exports/tossd_2019.manifest.json
 - About seven minutes.
 - Cached 2019 TOSSD vintage (initial calls download the published file to local storage).
 
-## Step 1: Export one year
+## Export one year
 
 Export the 2019 published TOSSD dataset into a dedicated export folder.
 
@@ -48,7 +48,7 @@ The warning means the packaged codelist snapshot hasn't caught up with one `pare
 
 Passing a directory path generates a standard filename (`tossd_2019.parquet`) and creates the target directory when required. The `export()` function preserves all published columns and original publisher units (USD thousand). Custom filtering by recipient, provider, or pillar and unit conversions take place downstream during analysis with `get_tossd()`.
 
-## Step 2: Read the manifest
+## Read the manifest
 
 Inspect the JSON manifest file created alongside the Parquet extract to examine the recorded provenance metadata.
 
@@ -77,9 +77,9 @@ print(Path("exports/tossd_2019.manifest.json").read_text())
 }
 ```
 
-`tossd_reader_version` identifies the package version, while `schema_hash` records the SHA-256 hash of the packaged schema definition. `payload_sha256` hashes the Parquet payload itself; `verify_export()` recomputes it on demand to confirm the file still matches this manifest. `created_at` records the export timestamp, and `row_count` records the number of exported rows. The `vintages` mapping records the HTTP `etag` and initial `retrieved_at` timestamp for each year included in the file.
+`tossd_reader_version` identifies the package version, while `schema_hash` records the SHA-256 hash of the packaged schema definition. `payload_sha256` hashes the Parquet payload itself. `verify_export()` recomputes it on demand to confirm the file still matches this manifest. `created_at` records the export timestamp, and `row_count` records the number of exported rows. The `vintages` mapping records the HTTP `etag` and initial `retrieved_at` timestamp for each year included in the file.
 
-## Step 3: Pin the vintage
+## Pin the vintage
 
 The International Forum on TOSSD (IFT) publishes official data at tossd.online under stable URLs, updating files in place as revisions occur. The HTTP ETag header changes whenever the publisher releases an update. The manifest records this ETag to pin the exact vintage used.
 
@@ -100,9 +100,9 @@ manifest["vintages"]["2019"]["etag"]
 '"69e6ac86-347a653"'
 ```
 
-The matching ETag confirms that both exports used the identical upstream data vintage. The library checks the upstream ETag only when a discovery sweep runs, once per process by default, or again when `refresh=True` forces one. Both `export()` calls in this tutorial run in the same process, so the second call uses the cached result of the initial discovery sweep. Passing `refresh=True` clears the cached discovery result and retrieves the latest published version directly from tossd.online.
+The library checks the upstream ETag only when a discovery sweep runs, once per process by default, or again when `refresh=True` forces one. Both `export()` calls in this tutorial run in the same process, so the second call reuses the cached result of the initial discovery sweep and copies its ETag. The match shows only that the cached result was reused. To confirm that tossd.online still serves the same vintage, pass `refresh=True` to the second `export()`, which clears the cached discovery result and retrieves the latest published version.
 
-## Step 4: Verify and reload the extract
+## Verify and reload the extract
 
 `verify_export()` recomputes the Parquet file's hash and compares it against `payload_sha256` in the manifest. Run it before handing an extract to a colleague, or right after receiving one, to confirm the file wasn't corrupted or edited in transit.
 
@@ -138,14 +138,14 @@ pprint(df.tossd.provenance())
                     'retrieved_at': '2026-08-28T21:14:14.414671+00:00'}}}
 ```
 
-The row count matches `row_count` in the manifest, and the `etag` matches the value recorded in Step 2. Provenance is accessible directly from the loaded DataFrame.
+The row count matches `row_count` in the manifest, and the `etag` matches the value recorded in the manifest above. Provenance is accessible directly from the loaded DataFrame.
 
 <!-- prettier-ignore -->
-!!! note "Deterministic pipelines with offline mode"
+!!! note
 
     An automated pipeline configured with `tossd.set_offline(True)` accesses only vintages already pinned in local cache, preventing unrecorded upstream updates. See [Work offline](../how-to/work-offline.md).
 
-## Step 5: Hand it over
+## Hand it over
 
 A complete reproducible research handover includes three things.
 
@@ -154,7 +154,7 @@ A complete reproducible research handover includes three things.
 - Analytical documentation recording the year range, provider filtering criteria, aggregate row handling, units, and price basis.
 
 <!-- prettier-ignore -->
-!!! note "Integrity verification on corrupted payloads"
+!!! note
 
     When an exported file changes in transit, `verify_export()` detects the modification.
 
@@ -163,7 +163,7 @@ A complete reproducible research handover includes three things.
     ```
 
 <!-- prettier-ignore -->
-!!! warning "Memory overhead when exporting multi-year releases"
+!!! warning
 
     Exporting all six years without a `years` argument materialises 2.4 million rows in memory as an Apache Arrow table before writing to disk. Peak RAM reaches roughly 4.4 GB. The finished table itself is about 2.1 GB, but per-year tables stay alive alongside it until they are concatenated. Supply specific reporting years to `years=` when exporting on memory-constrained systems.
 

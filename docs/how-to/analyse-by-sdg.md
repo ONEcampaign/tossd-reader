@@ -33,7 +33,7 @@ Calculate per-goal or per-target disbursement totals from a `get_tossd` frame, w
     4        5         5          False        0.50                   0.008104
     ```
 
-    The `sdg_goal` column extracts the integer goal number, grouping target-level tags like `4.2` and goal-level tags like `13` under their primary goal. Summing `usd_disbursement_weighted` restores each activity's original disbursement total.
+    The `sdg_goal` column extracts the integer goal number, grouping target-level tags like `4.2` and goal-level tags like `13` under their primary goal. Summing `usd_disbursement_weighted` restores each SDG-tagged activity's original disbursement total.
 
 3. **Calculate weighted disbursements per goal with `df.tossd.sdg_totals()`.** This method runs the explode-and-weight process internally, allocating a multi-tagged activity's disbursement proportionally across its goals. It excludes `is_aggregate` rows by default (`include_aggregates=False`).
 

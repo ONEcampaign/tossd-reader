@@ -33,7 +33,7 @@ Tag a `get_tossd` frame with the twelve packaged keyword markers, then calculate
     Name: usd_disbursement, dtype: float64
     ```
 
-3. **Aggregate disbursements per marker with `df.tossd.keyword_totals(markers=...)`.** This method aggregates disbursements per marker without double-counting activities tagged for multiple categories. It recomputes marker masks from `keywords_raw` internally and appends a `"Combined"` row containing the union of all requested marker masks.
+3. **Aggregate disbursements per marker with `df.tossd.keyword_totals(markers=...)`.** This method aggregates disbursements per marker. It recomputes marker masks from `keywords_raw` internally and appends a `"Combined"` row containing the union of all requested marker masks, which counts each row once.
 
     ```python
     df.tossd.keyword_totals(markers=["adaptation", "mitigation"])
@@ -48,10 +48,10 @@ Tag a `get_tossd` frame with the twelve packaged keyword markers, then calculate
 
     The individual marker rows sum to 100,022.6 million, exceeding `"Combined"`'s 78,643.5 million. An activity tagged for both adaptation and mitigation appears under each individual marker row, but only once in `"Combined"`, providing an unduplicated total for climate finance.
 
-    The `n_rows` column counts matching rows rather than distinct activities. Reporting providers may split a single activity across multiple rows with different keyword tags. Omit `markers=` to compute totals across all twelve packaged markers and the `"Combined"` summary.
+    The `n_rows` column counts matching rows. Reporting providers may split a single activity across multiple rows with different keyword tags. Omit `markers=` to compute totals across all twelve packaged markers and the `"Combined"` summary.
 
 <!-- prettier-ignore -->
-!!! warning "Marker overlaps and vocabulary scope"
+!!! warning
     The twelve markers operate as independent boolean flags without weights or partitioning, so marker totals overlap by design. A row reading False across all `kw_` columns carries none of the packaged markers. In 2024, 10.9% of rows (51,436 of 474,026) contain `keywords_raw` tokens outside this twelve-marker vocabulary and remain False across every `kw_` column.
 
 ## Verify it worked

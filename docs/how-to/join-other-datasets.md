@@ -37,7 +37,7 @@ Add ISO3 country codes to a `get_tossd` frame, then join it to World Bank, IMF, 
     merged = iso.merge(wdi, left_on="provider_iso3", right_on="iso3", how="left")
     ```
 
-    Aggregate rows (provider code `0`), multilateral organisations such as the African Development Bank Group, and non-sovereign TOSSD-only reporters resolve to `NA` for `provider_iso3`. Sovereign TOSSD-only providers, including Tunisia, Nigeria, Argentina, Brazil, and Indonesia, resolve to their own ISO3. A `how="left"` join keeps all activities and leaves `NA` in the joined columns. A `how="inner"` join drops activities from multilateral and aggregate providers.
+    Aggregate rows (provider code `0`), multilateral organisations such as the African Development Bank Group, and non-sovereign providers flagged `tossd_only` in the provider codelist (the Palestinian Authority and Interpol, for example) resolve to `NA` for `provider_iso3`. Sovereign TOSSD-only providers, including Tunisia, Nigeria, Argentina, Brazil, and Indonesia, resolve to their own ISO3. A `how="left"` join keeps all activities and leaves `NA` in the joined columns. A `how="inner"` join drops activities from multilateral and aggregate providers.
 
 ## Verify it worked
 

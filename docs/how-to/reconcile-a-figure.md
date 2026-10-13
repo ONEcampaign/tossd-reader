@@ -36,7 +36,7 @@ iso3_unmatched_share_pct               29.616479
 dtype: object
 ```
 
-`reconcile()` provides a diagnostic summary of the DataFrame structure. It validates schema conformity rather than asserting data values. Every share is calculated against `df`'s own `usd_disbursement` total, aggregate rows included, so it accepts no `include_aggregates=` argument.
+`reconcile()` provides a diagnostic summary of the DataFrame structure. It reports `df`'s own data and raises only when `df` lacks a required column or `usd_disbursement` is not numeric. Every share is calculated against `df`'s own `usd_disbursement` total, aggregate rows included, so it accepts no `include_aggregates=` argument.
 
 Read the entries against the figure you're checking:
 
@@ -91,7 +91,7 @@ Three entries extend beyond the checks below: `b02_core_contribution_*` sums cor
 
 ## Verify it worked
 
-Two figures agree once every `reconcile()` entry lines up: unit, price basis, aggregate share, pillar coverage, ETag, and year coverage.
+Two figures agree once every `reconcile()` entry lines up (unit, price basis, aggregate share, pillar coverage, and year coverage) and the ETag from `provenance()` or the manifest matches.
 
 ## See also
 

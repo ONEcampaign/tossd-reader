@@ -29,11 +29,11 @@ Every downloaded vintage generates a JSON provenance sidecar file (`<stem>.prove
 }
 ```
 
-The provenance record stores the source URL, HTTP ETag, file size in bytes, SHA-256 cryptographic checksum, total row count, download timestamp, and package version. When the upstream publisher updates a file, the resulting new ETag initiates a fresh download while preserving previous cached files and their provenance records on disk.
+When the upstream publisher updates a file, the resulting new ETag initiates a fresh download while preserving previous cached files and their provenance records on disk.
 
 ## Provenance on query results
 
-Every `get_tossd()`, `get_tossd_raw()`, and `load_export()` call stamps `df.attrs["tossd_reader"]` on its result before filtering or unit conversion occurs. Every verb and `df.tossd` accessor method copies `df.attrs` onto its return value, preserving provenance across chained calls such as `df.tossd.rank_entities()` or `explode_sdg(df)`. Standard pandas operations (such as merges, concatenations, or aggregations) can drop `attrs`. Read provenance early or retain the original query result to access metadata.
+Every `get_tossd()`, `get_tossd_raw()`, and `load_export()` call stamps `df.attrs["tossd_reader"]` on its result. Every verb and `df.tossd` accessor method copies `df.attrs` onto its return value, preserving provenance across chained calls such as `df.tossd.rank_entities()` or `explode_sdg(df)`. Standard pandas operations (such as merges, concatenations, or aggregations) can drop `attrs`. Read provenance early or retain the original query result to access metadata.
 
 `get_provenance(df)` (also `df.tossd.provenance()`) reads that record back as a deep copy, allowing callers to mutate the returned dictionary freely.
 
@@ -108,8 +108,6 @@ When creating analytical extracts using `tossd.export()`, the package compiles a
 }
 ```
 
-The manifest records provenance metadata, upstream ETags, retrieval timestamps, schema hashes, payload hashes, row counts, export timestamps, and package versions.
-
 `verify_export()` recomputes `payload_sha256` from the Parquet file and confirms that it matches the manifest. `load_export()` calls `verify_export()` before reading the file, raising an error if the file no longer matches its manifest.
 
 ## Offline workflows and vintage stability
@@ -121,8 +119,8 @@ Setting offline mode explicitly (`tossd.set_offline(True)` or the `TOSSD_READER_
 `get_vintages()` and `cache_info()` inspect available data vintages. `get_vintages()` performs a live discovery sweep and reports the current file metadata and ETag at each year's URL. `cache_info()` inspects locally cached files with one row per retrieved vintage, displaying multiple entries when a single year has been downloaded under multiple ETags.
 
 <!-- prettier-ignore -->
-!!! warning "Inconsistent ETag formatting on upstream server"
-    The upstream server occasionally formats ETags differently for unchanged files. An ETag difference between `get_vintages()` and `cache_info()` can occur without changes to the underlying data. Verify file contents before assuming a new vintage.
+!!! warning
+    The upstream server formats ETags differently for unchanged files. When the ETags from `get_vintages()` and `cache_info()` differ, verify file contents before assuming a new vintage.
 
 ## Related
 

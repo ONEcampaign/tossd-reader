@@ -13,7 +13,7 @@ These cross-border flows encompass bilateral development projects, official gran
 
 ## Pillar II global public goods and regional expenditures
 
-Pillar II covers expenditures that generate shared regional or global benefits across multiple countries. These activities support sustainable development through two operational sub-pillars recorded in `tossd_subpillar`, as defined by the IFT at tossd.online:
+Pillar II covers expenditures that generate shared regional or global benefits across multiple countries, and expenditures that provider countries incur within their own territories. These activities support sustainable development through two operational sub-pillars recorded in `tossd_subpillar`, as defined by the IFT at tossd.online:
 
 - Pillar II.A (coded as `21`) covers issues specific to developing countries and/or their populations. This includes research and development for malaria, support to refugees and protected persons, and earmarked contributions to multilateral organisations addressing developing-country-specific issues.
 - Pillar II.B (coded as `22`) covers issues of a global nature. This includes transnational climate change mitigation, biodiversity conservation, research and development for infectious diseases, pandemic preparedness, and international peacekeeping.
@@ -22,7 +22,7 @@ Pillar II covers expenditures that generate shared regional or global benefits a
 
 ## Sub-pillar implementation timeline
 
-Sub-pillar classification phased in gradually across reporting cycles. In the 2022 dataset, sub-pillar tagging appeared in 24 activities out of 128,923 Pillar II records (0.02% coverage). In 2023, reporting providers tagged 50.6% of Pillar II activities with sub-pillar codes. In 2024, coverage reached 99.1% across 155,908 Pillar II activities.
+Sub-pillar classification phased in gradually across reporting cycles. In the 2022 dataset, sub-pillar tagging appeared in 24 rows out of 128,923 Pillar II rows (0.02% coverage). In 2023, reporting providers tagged 50.6% of Pillar II rows with sub-pillar codes. In 2024, coverage reached 99.1% across 155,908 Pillar II rows.
 
 Because sub-pillar tagging was established incrementally, longitudinal analysis by sub-pillar is fully consistent from 2024 onward. Data for 2023 provides partial sub-pillar attribution, while data from 2019 through 2022 treats Pillar II as a unified total.
 
@@ -30,7 +30,7 @@ Because sub-pillar tagging was established incrementally, longitudinal analysis 
 
 ## Aggregate provider records and double-counting protection
 
-Published annual datasets combine activity-level project transactions from reporting providers with pre-computed summary rows. These summary records carry `provider_code == 0`. `provider_name` on those rows reads `Aggregate`, `Bilateral providers`, or `Multilateral providers`.
+Published annual datasets combine activity-level project transactions from reporting providers with pre-computed summary rows. These summary records carry `provider_code == 0`. `provider_name` on those rows reads `Aggregate`.
 
 The TOSSD Secretariat includes aggregate records for two reasons. Some non-concessional flows are disclosed only partially, for data-sensitivity reasons, and the Secretariat reports them as semi-aggregates worth USD 22 billion in 2024. The Secretariat also estimates resources that providers report to the OECD DAC Creditor Reporting System outside TOSSD, as with Germany and the World Bank Group, and publishes them as semi-aggregates worth USD 77 billion in 2024. In the 2024 dataset, aggregate records total 5,626 rows and USD 99.4 billion in disbursements, representing 20.0% of total reported disbursements (USD 497.7 billion).
 
@@ -60,7 +60,7 @@ Summing all bilateral providers and all multilateral institutions across both pi
 
 ## Provider-country expenditures in Pillar II
 
-Pillar II includes expenditures incurred within provider territories that contribute to global sustainable development frameworks. The helper `filter_provider_costs()` isolates these domestic outlays by selecting Pillar II activities under sector 910 (administrative costs of donors) and sector 930 (domestic expenditures for refugees and asylum seekers in the host country). In the 2024 dataset, domestic provider costs total USD 47.5 billion across 27,275 records, representing 35.6% of Pillar II gross disbursements.
+Pillar II includes expenditures incurred within provider territories that contribute to global sustainable development frameworks. The helper `filter_provider_costs()` isolates these domestic outlays by selecting Pillar II activities under sector 910 (administrative costs of donors) and sector 930 (domestic expenditures for refugees and asylum seekers in the host country). In the 2024 dataset, domestic provider costs total USD 47.5 billion across 27,275 rows, representing 35.6% of Pillar II gross disbursements.
 
 Sector 700 records, named `Humanitarian Assistance` in the published data, cover in-country humanitarian assistance delivered in recipient territories and remain distinct from domestic provider expenditures.
 
