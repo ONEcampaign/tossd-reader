@@ -46,7 +46,7 @@ Rank official providers by total disbursement with `df.tossd.rank_entities()`, w
 
     `share_pct` shifts too. United States's share rises from 13.6% to 17.0% once Aggregate's USD 99.4 billion drops out of the total each share is measured against.
 
-3. **Generate the complete ranking.** Drop the column subset to inspect every field `rank_entities` adds, including `n_activities`.
+3. **Show every field the ranking adds.** Drop the column subset to inspect every field `rank_entities` adds, including `n_activities`.
 
     ```python
     print(df.tossd.rank_entities(top=5).to_string(index=False))
@@ -64,15 +64,15 @@ Rank official providers by total disbursement with `df.tossd.rank_entities()`, w
     `n_activities` counts distinct `tossd_id` values per provider, excluding the `"0000"` placeholder that marks bundled lines with no activity identifier of their own.
 
 <!-- prettier-ignore -->
-!!! info "Disambiguation of shared entity names"
+!!! note
     `rank_entities` groups on the `(provider_code, provider_name)` pair. Some institutional families share a name across distinct reporting entities. The African Development Bank Group reports as both the African Development Bank (code 913) and the African Development Fund (code 914). Grouping on the pair keeps them apart.
 
 <!-- prettier-ignore -->
-!!! note "Activity counts and placeholder identifiers"
+!!! note
     `"0000"` also lands on a small share of individual providers' rows in 2023-24 (bundled lines belonging to reporting institutions), so `n_activities` can slightly undercount those providers even after aggregate rows are excluded.
 
 <!-- prettier-ignore -->
-!!! warning "Cross-pillar double-counting risk"
+!!! warning
     `df` here carries both pillars. Ranking providers across both pillars mixes Pillar I bilateral outflows with Pillar II core contributions to multilateral institutions, which double-counts funding reported once by the donor and again by the institution it funds. See [Bilateral core contributions and multilateral double-counting](../about/pillars-and-aggregates.md#bilateral-core-contributions-and-multilateral-double-counting).
 
 `rank_entities` works for any dimension with a matching `{dimension}_code`/`{dimension}_name` pair. Pass `dimension="recipient"` (or `"sector"`, `"purpose"`, `"channel"`) to rank a different one.

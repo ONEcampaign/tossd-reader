@@ -43,7 +43,7 @@ A validated ranking of Senegal's top external finance providers in 2024, and a 2
 - About ten minutes.
 - Initial internet access to download published annual files (roughly 450MB total). Subsequent queries run from local cache.
 
-## Step 1: Pull one year
+## Pull one year
 
 Retrieve Senegal's 2024 reported activities and check what the query returned.
 
@@ -67,9 +67,9 @@ n_columns                    19
 dtype: object
 ```
 
-Setting `columns="minimal"` selects 19 core fields covering activity identifiers, provider and recipient names, pillars, and financial amounts. Setting `units="usd_million"` converts values from thousands to millions of US dollars for direct alignment with headline reporting figures. `df.tossd.summary()` confirms a query landed as expected before analysis, displaying 4,802 rows split between pillars with 77 rows flagged `is_aggregate`. Step 2 explains why that flag matters.
+Setting `columns="minimal"` selects 19 core fields covering activity identifiers, provider and recipient names, pillars, and financial amounts. Setting `units="usd_million"` converts values from thousands to millions of US dollars for direct alignment with headline reporting figures. `df.tossd.summary()` confirms a query landed as expected before analysis, displaying 4,802 rows split between pillars with 77 rows flagged `is_aggregate`. The next section explains why that flag matters.
 
-## Step 2: Rank the providers
+## Rank the providers
 
 Grouping directly by `provider_name` demonstrates standard aggregation behaviour.
 
@@ -109,7 +109,7 @@ print(ranked.to_string(index=False))
 
 `n_activities` counts distinct activities per provider (`tossd_id`, excluding the placeholder used for bundled lines with no activity identifier), `share_pct` is each provider's share of the ranked total, and `rank` handles ties. Provider code 913 now carries its own 149.1 million, with the African Development Fund's contribution tracked on a separate row.
 
-## Step 3: Extend to six years
+## Extend to six years
 
 To track resource flow trends over time, query the full six-year publication window from 2019 through 2024.
 
@@ -128,13 +128,13 @@ multi.shape
 ```
 
 <!-- prettier-ignore -->
-!!! warning "Initial dataset download sizes"
+!!! warning
 
     Each annual dataset downloads during its initial query (55MB to 91MB per year). Subsequent queries for cached years execute immediately from disk.
 
-## Step 4: Switch to constant prices
+## Switch to constant prices
 
-Nominal values in `usd_disbursement` reflect price levels of the reporting year, so a year-over-year comparison mixes real funding changes with inflation. `compare_years()` sums one value column per year and reports the swing as `pct_change`. By default it also restricts every year to the `(provider_code, provider_name)` pairs that reported to Senegal in all six years, so that only providers reporting across all six years are included.
+Nominal values in `usd_disbursement` reflect price levels of the reporting year, so a year-over-year comparison mixes real funding changes with inflation. `compare_years()` sums one value column per year and reports the swing as `pct_change`. By default it also restricts every year to the `(provider_code, provider_name)` pairs that reported to Senegal in all six years.
 
 ```python
 nominal = multi.tossd.compare_years(value="usd_disbursement").round(1)
@@ -179,14 +179,14 @@ print(deflated.attrs["structural_breaks"].to_string(index=False))
 ```text
  dimension  break_year  end_year                                                                                                                                                         description                                        source
 sub_pillar        2022      2022                                                                                Sub-pillar tagging (Tossdpillar2 21/22) first appears as trace data: 24 rows in 2022                      audit of published files
-sub_pillar        2023      2023                                           Sub-pillar coverage ~51% of pillar-2 rows in 2023; ~99% in 2024 -- cross-year sub-pillar analysis is only clean from 2024                      audit of published files
+sub_pillar        2023      2023                                  Sub-pillar coverage ~51% of pillar-2 rows in 2023 and ~99% in 2024 (cross-year sub-pillar analysis is consistent from 2024 onward)                      audit of published files
   modality        2021      2021                                                                                                                             Modality code K02 first appears in 2021                      audit of published files
  reporters        2019      2024 Reporter base grows from 97 (2019) to 130 (2024) distinct provider codes, counting provider_code != 0; apparent growth in totals partly reflects reporting coverage distinct provider_code in the published files
 ```
 
 These breaks provide context for other TOSSD comparisons over this window. The reporter-base entry describes the global publisher's own reporting coverage. `compare_years()` already controls for Senegal's own cohort in the series above.
 
-## Step 5: Save the result
+## Save the result
 
 Export the deflated comparison to a CSV file for sharing with colleagues or incorporating into analytical reports.
 
@@ -213,7 +213,7 @@ The exported file carries `year`, `usd_disbursement_deflated`, `n_providers`, an
 
 ## What's next
 
-- [How to rank providers by disbursement](../how-to/rank-providers.md) covers `dimension=` for ranking recipients or sectors instead of providers, and `include_aggregates=True` for when aggregate rows belong in the total.
+- [How to rank providers by disbursement](../how-to/rank-providers.md) covers `dimension=` for ranking recipients or sectors, and `include_aggregates=True` for when aggregate rows belong in the total.
 - [How to compare TOSSD totals across years](../how-to/compare-years.md) covers `cohort="all"`, which counts every reporting provider each year.
 - [Why TOSSD totals rise](../about/comparability.md) explains provider base expansion and sub-pillar adoption behind the structural breaks table.
 - [Build an extract someone else can reproduce](reproducible-extract.md) demonstrates how to package analytical datasets into parquet files with provenance manifests.

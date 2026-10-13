@@ -6,7 +6,7 @@ description: Load a year's TOSSD data with get_tossd_raw() and inspect the publi
 Call `get_tossd_raw` to get a year of TOSSD data with the publisher's original column names, dtypes, and ordering across every row.
 
 <!-- prettier-ignore -->
-!!! info "Use cases for raw published data"
+!!! note
     `get_tossd_raw` serves three primary use cases:
 
     - Inspecting raw published records directly before relying on normalised columns.
@@ -152,7 +152,7 @@ int(h["project_number"].isna().sum())
 ```
 
 <!-- prettier-ignore -->
-!!! warning "Absence of derived columns and filters in raw frames"
+!!! warning
     A frame from `get_tossd_raw` provides only the raw published columns. Filter and convert units in pandas, or query `get_tossd` to get typed columns, the derived `is_aggregate` flag, and built-in filters.
 
 ## Troubleshooting

@@ -68,7 +68,7 @@ Compare multi-year TOSSD disbursements in constant prices with `df.tossd.compare
      reporters        2019      2024
     ```
 
-    Four structural breaks intersect the 2019 to 2024 window: the 2022 initial appearance of sub-pillars, the 2023 sub-pillar rollout, the 2021 introduction of modality code K02, and expansion of the reporter base across the entire period. A shift aligning with one of these entries reflects a change in reporting practices rather than a fluctuation in financial transfers. See [Why TOSSD totals rise](../about/comparability.md) for details on each structural break.
+    Four structural breaks intersect the 2019 to 2024 window: the 2022 initial appearance of sub-pillars, the 2023 sub-pillar rollout, the 2021 introduction of modality code K02, and expansion of the reporter base across the entire period. A shift aligning with one of these entries reflects a change in reporting practices. See [Why TOSSD totals rise](../about/comparability.md) for details on each structural break.
 
 ## Verify it worked
 

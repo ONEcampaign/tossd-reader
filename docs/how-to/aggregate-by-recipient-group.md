@@ -44,7 +44,7 @@ Group recipient countries into standard classifications (Least Developed Countri
     Name: usd_disbursement, dtype: float64
     ```
 
-    `Regional / Multi-country Unallocated` accounts for 11.1% of the total, aligning with country-level ISO3 joins after excluding Pillar II and aggregate rows.
+    `Regional / Multi-country Unallocated` accounts for 11.1% of the Pillar I total once aggregate rows are excluded.
 
 3. **Switch classification schemes with `scheme="income"` or `scheme="region"`.**
 
@@ -85,7 +85,7 @@ Group recipient countries into standard classifications (Least Developed Countri
     Name: usd_disbursement, dtype: float64
     ```
 
-4. **Account for the São Tomé and Príncipe LDC graduation in 2024 analysis.** São Tomé and Príncipe (`recipient_code` 268) graduated from LDC status on 6 December 2024. The packaged table reflects the current LDC list, classifying all 2024 rows as `Other Developing Countries`.
+4. **Account for the São Tomé and Príncipe LDC graduation in 2024 analysis.** São Tomé and Príncipe (`recipient_code` 268) graduated from LDC status on 13 December 2024. The packaged table reflects the current LDC list, classifying all 2024 rows as `Other Developing Countries`.
 
     ```python
     rg.loc[rg["recipient_code"] == 268, "recipient_group"].unique()
@@ -98,6 +98,10 @@ Group recipient countries into standard classifications (Least Developed Countri
     ```
 
     When reconciling against a 2024-vintage LDC classification, treat São Tomé and Príncipe as an LDC for reporting periods prior to graduation.
+
+    ```python
+    rg.loc[rg["recipient_code"] == 268, "recipient_group"] = "Least Developed Countries"
+    ```
 
 5. **Cite the classification vintage with `get_recipient_groups_version()`.**
 

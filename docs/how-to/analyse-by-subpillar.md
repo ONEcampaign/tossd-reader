@@ -35,7 +35,9 @@ Filter to Pillar II.A or II.B with `pillars=`, then split Pillar II by sub-pilla
     76510.1 54782.7
     ```
 
-2. **Check sub-pillar coverage by row before comparing years.** Sub-pillar tagging rolled out gradually starting in 2023. The `tossd_subpillar` column is `NA` on any Pillar II row left untagged by the reporting provider, so `.notna()` calculates row-share coverage directly. The `df.tossd.subpillar_breakdown()` method (step 5) reports value-share coverage. Distinguish between these two metrics when citing coverage.
+    `get_tossd()` keeps the publisher's aggregate rows (`is_aggregate`) by default, so these totals exceed the II.A and II.B amounts in step 5, where `subpillar_breakdown()` drops them.
+
+2. **Check sub-pillar coverage by row before comparing years.** Sub-pillar tagging first appears as trace data in 2022 and rolled out from 2023. The `tossd_subpillar` column is `NA` on any Pillar II row left untagged by the reporting provider, so `.notna()` calculates row-share coverage directly. The `df.tossd.subpillar_breakdown()` method (step 5) reports value-share coverage. Distinguish between these two metrics when citing coverage.
 
     ```python
     p2 = tossd.get_tossd(years=2023, pillars=2, columns="minimal")
@@ -56,8 +58,8 @@ Filter to Pillar II.A or II.B with `pillars=`, then split Pillar II by sub-pilla
     ```
 
     <!-- prettier-ignore -->
-    !!! warning "Sub-pillar coverage gap in 2023"
-        Cross-year sub-pillar comparisons are consistent from 2024 onward. Reporting for 2023 tags approximately half of all Pillar II rows, leaving the remainder as `NA`.
+    !!! warning
+        Cross-year sub-pillar comparisons are consistent from 2024 onward.
 
 3. **Review warnings emitted by default-years sub-pillar queries.** When `years=None` (the default), a sub-pillar filter narrows automatically to 2023 onward, and a secondary warning notes the 2023 coverage gap.
 
@@ -100,7 +102,7 @@ Filter to Pillar II.A or II.B with `pillars=`, then split Pillar II by sub-pilla
     The `share_pct` column reports each row's share of its annual Pillar II total. The `coverage_pct` column reports the combined `II.A` + `II.B` share of the same total, repeated across all three rows for that year as an annual summary. For 2023, value-share coverage is 66.6%, whereas row-share coverage in step 2 is 50.6%. Value-share coverage places greater weight on large tagged activities. State which metric you are citing.
 
     <!-- prettier-ignore -->
-    !!! warning "Interpreting pre-2023 zero values"
+    !!! warning
         A `0` in `II.A` or `II.B` for years prior to 2023 indicates that reporting predated sub-pillar tagging. The entire disbursement total is assigned to `Untagged`.
 
         ```python
@@ -115,7 +117,7 @@ Filter to Pillar II.A or II.B with `pillars=`, then split Pillar II by sub-pilla
         2  2021  Untagged      85461.428145      100.0           0.0
         ```
 
-        Use `II.A`/`II.B` splits from 2023 onward where `coverage_pct` is substantial.
+        Treat `II.A`/`II.B` splits as complete only where `coverage_pct` is close to 100, as in 2024 (98.1). 2023 reaches 66.6.
 
 ## Verify it worked
 

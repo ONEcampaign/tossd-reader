@@ -47,8 +47,8 @@ Browse a packaged codelist or resolve one code or name to its packaged value wit
 3. **Apply the resolved code in a filter.** `codes.lookup()` resolves a token through the same matching path `filters=`, `providers=`, and `recipients=` use, so the code `lookup()` returns is exactly what a filter built from that same token matches. A resolvable code can still match zero rows in the published data (sector sub-codes, for example, fold into their top-level group before publishing). See [How to filter by sector](filter-by-sector.md) for the full story.
 
     <!-- prettier-ignore -->
-    !!! warning "Entities reporting as both providers and recipients"
-        A provider name resolves against the `recipient` dimension when the country acts in both roles. Twenty-two entities, including Brazil, Argentina, and Indonesia, are both official providers and official recipients in the TOSSD standard. The lookup raises an error only for provider-only names such as Japan.
+    !!! warning
+        Twenty-two entities, including Brazil, Argentina, and Indonesia, are both official providers and official recipients in the TOSSD standard, so their names resolve under either dimension. `lookup("recipient", "Japan")` raises `UnknownCodeError` because Japan is a provider only.
 
         ```python
         import tossd_reader as tossd

@@ -3,7 +3,7 @@ description: Filter TOSSD activities by sector name or code, match the published
 ---
 # How to filter by sector
 
-Filter activity records to a specific sector by passing a name or code to `get_tossd(filters={"sector": ...})`. The published data's sector vocabulary operates at a higher level of aggregation than the packaged sector codelist, with sub-sector codes folded into top-level groups. This guide covers group-level filtering, vocabulary matching, and accessing sub-sector detail through purpose codes.
+Filter activity records to a specific sector by passing a name or code to `get_tossd(filters={"sector": ...})`. The published data's sector vocabulary operates at a higher level of aggregation than the packaged sector codelist, with sub-sector codes folded into top-level groups.
 
 ## Steps
 
@@ -28,7 +28,7 @@ Filter activity records to a specific sector by passing a name or code to `get_t
     ```
 
     <!-- prettier-ignore -->
-    !!! note "Sector column visibility"
+    !!! note
         The `columns="minimal"` preset applies filters correctly but omits `sector_code` and `sector_name` from the returned DataFrame. Use `"analysis"` or `"all"` (or specify columns explicitly) to retain the filtered columns in output tables.
 
 2. **Verify sector granularity before filtering on sub-codes.** The published `sector_code` column contains 25 top-level groups (such as 110 Education, 120 Health, and 700 Humanitarian Assistance). The packaged codelist contains 50 entries, including sub-sector codes like 122 (`I.2.b. Basic health`) that reporting publishers fold into parent groups. Filtering directly on a folded sub-code returns an empty DataFrame with a warning.
