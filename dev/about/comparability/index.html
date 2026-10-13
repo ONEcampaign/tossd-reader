@@ -1186,10 +1186,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#future-methodological-implementations" class="md-nav__link">
+  <a href="#methodology-change-from-may-2026" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Future methodological implementations
+        Methodology change from May 2026
       </span>
     </span>
   </a>
@@ -1357,10 +1357,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#future-methodological-implementations" class="md-nav__link">
+  <a href="#methodology-change-from-may-2026" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Future methodological implementations
+        Methodology change from May 2026
       </span>
     </span>
   </a>
@@ -1419,9 +1419,9 @@
 
 
 <h1 id="why-tossd-totals-rise">Why TOSSD totals rise</h1>
-<p>Aggregate growth in TOSSD data from 2019 through 2024 stems from three primary drivers, comprising expansion of the reporting provider base, price inflation and currency movements, and progressive statistical classifications. Understanding each driver ensures accurate interpretation of multi-year development finance trends.</p>
+<p>Aggregate growth in TOSSD data from 2019 through 2024 stems from three primary drivers, comprising expansion of the reporting provider base, price inflation and currency movements, and progressive statistical classifications.</p>
 <h2 id="expansion-of-the-reporting-provider-base">Expansion of the reporting provider base</h2>
-<p>The number of institutions reporting to TOSSD expanded steadily every year from 2019 through 2024. Counting distinct <code>provider_code</code> values excludes the aggregate pseudo-provider (code <code>0</code>).</p>
+<p>The number of institutions reporting to TOSSD grew from 97 in 2019 to 130 in 2024, with no change between 2022 and 2023. Counting distinct <code>provider_code</code> values excludes the aggregate pseudo-provider (code <code>0</code>).</p>
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">tossd_reader</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tossd</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">df</span> <span class="o">=</span> <span class="n">tossd</span><span class="o">.</span><span class="n">get_tossd</span><span class="p">(</span><span class="n">years</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="mi">2019</span><span class="p">,</span> <span class="mi">2025</span><span class="p">),</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">"year"</span><span class="p">,</span> <span class="s2">"provider_code"</span><span class="p">])</span>
@@ -1436,18 +1436,18 @@
 <a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>2024    130
 <a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>Name: provider_code, dtype: int64
 </code></pre></div>
-<p>A significant portion of observed aggregate growth reflects new bilateral providers and multilateral institutions joining the reporting framework over time. To analyse funding trajectories among established donors, analysts can hold the provider cohort constant across target years, isolating institutional reporting expansion from underlying funding growth.</p>
+<p>Part of the observed aggregate growth reflects new bilateral providers and multilateral institutions joining the reporting framework over time. To analyse funding trajectories among established donors, analysts can hold the provider cohort constant across target years, isolating institutional reporting expansion from underlying funding growth.</p>
 <h2 id="inflation-and-price-adjustments">Inflation and price adjustments</h2>
 <p>Nominal disbursement increases combine real resource transfers with price inflation. Between 2019 and 2024, global TOSSD gross disbursements rose 66.0% in current prices (USD 299.9 billion to USD 497.7 billion) and 46.3% in constant 2024 prices (USD 340.2 billion to USD 497.7 billion). Using the deflated amount columns (<code>usd_disbursement_deflated</code>) isolates real volume changes from price-level shifts.</p>
 <h2 id="progressive-implementation-of-sub-pillar-tagging">Progressive implementation of sub-pillar tagging</h2>
-<p>Sub-pillar classification within Pillar II was introduced in stages. In 2022, sub-pillar tagging appeared in 24 trace records (0.02% of Pillar II). In 2023, reporting providers tagged 50.6% of Pillar II activities. In 2024, coverage expanded to 99.1%.</p>
+<p>Sub-pillar classification within Pillar II was introduced in stages. In 2022, sub-pillar tagging appeared in 24 Pillar II rows (0.02% of Pillar II). In 2023, reporting providers tagged 50.6% of Pillar II rows. In 2024, coverage expanded to 99.1%.</p>
 <p>Cross-year comparisons at the sub-pillar level provide consistent coverage from 2024 onward. Data for 2023 offers partial sub-pillar attribution, while data from 2019 through 2022 captures Pillar II as a unified total.</p>
 <h2 id="statistical-classification-updates">Statistical classification updates</h2>
 <p>Statistical classifications evolve to capture emerging cooperation modalities. For example, modality code <code>K02</code> (research and development, or R&amp;D) was introduced in the 2021 reporting cycle with 109 rows, expanding to 74,174 rows by 2024.</p>
-<h2 id="future-methodological-implementations">Future methodological implementations</h2>
-<p>Methodological revisions adopted by the International Forum on TOSSD take effect in scheduled publication vintages. The Revised Debt Relief Methodology (RDRM) applies to vintages published from May 2026 onward.</p>
+<h2 id="methodology-change-from-may-2026">Methodology change from May 2026</h2>
+<p>Methodological revisions adopted by the International Forum on TOSSD take effect in scheduled publication vintages. The revised debt-relief reporting methodology (RDRM) applies to vintages published from May 2026 onward.</p>
 <h2 id="the-packaged-structural-breaks-reference">The packaged structural breaks reference</h2>
-<p><code>get_structural_breaks()</code> provides a curated reference table documenting known discontinuities and coverage milestones across the 2019 to 2024 series.</p>
+<p><code>get_structural_breaks()</code> provides a curated reference table documenting known discontinuities and coverage milestones across the 2019 to 2026 period.</p>
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">tossd_reader</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tossd</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">tossd</span><span class="o">.</span><span class="n">get_structural_breaks</span><span class="p">()</span>
@@ -1519,7 +1519,7 @@
 <tr>
 <td style="text-align: left;"><strong>Concessionality</strong></td>
 <td style="text-align: left;">Captures both concessional and non-concessional resource flows at face value (gross disbursements).</td>
-<td style="text-align: left;">Concessional flows only; sovereign loans are measured using the Grant Equivalent methodology.</td>
+<td style="text-align: left;">Concessional flows only. Sovereign loans are measured using the Grant Equivalent methodology.</td>
 </tr>
 <tr>
 <td style="text-align: left;"><strong>Provider Coverage</strong></td>

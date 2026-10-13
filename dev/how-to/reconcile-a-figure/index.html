@@ -1358,7 +1358,7 @@
 <a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>iso3_unmatched_share_pct               29.616479
 <a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>dtype: object
 </code></pre></div>
-<p><code>reconcile()</code> provides a diagnostic summary of the DataFrame structure. It validates schema conformity rather than asserting data values. Every share is calculated against <code>df</code>'s own <code>usd_disbursement</code> total, aggregate rows included, so it accepts no <code>include_aggregates=</code> argument.</p>
+<p><code>reconcile()</code> provides a diagnostic summary of the DataFrame structure. It reports <code>df</code>'s own data and raises only when <code>df</code> lacks a required column or <code>usd_disbursement</code> is not numeric. Every share is calculated against <code>df</code>'s own <code>usd_disbursement</code> total, aggregate rows included, so it accepts no <code>include_aggregates=</code> argument.</p>
 <p>Read the entries against the figure you're checking:</p>
 <ul>
 <li><code>unit</code>, <code>usd_disbursement_total</code>, and <code>usd_disbursement_deflated_total</code> cover units and price basis.</li>
@@ -1412,7 +1412,7 @@
 </li>
 </ol>
 <h2 id="verify-it-worked">Verify it worked</h2>
-<p>Two figures agree once every <code>reconcile()</code> entry lines up: unit, price basis, aggregate share, pillar coverage, ETag, and year coverage.</p>
+<p>Two figures agree once every <code>reconcile()</code> entry lines up (unit, price basis, aggregate share, pillar coverage, and year coverage) and the ETag from <code>provenance()</code> or the manifest matches.</p>
 <h2 id="see-also">See also</h2>
 <ul>
 <li><a href="../../about/amounts/">About the amount columns</a> for commitment versus disbursement definitions and price adjustments.</li>

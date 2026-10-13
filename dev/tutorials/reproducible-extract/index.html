@@ -398,10 +398,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-1-export-one-year" class="md-nav__link">
+  <a href="#export-one-year" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Step 1: Export one year
+        Export one year
       </span>
     </span>
   </a>
@@ -409,10 +409,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-2-read-the-manifest" class="md-nav__link">
+  <a href="#read-the-manifest" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Step 2: Read the manifest
+        Read the manifest
       </span>
     </span>
   </a>
@@ -420,10 +420,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-3-pin-the-vintage" class="md-nav__link">
+  <a href="#pin-the-vintage" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Step 3: Pin the vintage
+        Pin the vintage
       </span>
     </span>
   </a>
@@ -431,10 +431,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-4-verify-and-reload-the-extract" class="md-nav__link">
+  <a href="#verify-and-reload-the-extract" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Step 4: Verify and reload the extract
+        Verify and reload the extract
       </span>
     </span>
   </a>
@@ -442,10 +442,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-5-hand-it-over" class="md-nav__link">
+  <a href="#hand-it-over" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Step 5: Hand it over
+        Hand it over
       </span>
     </span>
   </a>
@@ -1357,10 +1357,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-1-export-one-year" class="md-nav__link">
+  <a href="#export-one-year" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Step 1: Export one year
+        Export one year
       </span>
     </span>
   </a>
@@ -1368,10 +1368,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-2-read-the-manifest" class="md-nav__link">
+  <a href="#read-the-manifest" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Step 2: Read the manifest
+        Read the manifest
       </span>
     </span>
   </a>
@@ -1379,10 +1379,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-3-pin-the-vintage" class="md-nav__link">
+  <a href="#pin-the-vintage" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Step 3: Pin the vintage
+        Pin the vintage
       </span>
     </span>
   </a>
@@ -1390,10 +1390,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-4-verify-and-reload-the-extract" class="md-nav__link">
+  <a href="#verify-and-reload-the-extract" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Step 4: Verify and reload the extract
+        Verify and reload the extract
       </span>
     </span>
   </a>
@@ -1401,10 +1401,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-5-hand-it-over" class="md-nav__link">
+  <a href="#hand-it-over" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Step 5: Hand it over
+        Hand it over
       </span>
     </span>
   </a>
@@ -1461,7 +1461,7 @@
 <li>About seven minutes.</li>
 <li>Cached 2019 TOSSD vintage (initial calls download the published file to local storage).</li>
 </ul>
-<h2 id="step-1-export-one-year">Step 1: Export one year</h2>
+<h2 id="export-one-year">Export one year</h2>
 <p>Export the 2019 published TOSSD dataset into a dedicated export folder.</p>
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">tossd_reader</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tossd</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
@@ -1473,7 +1473,7 @@
 </code></pre></div>
 <p>The warning means the packaged codelist snapshot hasn't caught up with one <code>parent_channel_code</code> value in the published 2019 data. <code>parent_channel_name</code> reads <code>NA</code> for the 116 rows carrying that code, and the rest of the export is unaffected.</p>
 <p>Passing a directory path generates a standard filename (<code>tossd_2019.parquet</code>) and creates the target directory when required. The <code>export()</code> function preserves all published columns and original publisher units (USD thousand). Custom filtering by recipient, provider, or pillar and unit conversions take place downstream during analysis with <code>get_tossd()</code>.</p>
-<h2 id="step-2-read-the-manifest">Step 2: Read the manifest</h2>
+<h2 id="read-the-manifest">Read the manifest</h2>
 <p>Inspect the JSON manifest file created alongside the Parquet extract to examine the recorded provenance metadata.</p>
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
@@ -1496,8 +1496,8 @@
 <a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>  ]
 <a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>}
 </code></pre></div>
-<p><code>tossd_reader_version</code> identifies the package version, while <code>schema_hash</code> records the SHA-256 hash of the packaged schema definition. <code>payload_sha256</code> hashes the Parquet payload itself; <code>verify_export()</code> recomputes it on demand to confirm the file still matches this manifest. <code>created_at</code> records the export timestamp, and <code>row_count</code> records the number of exported rows. The <code>vintages</code> mapping records the HTTP <code>etag</code> and initial <code>retrieved_at</code> timestamp for each year included in the file.</p>
-<h2 id="step-3-pin-the-vintage">Step 3: Pin the vintage</h2>
+<p><code>tossd_reader_version</code> identifies the package version, while <code>schema_hash</code> records the SHA-256 hash of the packaged schema definition. <code>payload_sha256</code> hashes the Parquet payload itself. <code>verify_export()</code> recomputes it on demand to confirm the file still matches this manifest. <code>created_at</code> records the export timestamp, and <code>row_count</code> records the number of exported rows. The <code>vintages</code> mapping records the HTTP <code>etag</code> and initial <code>retrieved_at</code> timestamp for each year included in the file.</p>
+<h2 id="pin-the-vintage">Pin the vintage</h2>
 <p>The International Forum on TOSSD (IFT) publishes official data at tossd.online under stable URLs, updating files in place as revisions occur. The HTTP ETag header changes whenever the publisher releases an update. The manifest records this ETag to pin the exact vintage used.</p>
 <p>Export the 2019 dataset a second time to verify that the recorded ETag remains consistent across runs.</p>
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
@@ -1511,8 +1511,8 @@
 </code></pre></div>
 <div class="language-text highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>'"69e6ac86-347a653"'
 </code></pre></div>
-<p>The matching ETag confirms that both exports used the identical upstream data vintage. The library checks the upstream ETag only when a discovery sweep runs, once per process by default, or again when <code>refresh=True</code> forces one. Both <code>export()</code> calls in this tutorial run in the same process, so the second call uses the cached result of the initial discovery sweep. Passing <code>refresh=True</code> clears the cached discovery result and retrieves the latest published version directly from tossd.online.</p>
-<h2 id="step-4-verify-and-reload-the-extract">Step 4: Verify and reload the extract</h2>
+<p>The library checks the upstream ETag only when a discovery sweep runs, once per process by default, or again when <code>refresh=True</code> forces one. Both <code>export()</code> calls in this tutorial run in the same process, so the second call reuses the cached result of the initial discovery sweep and copies its ETag. The match shows only that the cached result was reused. To confirm that tossd.online still serves the same vintage, pass <code>refresh=True</code> to the second <code>export()</code>, which clears the cached discovery result and retrieves the latest published version.</p>
+<h2 id="verify-and-reload-the-extract">Verify and reload the extract</h2>
 <p><code>verify_export()</code> recomputes the Parquet file's hash and compares it against <code>payload_sha256</code> in the manifest. Run it before handing an extract to a colleague, or right after receiving one, to confirm the file wasn't corrupted or edited in transit.</p>
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">tossd</span><span class="o">.</span><span class="n">verify_export</span><span class="p">(</span><span class="s2">"exports/tossd_2019.parquet"</span><span class="p">)</span>
 </code></pre></div>
@@ -1533,13 +1533,13 @@
 <a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a> 'years': {'2019': {'etag': '"69e6ac86-347a653"',
 <a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>                    'retrieved_at': '2026-08-28T21:14:14.414671+00:00'}}}
 </code></pre></div>
-<p>The row count matches <code>row_count</code> in the manifest, and the <code>etag</code> matches the value recorded in Step 2. Provenance is accessible directly from the loaded DataFrame.</p>
+<p>The row count matches <code>row_count</code> in the manifest, and the <code>etag</code> matches the value recorded in the manifest above. Provenance is accessible directly from the loaded DataFrame.</p>
 <!-- prettier-ignore -->
 <div class="admonition note">
-<p class="admonition-title">Deterministic pipelines with offline mode</p>
+<p class="admonition-title">Note</p>
 <p>An automated pipeline configured with <code>tossd.set_offline(True)</code> accesses only vintages already pinned in local cache, preventing unrecorded upstream updates. See <a href="../../how-to/work-offline/">Work offline</a>.</p>
 </div>
-<h2 id="step-5-hand-it-over">Step 5: Hand it over</h2>
+<h2 id="hand-it-over">Hand it over</h2>
 <p>A complete reproducible research handover includes three things.</p>
 <ul>
 <li>The Parquet data file (<code>exports/tossd_2019.parquet</code>).</li>
@@ -1548,14 +1548,14 @@
 </ul>
 <!-- prettier-ignore -->
 <div class="admonition note">
-<p class="admonition-title">Integrity verification on corrupted payloads</p>
+<p class="admonition-title">Note</p>
 <p>When an exported file changes in transit, <code>verify_export()</code> detects the modification.</p>
 <div class="language-text highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>ExportIntegrityError: exports/tossd_2019.parquet does not match its manifest: sha256 49d27ebdb8030316… but the manifest recorded 8a6eed10875a87fc…. The file may have been modified or corrupted since export.
 </code></pre></div>
 </div>
 <!-- prettier-ignore -->
 <div class="admonition warning">
-<p class="admonition-title">Memory overhead when exporting multi-year releases</p>
+<p class="admonition-title">Warning</p>
 <p>Exporting all six years without a <code>years</code> argument materialises 2.4 million rows in memory as an Apache Arrow table before writing to disk. Peak RAM reaches roughly 4.4 GB. The finished table itself is about 2.1 GB, but per-year tables stay alive alongside it until they are concatenated. Supply specific reporting years to <code>years=</code> when exporting on memory-constrained systems.</p>
 </div>
 <p>If a cached provenance file is corrupted, the manifest records <code>null</code> for <code>etag</code> and <code>retrieved_at</code> while emitting a warning during export. A missing provenance file records the same <code>null</code> values, silently.</p>

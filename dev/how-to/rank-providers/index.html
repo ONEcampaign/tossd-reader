@@ -1342,7 +1342,7 @@
 <p><code>share_pct</code> shifts too. United States's share rises from 13.6% to 17.0% once Aggregate's USD 99.4 billion drops out of the total each share is measured against.</p>
 </li>
 <li>
-<p><strong>Generate the complete ranking.</strong> Drop the column subset to inspect every field <code>rank_entities</code> adds, including <code>n_activities</code>.</p>
+<p><strong>Show every field the ranking adds.</strong> Drop the column subset to inspect every field <code>rank_entities</code> adds, including <code>n_activities</code>.</p>
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">tossd</span><span class="o">.</span><span class="n">rank_entities</span><span class="p">(</span><span class="n">top</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span><span class="o">.</span><span class="n">to_string</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
 </code></pre></div>
 <div class="language-text highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a> provider_code                provider_name  usd_disbursement  n_activities  share_pct  rank
@@ -1356,18 +1356,18 @@
 </li>
 </ol>
 <!-- prettier-ignore -->
-<div class="admonition info">
-<p class="admonition-title">Disambiguation of shared entity names</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
 <p><code>rank_entities</code> groups on the <code>(provider_code, provider_name)</code> pair. Some institutional families share a name across distinct reporting entities. The African Development Bank Group reports as both the African Development Bank (code 913) and the African Development Fund (code 914). Grouping on the pair keeps them apart.</p>
 </div>
 <!-- prettier-ignore -->
 <div class="admonition note">
-<p class="admonition-title">Activity counts and placeholder identifiers</p>
+<p class="admonition-title">Note</p>
 <p><code>"0000"</code> also lands on a small share of individual providers' rows in 2023-24 (bundled lines belonging to reporting institutions), so <code>n_activities</code> can slightly undercount those providers even after aggregate rows are excluded.</p>
 </div>
 <!-- prettier-ignore -->
 <div class="admonition warning">
-<p class="admonition-title">Cross-pillar double-counting risk</p>
+<p class="admonition-title">Warning</p>
 <p><code>df</code> here carries both pillars. Ranking providers across both pillars mixes Pillar I bilateral outflows with Pillar II core contributions to multilateral institutions, which double-counts funding reported once by the donor and again by the institution it funds. See <a href="../../about/pillars-and-aggregates/#bilateral-core-contributions-and-multilateral-double-counting">Bilateral core contributions and multilateral double-counting</a>.</p>
 </div>
 <p><code>rank_entities</code> works for any dimension with a matching <code>{dimension}_code</code>/<code>{dimension}_name</code> pair. Pass <code>dimension="recipient"</code> (or <code>"sector"</code>, <code>"purpose"</code>, <code>"channel"</code>) to rank a different one.</p>

@@ -1357,7 +1357,7 @@
 </code></pre></div>
 </li>
 <li>
-<p><strong>Aggregate disbursements per marker with <code>df.tossd.keyword_totals(markers=...)</code>.</strong> This method aggregates disbursements per marker without double-counting activities tagged for multiple categories. It recomputes marker masks from <code>keywords_raw</code> internally and appends a <code>"Combined"</code> row containing the union of all requested marker masks.</p>
+<p><strong>Aggregate disbursements per marker with <code>df.tossd.keyword_totals(markers=...)</code>.</strong> This method aggregates disbursements per marker. It recomputes marker masks from <code>keywords_raw</code> internally and appends a <code>"Combined"</code> row containing the union of all requested marker masks, which counts each row once.</p>
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">df</span><span class="o">.</span><span class="n">tossd</span><span class="o">.</span><span class="n">keyword_totals</span><span class="p">(</span><span class="n">markers</span><span class="o">=</span><span class="p">[</span><span class="s2">"adaptation"</span><span class="p">,</span> <span class="s2">"mitigation"</span><span class="p">])</span>
 </code></pre></div>
 <div class="language-text highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>       marker  usd_disbursement  n_rows
@@ -1366,12 +1366,12 @@
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>2    Combined      78643.461436   53822
 </code></pre></div>
 <p>The individual marker rows sum to 100,022.6 million, exceeding <code>"Combined"</code>'s 78,643.5 million. An activity tagged for both adaptation and mitigation appears under each individual marker row, but only once in <code>"Combined"</code>, providing an unduplicated total for climate finance.</p>
-<p>The <code>n_rows</code> column counts matching rows rather than distinct activities. Reporting providers may split a single activity across multiple rows with different keyword tags. Omit <code>markers=</code> to compute totals across all twelve packaged markers and the <code>"Combined"</code> summary.</p>
+<p>The <code>n_rows</code> column counts matching rows. Reporting providers may split a single activity across multiple rows with different keyword tags. Omit <code>markers=</code> to compute totals across all twelve packaged markers and the <code>"Combined"</code> summary.</p>
 </li>
 </ol>
 <!-- prettier-ignore -->
 <div class="admonition warning">
-<p class="admonition-title">Marker overlaps and vocabulary scope</p>
+<p class="admonition-title">Warning</p>
 <p>The twelve markers operate as independent boolean flags without weights or partitioning, so marker totals overlap by design. A row reading False across all <code>kw_</code> columns carries none of the packaged markers. In 2024, 10.9% of rows (51,436 of 474,026) contain <code>keywords_raw</code> tokens outside this twelve-marker vocabulary and remain False across every <code>kw_</code> column.</p>
 </div>
 <h2 id="verify-it-worked">Verify it worked</h2>

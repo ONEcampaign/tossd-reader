@@ -1355,7 +1355,7 @@
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>3        1         1          False        0.25                   0.002704
 <a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>4        5         5          False        0.50                   0.008104
 </code></pre></div>
-<p>The <code>sdg_goal</code> column extracts the integer goal number, grouping target-level tags like <code>4.2</code> and goal-level tags like <code>13</code> under their primary goal. Summing <code>usd_disbursement_weighted</code> restores each activity's original disbursement total.</p>
+<p>The <code>sdg_goal</code> column extracts the integer goal number, grouping target-level tags like <code>4.2</code> and goal-level tags like <code>13</code> under their primary goal. Summing <code>usd_disbursement_weighted</code> restores each SDG-tagged activity's original disbursement total.</p>
 </li>
 <li>
 <p><strong>Calculate weighted disbursements per goal with <code>df.tossd.sdg_totals()</code>.</strong> This method runs the explode-and-weight process internally, allocating a multi-tagged activity's disbursement proportionally across its goals. It excludes <code>is_aggregate</code> rows by default (<code>include_aggregates=False</code>).</p>

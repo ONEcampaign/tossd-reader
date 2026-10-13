@@ -1465,12 +1465,12 @@
 </code></pre></div>
 <div class="language-text highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>UserWarning: Offline mode is active (tossd_reader.config.set_offline(False), or the TOSSD_READER_OFFLINE env var, would allow network access); serving the cached 2024 vintage retrieved 2026-08-28T19:32:28.617740+00:00 (etag "69e6ac8d-5728379").
 </code></pre></div>
-<p>Requesting an unprimed year raises <code>TossdNetworkError</code>.</p>
+<p>Requesting an unprimed year raises <code>TossdNetworkError</code>. The message names the resolved cache directory, shown below as <code>&lt;your cache directory&gt;</code>.</p>
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">tossd</span><span class="o">.</span><span class="n">get_tossd</span><span class="p">(</span><span class="n">years</span><span class="o">=</span><span class="mi">2010</span><span class="p">)</span>
 </code></pre></div>
 <div class="language-text highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>TossdNetworkError: Cannot fetch 2010: offline mode is active (tossd_reader.config.set_offline(False), or the TOSSD_READER_OFFLINE env var, would allow network access), and no cached vintage for 2010 exists in &lt;your cache directory&gt;.
 </code></pre></div>
-<p>The full error message names the resolved cache directory. See <a href="../../reference/configuration/#cache-location-and-bounds">Cache location and bounds</a> for default platform paths.</p>
+<p>See <a href="../../reference/configuration/#cache-location-and-bounds">Cache location and bounds</a> for default platform paths.</p>
 <h2 id="refresh-behaviour-in-offline-mode">Refresh behaviour in offline mode</h2>
 <p>Passing <code>refresh=True</code> requires network connectivity to check for updated vintages. Combining <code>refresh=True</code> with offline mode raises <code>ValueError</code> immediately.</p>
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">tossd</span><span class="o">.</span><span class="n">get_tossd</span><span class="p">(</span><span class="n">years</span><span class="o">=</span><span class="mi">2024</span><span class="p">,</span> <span class="n">refresh</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -1503,8 +1503,8 @@
 </code></pre></div>
 <!-- prettier-ignore -->
 <div class="admonition warning">
-<p class="admonition-title">Comparing ETag values between cache and server</p>
-<p>The publisher's host serves different ETag formats for identical payloads across requests. Compare 2019 above (<code>"347a653-64fec0e08ffa0"</code>) against the same year in <code>cache_info()</code> (<code>"69e6ac86-347a653"</code>). Avoid direct equality checks between the two. A revised file receives a new ETag, but a mismatch between <code>get_vintages()</code> and <code>cache_info()</code> indicates a need to re-verify rather than confirming new data.</p>
+<p class="admonition-title">Warning</p>
+<p>The publisher's host serves different ETag formats for identical payloads across requests. Compare 2019 above (<code>"347a653-64fec0e08ffa0"</code>) against the same year in <code>cache_info()</code> (<code>"69e6ac86-347a653"</code>). Avoid direct equality checks between the two. A revised file receives a new ETag, but a mismatch between <code>get_vintages()</code> and <code>cache_info()</code> indicates a need to re-verify.</p>
 </div>
 <p>In offline mode or when the publisher is unreachable, <code>get_vintages()</code> falls back to listing locally cached vintages.</p>
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">tossd</span><span class="o">.</span><span class="n">get_vintages</span><span class="p">()</span>
@@ -1534,9 +1534,9 @@
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="n">tossd</span><span class="o">.</span><span class="n">clear_cache</span><span class="p">(</span><span class="n">years</span><span class="o">=</span><span class="mi">2019</span><span class="p">)</span>
 <a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="n">tossd</span><span class="o">.</span><span class="n">clear_cache</span><span class="p">(</span><span class="n">before</span><span class="o">=</span><span class="s2">"2026-01-01"</span><span class="p">)</span>
 </code></pre></div>
-<p><code>years=</code> accepts a single year or an iterable of years. <code>before=</code> accepts a <code>date</code>, a <code>datetime</code>, or an ISO 8601 string, treating naive timestamps without timezone information as UTC. Both arguments default to <code>keep_latest=True</code>; set <code>keep_latest=False</code> to remove the latest matching vintage as well.</p>
+<p><code>years=</code> accepts a single year or an iterable of years. <code>before=</code> accepts a <code>date</code>, a <code>datetime</code>, or an ISO 8601 string, treating naive timestamps without timezone information as UTC. <code>keep_latest</code> defaults to <code>True</code> in every call. Set <code>keep_latest=False</code> to remove the latest matching vintage as well.</p>
 <h2 id="verify-it-worked">Verify it worked</h2>
-<p>Confirm that every primed year exists in the cache.</p>
+<p>Confirm that every primed year exists in the cache. If you ran <code>clear_cache(keep_latest=False)</code> above, prime the years again first.</p>
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="nb">sorted</span><span class="p">(</span><span class="n">tossd</span><span class="o">.</span><span class="n">cache_info</span><span class="p">()[</span><span class="s2">"year"</span><span class="p">])</span>
 </code></pre></div>
 <div class="language-text highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>[2019, 2020, 2021, 2022, 2023, 2024]

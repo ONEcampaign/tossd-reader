@@ -1378,7 +1378,7 @@
 <li><code>usd_commitment</code> records a formal institutional obligation undertaken during the reporting year to provide specified financial resources to a recipient or activity. Commitments represent forward-looking resource allocations, policy priorities, and signed agreements.</li>
 <li><code>usd_disbursement</code> records the actual transfer of funds or placement of financial resources at the disposal of a recipient or executing partner during the reporting year.</li>
 </ul>
-<p>Commitments and disbursements follow independent multi-year project lifecycles. An activity can report a commitment in its inaugural year followed by disbursements distributed across several subsequent years. Ongoing multi-year operations often report annual disbursements against commitments established in earlier reporting periods. In the 2024 dataset, 390,190 records report non-null commitments and 441,645 records report non-null disbursements out of 474,026 total activities.</p>
+<p>Commitments and disbursements follow independent multi-year project lifecycles. An activity can report a commitment in its inaugural year followed by disbursements distributed across several subsequent years. Ongoing multi-year operations often report annual disbursements against commitments established in earlier reporting periods. In the 2024 dataset, 390,190 records report non-null commitments and 441,645 records report non-null disbursements out of 474,026 total rows.</p>
 <h2 id="current-prices-and-constant-prices">Current prices and constant prices</h2>
 <p>Each nominal financial field pairs with a deflated counterpart adjusted for price movements:</p>
 <ul>
@@ -1409,7 +1409,7 @@
 <a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>2023          472601.8                   484367.0
 <a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>2024          497676.0                   497676.0
 </code></pre></div>
-<p>Between 2019 and 2024, global TOSSD gross disbursements expanded by 66.0% in current prices (from USD 299.9 billion to USD 497.7 billion) and by 46.3% in constant 2024 prices (from USD 340.2 billion to USD 497.7 billion). The gap between current and constant values reflects price inflation over this five-year period.</p>
+<p>Between 2019 and 2024, global TOSSD gross disbursements expanded by 66.0% in current prices (from USD 299.9 billion to USD 497.7 billion) and by 46.3% in constant 2024 prices (from USD 340.2 billion to USD 497.7 billion). The gap between current and constant values reflects price inflation and currency movements over this five-year period.</p>
 <h2 id="gross-disbursements-reflows-and-net-flows">Gross disbursements, reflows, and net flows</h2>
 <p><code>usd_disbursement</code> measures gross financial flows provided to recipients and international activities.</p>
 <p><code>usd_reflow</code> measures capital repayments returned to providers during the reporting year, including loan principal repayments, equity divestments, and returned grants. In the 2024 dataset, 215,264 records report non-null reflow values.</p>
@@ -1419,7 +1419,7 @@
 <p>TOSSD measures mobilised private finance as an indicator of private capital leverage in sustainable development. Official headline disbursement totals for Pillar I and Pillar II reflect official direct resources in <code>usd_disbursement</code>.</p>
 <!-- prettier-ignore -->
 <div class="admonition warning">
-<p class="admonition-title">Keep mobilised private finance separate from disbursements</p>
+<p class="admonition-title">Warning</p>
 <p>Keep <code>usd_amount_mobilised</code> separate from <code>usd_disbursement</code>. The <code>usd_amount_mobilised</code> field measures private commercial capital mobilised through official interventions, while <code>usd_disbursement</code> captures direct official fiscal transfers.</p>
 </div>
 <h2 id="related">Related</h2>

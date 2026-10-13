@@ -1333,8 +1333,8 @@
 <h1 id="how-to-read-the-published-columns-unchanged">How to read the published columns unchanged</h1>
 <p>Call <code>get_tossd_raw</code> to get a year of TOSSD data with the publisher's original column names, dtypes, and ordering across every row.</p>
 <!-- prettier-ignore -->
-<div class="admonition info">
-<p class="admonition-title">Use cases for raw published data</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
 <p><code>get_tossd_raw</code> serves three primary use cases:</p>
 <ul>
 <li>Inspecting raw published records directly before relying on normalised columns.</li>
@@ -1426,7 +1426,7 @@
 </code></pre></div>
 <!-- prettier-ignore -->
 <div class="admonition warning">
-<p class="admonition-title">Absence of derived columns and filters in raw frames</p>
+<p class="admonition-title">Warning</p>
 <p>A frame from <code>get_tossd_raw</code> provides only the raw published columns. Filter and convert units in pandas, or query <code>get_tossd</code> to get typed columns, the derived <code>is_aggregate</code> flag, and built-in filters.</p>
 </div>
 <h2 id="troubleshooting">Troubleshooting</h2>

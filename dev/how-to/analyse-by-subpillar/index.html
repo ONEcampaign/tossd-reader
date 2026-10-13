@@ -1353,9 +1353,10 @@
 </code></pre></div>
 <div class="language-text highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>76510.1 54782.7
 </code></pre></div>
+<p><code>get_tossd()</code> keeps the publisher's aggregate rows (<code>is_aggregate</code>) by default, so these totals exceed the II.A and II.B amounts in step 5, where <code>subpillar_breakdown()</code> drops them.</p>
 </li>
 <li>
-<p><strong>Check sub-pillar coverage by row before comparing years.</strong> Sub-pillar tagging rolled out gradually starting in 2023. The <code>tossd_subpillar</code> column is <code>NA</code> on any Pillar II row left untagged by the reporting provider, so <code>.notna()</code> calculates row-share coverage directly. The <code>df.tossd.subpillar_breakdown()</code> method (step 5) reports value-share coverage. Distinguish between these two metrics when citing coverage.</p>
+<p><strong>Check sub-pillar coverage by row before comparing years.</strong> Sub-pillar tagging first appears as trace data in 2022 and rolled out from 2023. The <code>tossd_subpillar</code> column is <code>NA</code> on any Pillar II row left untagged by the reporting provider, so <code>.notna()</code> calculates row-share coverage directly. The <code>df.tossd.subpillar_breakdown()</code> method (step 5) reports value-share coverage. Distinguish between these two metrics when citing coverage.</p>
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">p2</span> <span class="o">=</span> <span class="n">tossd</span><span class="o">.</span><span class="n">get_tossd</span><span class="p">(</span><span class="n">years</span><span class="o">=</span><span class="mi">2023</span><span class="p">,</span> <span class="n">pillars</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="s2">"minimal"</span><span class="p">)</span>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nb">print</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">p2</span><span class="p">[</span><span class="s2">"tossd_subpillar"</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">*</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
 </code></pre></div>
@@ -1368,8 +1369,8 @@
 </code></pre></div>
 <!-- prettier-ignore -->
 <div class="admonition warning">
-<p class="admonition-title">Sub-pillar coverage gap in 2023</p>
-<p>Cross-year sub-pillar comparisons are consistent from 2024 onward. Reporting for 2023 tags approximately half of all Pillar II rows, leaving the remainder as <code>NA</code>.</p>
+<p class="admonition-title">Warning</p>
+<p>Cross-year sub-pillar comparisons are consistent from 2024 onward.</p>
 </div>
 </li>
 <li>
@@ -1403,7 +1404,7 @@
 <p>The <code>share_pct</code> column reports each row's share of its annual Pillar II total. The <code>coverage_pct</code> column reports the combined <code>II.A</code> + <code>II.B</code> share of the same total, repeated across all three rows for that year as an annual summary. For 2023, value-share coverage is 66.6%, whereas row-share coverage in step 2 is 50.6%. Value-share coverage places greater weight on large tagged activities. State which metric you are citing.</p>
 <!-- prettier-ignore -->
 <div class="admonition warning">
-<p class="admonition-title">Interpreting pre-2023 zero values</p>
+<p class="admonition-title">Warning</p>
 <p>A <code>0</code> in <code>II.A</code> or <code>II.B</code> for years prior to 2023 indicates that reporting predated sub-pillar tagging. The entire disbursement total is assigned to <code>Untagged</code>.</p>
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="n">p2021</span> <span class="o">=</span> <span class="n">tossd</span><span class="o">.</span><span class="n">get_tossd</span><span class="p">(</span><span class="n">years</span><span class="o">=</span><span class="mi">2021</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="s2">"analysis"</span><span class="p">,</span> <span class="n">units</span><span class="o">=</span><span class="s2">"usd_million"</span><span class="p">)</span>
 <a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="n">p2021</span><span class="o">.</span><span class="n">tossd</span><span class="o">.</span><span class="n">subpillar_breakdown</span><span class="p">()</span>
@@ -1413,7 +1414,7 @@
 <a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>1  2021      II.B          0.000000        0.0           0.0
 <a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>2  2021  Untagged      85461.428145      100.0           0.0
 </code></pre></div>
-<p>Use <code>II.A</code>/<code>II.B</code> splits from 2023 onward where <code>coverage_pct</code> is substantial.</p>
+<p>Treat <code>II.A</code>/<code>II.B</code> splits as complete only where <code>coverage_pct</code> is close to 100, as in 2024 (98.1). 2023 reaches 66.6.</p>
 </div>
 </li>
 </ol>

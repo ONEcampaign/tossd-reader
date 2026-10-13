@@ -1331,7 +1331,7 @@
 
 
 <h1 id="how-to-filter-by-sector">How to filter by sector</h1>
-<p>Filter activity records to a specific sector by passing a name or code to <code>get_tossd(filters={"sector": ...})</code>. The published data's sector vocabulary operates at a higher level of aggregation than the packaged sector codelist, with sub-sector codes folded into top-level groups. This guide covers group-level filtering, vocabulary matching, and accessing sub-sector detail through purpose codes.</p>
+<p>Filter activity records to a specific sector by passing a name or code to <code>get_tossd(filters={"sector": ...})</code>. The published data's sector vocabulary operates at a higher level of aggregation than the packaged sector codelist, with sub-sector codes folded into top-level groups.</p>
 <h2 id="steps">Steps</h2>
 <ol>
 <li>
@@ -1352,7 +1352,7 @@
 </code></pre></div>
 <!-- prettier-ignore -->
 <div class="admonition note">
-<p class="admonition-title">Sector column visibility</p>
+<p class="admonition-title">Note</p>
 <p>The <code>columns="minimal"</code> preset applies filters correctly but omits <code>sector_code</code> and <code>sector_name</code> from the returned DataFrame. Use <code>"analysis"</code> or <code>"all"</code> (or specify columns explicitly) to retain the filtered columns in output tables.</p>
 </div>
 </li>

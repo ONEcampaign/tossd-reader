@@ -1390,9 +1390,9 @@
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="nt">"tossd_reader_version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"0.1.0"</span>
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="p">}</span>
 </code></pre></div>
-<p>The provenance record stores the source URL, HTTP ETag, file size in bytes, SHA-256 cryptographic checksum, total row count, download timestamp, and package version. When the upstream publisher updates a file, the resulting new ETag initiates a fresh download while preserving previous cached files and their provenance records on disk.</p>
+<p>When the upstream publisher updates a file, the resulting new ETag initiates a fresh download while preserving previous cached files and their provenance records on disk.</p>
 <h2 id="provenance-on-query-results">Provenance on query results</h2>
-<p>Every <code>get_tossd()</code>, <code>get_tossd_raw()</code>, and <code>load_export()</code> call stamps <code>df.attrs["tossd_reader"]</code> on its result before filtering or unit conversion occurs. Every verb and <code>df.tossd</code> accessor method copies <code>df.attrs</code> onto its return value, preserving provenance across chained calls such as <code>df.tossd.rank_entities()</code> or <code>explode_sdg(df)</code>. Standard pandas operations (such as merges, concatenations, or aggregations) can drop <code>attrs</code>. Read provenance early or retain the original query result to access metadata.</p>
+<p>Every <code>get_tossd()</code>, <code>get_tossd_raw()</code>, and <code>load_export()</code> call stamps <code>df.attrs["tossd_reader"]</code> on its result. Every verb and <code>df.tossd</code> accessor method copies <code>df.attrs</code> onto its return value, preserving provenance across chained calls such as <code>df.tossd.rank_entities()</code> or <code>explode_sdg(df)</code>. Standard pandas operations (such as merges, concatenations, or aggregations) can drop <code>attrs</code>. Read provenance early or retain the original query result to access metadata.</p>
 <p><code>get_provenance(df)</code> (also <code>df.tossd.provenance()</code>) reads that record back as a deep copy, allowing callers to mutate the returned dictionary freely.</p>
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">tossd_reader</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tossd</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pprint</span><span class="w"> </span><span class="kn">import</span> <span class="n">pprint</span>
@@ -1448,7 +1448,6 @@
 <a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="w">  </span><span class="p">]</span>
 <a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="p">}</span>
 </code></pre></div>
-<p>The manifest records provenance metadata, upstream ETags, retrieval timestamps, schema hashes, payload hashes, row counts, export timestamps, and package versions.</p>
 <p><code>verify_export()</code> recomputes <code>payload_sha256</code> from the Parquet file and confirms that it matches the manifest. <code>load_export()</code> calls <code>verify_export()</code> before reading the file, raising an error if the file no longer matches its manifest.</p>
 <h2 id="offline-workflows-and-vintage-stability">Offline workflows and vintage stability</h2>
 <p><code>tossd-reader</code> executes queries against local disk storage once files are cached. In offline environments or during upstream server maintenance, <code>get_tossd()</code> serves the latest cached vintage and issues a structured warning detailing the retrieval timestamp and ETag.</p>
@@ -1456,8 +1455,8 @@
 <p><code>get_vintages()</code> and <code>cache_info()</code> inspect available data vintages. <code>get_vintages()</code> performs a live discovery sweep and reports the current file metadata and ETag at each year's URL. <code>cache_info()</code> inspects locally cached files with one row per retrieved vintage, displaying multiple entries when a single year has been downloaded under multiple ETags.</p>
 <!-- prettier-ignore -->
 <div class="admonition warning">
-<p class="admonition-title">Inconsistent ETag formatting on upstream server</p>
-<p>The upstream server occasionally formats ETags differently for unchanged files. An ETag difference between <code>get_vintages()</code> and <code>cache_info()</code> can occur without changes to the underlying data. Verify file contents before assuming a new vintage.</p>
+<p class="admonition-title">Warning</p>
+<p>The upstream server formats ETags differently for unchanged files. When the ETags from <code>get_vintages()</code> and <code>cache_info()</code> differ, verify file contents before assuming a new vintage.</p>
 </div>
 <h2 id="related">Related</h2>
 <ul>

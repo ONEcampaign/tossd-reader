@@ -1363,7 +1363,7 @@
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>Regional / Multi-country Unallocated     30704.2
 <a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>Name: usd_disbursement, dtype: float64
 </code></pre></div>
-<p><code>Regional / Multi-country Unallocated</code> accounts for 11.1% of the total, aligning with country-level ISO3 joins after excluding Pillar II and aggregate rows.</p>
+<p><code>Regional / Multi-country Unallocated</code> accounts for 11.1% of the Pillar I total once aggregate rows are excluded.</p>
 </li>
 <li>
 <p><strong>Switch classification schemes with <code>scheme="income"</code> or <code>scheme="region"</code>.</strong></p>
@@ -1396,7 +1396,7 @@
 </code></pre></div>
 </li>
 <li>
-<p><strong>Account for the São Tomé and Príncipe LDC graduation in 2024 analysis.</strong> São Tomé and Príncipe (<code>recipient_code</code> 268) graduated from LDC status on 6 December 2024. The packaged table reflects the current LDC list, classifying all 2024 rows as <code>Other Developing Countries</code>.</p>
+<p><strong>Account for the São Tomé and Príncipe LDC graduation in 2024 analysis.</strong> São Tomé and Príncipe (<code>recipient_code</code> 268) graduated from LDC status on 13 December 2024. The packaged table reflects the current LDC list, classifying all 2024 rows as <code>Other Developing Countries</code>.</p>
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">rg</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">rg</span><span class="p">[</span><span class="s2">"recipient_code"</span><span class="p">]</span> <span class="o">==</span> <span class="mi">268</span><span class="p">,</span> <span class="s2">"recipient_group"</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
 </code></pre></div>
 <div class="language-text highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>['Other Developing Countries']
@@ -1404,31 +1404,33 @@
 <a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>                      'Regional / Multi-country Unallocated']
 </code></pre></div>
 <p>When reconciling against a 2024-vintage LDC classification, treat São Tomé and Príncipe as an LDC for reporting periods prior to graduation.</p>
+<div class="language-python highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">rg</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">rg</span><span class="p">[</span><span class="s2">"recipient_code"</span><span class="p">]</span> <span class="o">==</span> <span class="mi">268</span><span class="p">,</span> <span class="s2">"recipient_group"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"Least Developed Countries"</span>
+</code></pre></div>
 </li>
 <li>
 <p><strong>Cite the classification vintage with <code>get_recipient_groups_version()</code>.</strong></p>
-<div class="language-python highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">tossd</span><span class="o">.</span><span class="n">get_recipient_groups_version</span><span class="p">()</span>
+<div class="language-python highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">tossd</span><span class="o">.</span><span class="n">get_recipient_groups_version</span><span class="p">()</span>
 </code></pre></div>
-<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>'ldc-2024review/wb-fy27'
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>'ldc-2024review/wb-fy27'
 </code></pre></div>
 <p>The identifier specifies the UN LDC-list vintage and the World Bank income classification fiscal year. Record this version tag alongside published figures.</p>
 </li>
 </ol>
 <h2 id="verify-it-worked">Verify it worked</h2>
 <p>Every recipient code resolves to a classification group, and the grouped totals sum back to the original dataset total.</p>
-<div class="language-python highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">grand_total</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">"usd_disbursement"</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="mi">1</span><span class="p">)</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="n">group_total</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span>
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    <span class="n">rg</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">"recipient_group"</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="s2">"usd_disbursement"</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="mi">1</span>
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="p">)</span>
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">group_total</span> <span class="o">==</span> <span class="n">grand_total</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">grand_total</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">"usd_disbursement"</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="n">group_total</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    <span class="n">rg</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">"recipient_group"</span><span class="p">,</span> <span class="n">observed</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="s2">"usd_disbursement"</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="mi">1</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="p">)</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">group_total</span> <span class="o">==</span> <span class="n">grand_total</span><span class="p">)</span>
 </code></pre></div>
-<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>True
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>True
 </code></pre></div>
 <h2 id="troubleshooting">Troubleshooting</h2>
 <p><strong><code>ValueError</code> naming a <code>scheme</code>.</strong> Pass <code>"ldc"</code>, <code>"income"</code>, or <code>"region"</code>.</p>
-<div class="language-python highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="n">df</span><span class="o">.</span><span class="n">tossd</span><span class="o">.</span><span class="n">add_recipient_group</span><span class="p">(</span><span class="n">scheme</span><span class="o">=</span><span class="s2">"ld"</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="n">df</span><span class="o">.</span><span class="n">tossd</span><span class="o">.</span><span class="n">add_recipient_group</span><span class="p">(</span><span class="n">scheme</span><span class="o">=</span><span class="s2">"ld"</span><span class="p">)</span>
 </code></pre></div>
-<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>ValueError: add_recipient_group() scheme='ld' is not one of 'income', 'ldc', 'region'.
+<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>ValueError: add_recipient_group() scheme='ld' is not one of 'income', 'ldc', 'region'.
 </code></pre></div>
 <p><strong><code>UserWarning</code> for unmapped <code>recipient_code</code> values.</strong> If a query returns recipient codes newer than the packaged snapshot table, those rows receive <code>NA</code> in <code>recipient_group</code> while the rest of the dataset remains valid.</p>
 <h2 id="see-also">See also</h2>
